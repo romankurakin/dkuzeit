@@ -1,5 +1,5 @@
-import { parse as parseHtml5, serialize as serializeHtml5, type DefaultTreeAdapterTypes } from 'parse5';
-import { cleanText, extractLessonType, germanOnlyLabel, leftSideCode, normalizeCodeKey, russianOnlyLabel, stripParenSuffix } from './text';
+import { parse as parseHtml5, type DefaultTreeAdapterTypes } from 'parse5';
+import { cleanText, germanOnlyLabel, russianOnlyLabel, stripParenSuffix } from './text';
 import type {
 	GroupOption,
 	GroupWeekSchedule,
@@ -11,10 +11,6 @@ import type {
 } from './types';
 import { trackRules, cohortCodeRules, genericCodes } from './cohort-config';
 
-function normalizeHtml(input: string): string {
-	return serializeHtml5(parseHtml5(input));
-}
-
 type ParseParentNode = Pick<DefaultTreeAdapterTypes.ParentNode, 'childNodes'>;
 type ParseElement = DefaultTreeAdapterTypes.Element;
 type ParseNode = DefaultTreeAdapterTypes.Node;
@@ -23,29 +19,40 @@ function isElement(node: ParseNode | undefined): node is ParseElement {
 	return Boolean(node && typeof node === 'object' && 'tagName' in node);
 }
 
+/** Collapse whitespace in text already extracted from the DOM (no tags/entities to strip). */
+function collapseSpaces(input: string): string {
+	return input.replace(/[\s\u00a0]+/g, ' ').trim();
+}
+
 function isTextNode(node: ParseNode): node is DefaultTreeAdapterTypes.TextNode {
 	return node.nodeName === '#text';
 }
 
 function attrValue(node: ParseElement, key: string): string | null {
-	return node.attrs.find((attr) => attr.name.toLowerCase() === key.toLowerCase())?.value ?? null;
+	for (const attr of node.attrs) {
+		if (attr.name === key) return attr.value;
+	}
+	return null;
 }
 
 function nodeText(node: ParseNode): string {
 	if (isTextNode(node)) return node.value;
 	if (!('childNodes' in node) || !Array.isArray(node.childNodes)) return '';
-	return node.childNodes.map((child) => nodeText(child)).join('');
+	let result = '';
+	for (const child of node.childNodes) result += nodeText(child);
+	return result;
 }
 
 function findFirstByTag(parent: ParseParentNode, tag: string): ParseElement | null {
-	const needle = tag.toLowerCase();
-	const stack: ParseNode[] = [...parent.childNodes];
+	const needle = tag;
+	const stack: ParseNode[] = parent.childNodes.slice().reverse();
 	while (stack.length > 0) {
-		const current = stack.shift();
-		if (!current) continue;
-		if (isElement(current) && current.tagName.toLowerCase() === needle) return current;
+		const current = stack.pop()!;
+		if (isElement(current) && current.tagName === needle) return current;
 		if ('childNodes' in current && Array.isArray(current.childNodes)) {
-			stack.unshift(...current.childNodes);
+			for (let i = current.childNodes.length - 1; i >= 0; i--) {
+				stack.push(current.childNodes[i]!);
+			}
 		}
 	}
 	return null;
@@ -68,8 +75,7 @@ function parseJsStringArray(body: string): string[] {
 }
 
 export function parseNavHtml(html: string): MetaPayload {
-	const normalized = normalizeHtml(html);
-	const weekSelectMatch = normalized.match(/<select\s+name="week"[\s\S]*?<\/select>/i);
+	const weekSelectMatch = html.match(/<select\s+name="week"[\s\S]*?<\/select>/i);
 	if (!weekSelectMatch) throw new Error('Week select not found in navbar');
 
 	const weekOptions: WeekOption[] = [];
@@ -79,7 +85,7 @@ export function parseNavHtml(html: string): MetaPayload {
 		weekOptions.push({ value, label, startDateIso: parseWeekLabelDate(label) });
 	}
 
-	const classesMatch = normalized.match(/var\s+classes\s*=\s*\[([\s\S]*?)\];/i);
+	const classesMatch = html.match(/var\s+classes\s*=\s*\[([\s\S]*?)\];/i);
 	if (!classesMatch) throw new Error('Classes array not found in navbar');
 
 	const groups: GroupOption[] = parseJsStringArray(classesMatch[1]!).map((codeRaw, idx) => ({
@@ -93,8 +99,11 @@ export function parseNavHtml(html: string): MetaPayload {
 }
 
 function directChildrenByTag(parent: ParseParentNode, tag: string): ParseElement[] {
-	const needle = tag.toLowerCase();
-	return parent.childNodes.filter((node) => isElement(node) && node.tagName.toLowerCase() === needle) as ParseElement[];
+	const output: ParseElement[] = [];
+	for (const node of parent.childNodes) {
+		if (isElement(node) && node.tagName === tag) output.push(node);
+	}
+	return output;
 }
 
 function parseLegendEntries(html: string, heading: string): Array<{ code: string; value: string }> {
@@ -119,21 +128,27 @@ function parseLegendEntries(html: string, heading: string): Array<{ code: string
 	return output;
 }
 
+/** Normalize a code key: strip leading dots, collapse spaces, strip trailing slash, uppercase.
+ *  Like normalizeCodeKey but skips cleanText since inputs are already tag-free & decoded. */
+function fastCodeKey(input: string): string {
+	return input.replace(/^\.+/, '').replace(/\s+/g, '').replace(/\/$/, '').toUpperCase();
+}
+
+function fastLeftKey(input: string): string {
+	return fastCodeKey(input.split('/')[0] ?? input);
+}
+
 function makeLegendResolver(entries: Array<{ code: string; value: string }>): (code: string) => string {
 	const byFull = new Map<string, string>();
 	const byLeft = new Map<string, string>();
 
 	for (const entry of entries) {
-		const full = normalizeCodeKey(entry.code);
-		const left = leftSideCode(entry.code);
-		byFull.set(full, entry.value);
-		byLeft.set(left, entry.value);
+		byFull.set(fastCodeKey(entry.code), entry.value);
+		byLeft.set(fastLeftKey(entry.code), entry.value);
 	}
 
 	return (code: string): string => {
-		const full = normalizeCodeKey(code);
-		const left = leftSideCode(code);
-		return byFull.get(full) ?? byLeft.get(left) ?? '';
+		return byFull.get(fastCodeKey(code)) ?? byLeft.get(fastLeftKey(code)) ?? '';
 	};
 }
 
@@ -174,9 +189,9 @@ function parseTimeRange(text: string): { start: string; end: string } | null {
 }
 
 function extractCellLines(td: ParseElement): string[] {
-	const nestedTable = findFirstByTag(td, 'table');
+	const nestedTable = directChildrenByTag(td, 'table')[0] ?? findFirstByTag(td, 'table');
 	if (!nestedTable) {
-		const fallback = cleanText(nodeText(td));
+		const fallback = collapseSpaces(nodeText(td));
 		return fallback ? [fallback] : [];
 	}
 
@@ -186,7 +201,7 @@ function extractCellLines(td: ParseElement): string[] {
 	for (const row of rows) {
 		const cells = directChildrenByTag(row, 'td');
 		if (cells.length === 0) continue;
-		const value = cleanText(nodeText(cells[0]!));
+		const value = collapseSpaces(nodeText(cells[0]!));
 		if (value) lines.push(value);
 	}
 	return lines;
@@ -200,7 +215,7 @@ function detectTrack(subjectFullRaw: string): CohortTrack {
 }
 
 function extractCohortCode(subjectCodeRaw: string): { code: string; track: CohortTrack } | null {
-	const normalized = cleanText(subjectCodeRaw).replace(/^\.+/, '');
+	const normalized = subjectCodeRaw.replace(/^\.+/, '');
 	for (const rule of cohortCodeRules) {
 		const m = rule.codePattern.exec(normalized);
 		if (m) {
@@ -217,6 +232,8 @@ function sanitizeLabel(value: string): string {
 }
 
 const CYRILLIC_START_AFTER_SLASH = /^[А-Яа-яЁёҚқӘәҒғҢңӨөҰұҮүІіҺһ]/;
+const GERMAN_NAME_PREFIX_RE = /^(.*?)\s+[А-Яа-яЁёҚқӘәҒғҢңӨөҰұҮүІіҺһ]/;
+const LESSON_TYPE_SUFFIX_RE = /\s+([А-Яа-яЁёҚқӘәҒғҢңӨөҰұҮүІіҺһ].*)$/;
 
 /** Detect bilingual names where the part after "/" is Kazakh, not German */
 function isMissingGermanName(subjectFullRaw: string): boolean {
@@ -224,6 +241,22 @@ function isMissingGermanName(subjectFullRaw: string): boolean {
 	if (slashIdx === -1) return false;
 	const afterSlash = subjectFullRaw.slice(slashIdx + 1).trim();
 	return CYRILLIC_START_AFTER_SLASH.test(afterSlash);
+}
+
+function splitBilingualLabel(raw: string, noGerman: boolean): { ru: string; de: string; lessonType: string } {
+	const value = raw.replace(/^[.*]+/, '').trim();
+	const slashIdx = value.indexOf('/');
+	if (slashIdx === -1) return { ru: value, de: value, lessonType: '' };
+
+	const ru = value.slice(0, slashIdx).trim() || value;
+	const rest = value.slice(slashIdx + 1).trim();
+	const lessonTypeMatch = rest.match(LESSON_TYPE_SUFFIX_RE);
+	const lessonType = lessonTypeMatch ? lessonTypeMatch[1]! : '';
+	if (noGerman) return { ru, de: ru, lessonType };
+
+	const germanMatch = rest.match(GERMAN_NAME_PREFIX_RE);
+	const de = (germanMatch ? germanMatch[1]!.trim() : rest) || value;
+	return { ru, de, lessonType };
 }
 
 function stableEventId(input: string): string {
@@ -235,13 +268,17 @@ function stableEventId(input: string): string {
 	return `e${(hash >>> 0).toString(16)}`;
 }
 
+/** Fast regex-only check: does this timetable page contain any events? */
+export function hasEvents(html: string): boolean {
+	return parseLegendEntries(html, 'Дисциплины').length > 0;
+}
+
 export function parseTimetablePage(
 	html: string,
 	group: GroupOption,
 	week: WeekOption
 ): Pick<GroupWeekSchedule, 'events' | 'cohorts'> {
-	const normalized = normalizeHtml(html);
-	const document = parseHtml5(normalized);
+	const document = parseHtml5(html);
 	const center = findFirstByTag(document, 'center');
 	if (!center) throw new Error('Timetable center container not found');
 
@@ -261,9 +298,9 @@ export function parseTimetablePage(
 
 	const occupancy = new Array<number>(Math.max(colCount, 1)).fill(0);
 	const rowTimes: Array<{ start: string; end: string } | null> = new Array(rows.length).fill(null);
-	const dayDates = parseDayDates(normalized, week.startDateIso);
+	const dayDates = parseDayDates(html, week.startDateIso);
 
-	const subjectResolver = makeLegendResolver(parseLegendEntries(normalized, 'Дисциплины'));
+	const subjectResolver = makeLegendResolver(parseLegendEntries(html, 'Дисциплины'));
 
 	const events: LessonEvent[] = [];
 
@@ -279,7 +316,7 @@ export function parseTimetablePage(
 			const rowSpan = Number(attrValue(cell, 'rowspan') ?? '1') || 1;
 
 			if (col === 0) {
-				const periodRange = parseTimeRange(cleanText(nodeText(cell)));
+				const periodRange = parseTimeRange(collapseSpaces(nodeText(cell)));
 				if (periodRange) {
 					for (let r = rowIndex; r < Math.min(rows.length, rowIndex + rowSpan); r += 1) {
 						rowTimes[r] = periodRange;
@@ -298,7 +335,9 @@ export function parseTimetablePage(
 						if (startRange && endRange) {
 							const subjectFullRaw = subjectResolver(subjectRaw);
 							const noGerman = isMissingGermanName(subjectFullRaw);
-							const lessonType = noGerman ? '' : extractLessonType(subjectFullRaw);
+							const shortLabels = splitBilingualLabel(subjectRaw, noGerman);
+							const fullLabels = splitBilingualLabel(subjectFullRaw, noGerman);
+							const lessonType = noGerman ? '' : fullLabels.lessonType;
 							const cohort = extractCohortCode(subjectRaw);
 							const nameTrack = detectTrack(subjectFullRaw);
 							const track = nameTrack !== 'none' ? nameTrack : (cohort?.track ?? 'none');
@@ -316,13 +355,13 @@ export function parseTimetablePage(
 								startTime: startRange.start,
 								endTime: endRange.end,
 								subjectShortRaw: subjectRaw,
-								subjectShortRu: sanitizeLabel(russianOnlyLabel(subjectRaw)),
-								subjectShortDe: noGerman ? sanitizeLabel(russianOnlyLabel(subjectRaw)) : sanitizeLabel(germanOnlyLabel(subjectRaw)),
+								subjectShortRu: sanitizeLabel(shortLabels.ru),
+								subjectShortDe: sanitizeLabel(shortLabels.de),
 								subjectFullRaw,
-								subjectFullRu: sanitizeLabel(russianOnlyLabel(subjectFullRaw)),
-								subjectFullDe: noGerman ? sanitizeLabel(russianOnlyLabel(subjectFullRaw)) : sanitizeLabel(germanOnlyLabel(subjectFullRaw)),
+								subjectFullRu: sanitizeLabel(fullLabels.ru),
+								subjectFullDe: sanitizeLabel(fullLabels.de),
 								lessonType: sanitizeLabel(lessonType),
-								room: cleanText(roomRaw),
+								room: roomRaw,
 								groupCode: group.codeRaw,
 								originGroupCode: group.codeRaw,
 								track,

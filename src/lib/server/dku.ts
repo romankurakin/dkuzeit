@@ -1,6 +1,6 @@
 import { cleanText } from './text';
-import { parseNavHtml, parseTimetablePage } from './parser';
-import type { GroupWeekSchedule, LessonEvent, MetaPayload, WeekOption } from './types';
+import { hasEvents, parseNavHtml, parseTimetablePage } from './parser';
+import type { GroupOption, GroupWeekSchedule, LessonEvent, MetaPayload, WeekOption } from './types';
 
 const BASE_URL = 'https://timetable.dku.kz';
 const CACHE_TTL_MS = 15 * 60 * 1000;
@@ -57,7 +57,29 @@ async function fetchText(path: string): Promise<string> {
 export async function getMeta(env: RuntimeEnv): Promise<MetaPayload> {
 	return cached('meta', env.CACHE, async () => {
 		const html = await fetchText('frames/navbar.htm');
-		return parseNavHtml(html);
+		const meta = parseNavHtml(html);
+
+		// Pick the latest week to probe groups for events
+		const sorted = [...meta.weeks].sort((a, b) => b.startDateIso.localeCompare(a.startDateIso));
+		const probeWeek = sorted[0];
+		if (!probeWeek) return meta;
+
+		// Fetch all group pages in parallel and keep only groups with events
+		const results = await Promise.allSettled(
+			meta.groups.map(async (group) => {
+				const path = `${probeWeek.value}/c/c${String(group.id).padStart(5, '0')}.htm`;
+				const pageHtml = await fetchText(path);
+				return { group, active: hasEvents(pageHtml) };
+			})
+		);
+
+		const activeGroups = results
+			.filter((r): r is PromiseFulfilledResult<{ group: GroupOption; active: boolean }> =>
+				r.status === 'fulfilled' && r.value.active
+			)
+			.map((r) => r.value.group);
+
+		return { weeks: meta.weeks, groups: activeGroups };
 	});
 }
 
