@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "vite dev",
     "preview:wrangler": "vite build && wrangler dev",
-    "build": "vite build",
+    "build": "svelte-kit sync && vite build",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.check.json && eslint .",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.check.json --watch",
     "fixtures:sync": "npx tsx scripts/download-fixtures.ts",
