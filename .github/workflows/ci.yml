@@ -19,11 +19,11 @@ jobs:
 
       - run: npm ci
 
+      - run: npm run build
+        name: Build
+
       - run: npm run check
         name: Type check
 
       - run: npm run test
         name: Unit tests
-
-      - run: npm run build
-        name: Build
