@@ -1,0 +1,19 @@
+node_modules
+
+# Output
+.wrangler
+/.svelte-kit
+/build
+
+# OS
+.DS_Store
+
+# Secrets
+.dev.vars
+
+# Vite
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+
+# Downloaded parser fixtures
+tests/fixtures/live/

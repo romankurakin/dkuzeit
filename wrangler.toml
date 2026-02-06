@@ -1,0 +1,13 @@
+name = "dkuzeit"
+main = ".svelte-kit/cloudflare/_worker.js"
+compatibility_date = "2026-02-06"
+compatibility_flags = ["nodejs_compat"]
+routes = [{ pattern = "dkuzeit.net", custom_domain = true }]
+
+[assets]
+directory = ".svelte-kit/cloudflare"
+binding = "ASSETS"
+
+[[kv_namespaces]]
+binding = "CACHE"
+id = "e92fd544b0474f64aeb53a734d3a3a7c"
