@@ -25,5 +25,20 @@ jobs:
       - run: npm run check
         name: Type check
 
+      - uses: actions/cache@v4
+        id: fixtures-cache
+        with:
+          path: tests/fixtures/live
+          key: dku-fixtures-${{ hashFiles('scripts/download-fixtures.ts') }}-week-${{ github.run_number }}
+          restore-keys: |
+            dku-fixtures-${{ hashFiles('scripts/download-fixtures.ts') }}-
+
+      - run: npm run fixtures:sync
+        if: steps.fixtures-cache.outputs.cache-hit != 'true'
+        name: Download fixtures
+
       - run: npm run test
         name: Unit tests
+
+      - run: npx tsx tests/bench-parser.ts
+        name: Parser benchmark
