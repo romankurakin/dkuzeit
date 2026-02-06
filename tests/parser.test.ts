@@ -4,6 +4,14 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parseNavHtml, parseTimetablePage } from '../src/lib/server/parser';
 
+interface Manifest {
+	weeks: string[];
+	classCount: number;
+	downloadedPages: number;
+	expectedPages: number;
+	failures: Array<{ path: string; error: string }>;
+}
+
 const fixtureRoot = path.resolve(process.cwd(), 'tests/fixtures/live');
 const fixtureReady = existsSync(path.join(fixtureRoot, 'manifest.json'));
 
@@ -14,8 +22,8 @@ async function loadMeta() {
 	return parseNavHtml(navbar);
 }
 
-async function loadManifest() {
-	return JSON.parse(await readFile(path.join(fixtureRoot, 'manifest.json'), 'utf8'));
+async function loadManifest(): Promise<Manifest> {
+	return JSON.parse(await readFile(path.join(fixtureRoot, 'manifest.json'), 'utf8')) as Manifest;
 }
 
 async function loadSchedule(groupCode: string, weekValue?: string) {
