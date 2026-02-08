@@ -337,7 +337,7 @@
 	<WeekView
 		{orderedDates}
 		{groupedEvents}
-		isLoading={isLoadingSchedule}
+		isLoading={isLoadingMeta || isLoadingSchedule}
 		{todayIso}
 		{uiLocale}
 	/>
