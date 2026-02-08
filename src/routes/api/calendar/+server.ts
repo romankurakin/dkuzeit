@@ -28,7 +28,8 @@ export const GET: RequestHandler = async ({ url, platform }) => {
 		events.push(...schedule.events);
 	}
 
-	const calendarTitle = buildCalendarTitle(payload.g, payload.c);
+	const group = meta.groups.find((g) => g.codeRaw === payload.g);
+	const calendarTitle = buildCalendarTitle(group?.codeRu ?? payload.g);
 	const calendar = buildIcsCalendar(calendarTitle, events, lang);
 
 	return new Response(calendar, {
