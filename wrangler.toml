@@ -7,7 +7,3 @@ routes = [{ pattern = "dkuzeit.net", custom_domain = true }]
 [assets]
 directory = ".svelte-kit/cloudflare"
 binding = "ASSETS"
-
-[[kv_namespaces]]
-binding = "CACHE"
-id = "e92fd544b0474f64aeb53a734d3a3a7c"

@@ -11,22 +11,23 @@ export const GET: RequestHandler = async ({ url, platform }) => {
 		return new Response('Missing token', { status: 400 });
 	}
 
-	const secret = platform?.env?.TOKEN_SECRET ?? '';
+	const secret = platform?.env?.TOKEN_SECRET;
+	if (!secret) {
+		return new Response('Server misconfigured', { status: 500 });
+	}
 	const payload = await verifyToken(token, secret);
 	if (!payload) {
 		return new Response('Invalid or expired token', { status: 403 });
 	}
 
 	const lang = payload.l === 'de' ? 'de' : 'ru';
-	const env = platform?.env ?? {};
-	const meta = await getMeta(env);
+	const meta = await getMeta();
 	const weeks = pickRollingWeeksForCalendar(meta.weeks, '', { windowSize: CALENDAR_ROLLING_WEEKS });
 
-	const events = [];
-	for (const week of weeks) {
-		const schedule = await buildMergedSchedule(env, payload.g, week.value, payload.c);
-		events.push(...schedule.events);
-	}
+	const schedules = await Promise.all(
+		weeks.map((week) => buildMergedSchedule(payload.g, week.value, payload.c))
+	);
+	const events = schedules.flatMap((s) => s.events);
 
 	const group = meta.groups.find((g) => g.codeRaw === payload.g);
 	const calendarTitle = buildCalendarTitle(group?.codeRu ?? payload.g);

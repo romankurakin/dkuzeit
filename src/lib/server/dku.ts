@@ -8,53 +8,39 @@ import type {
 } from "./types";
 
 const BASE_URL = "https://timetable.dku.kz";
-const CACHE_TTL_MS = 15 * 60 * 1000;
 
-interface CacheKV {
-  get(key: string): Promise<string | null>;
-  put(
-    key: string,
-    value: string,
-    options?: { expirationTtl?: number },
-  ): Promise<void>;
-}
-
-interface RuntimeEnv {
-  CACHE?: CacheKV;
-}
-
-interface CacheEntry<T> {
-  expiresAt: number;
-  value: T;
-}
-const mem = new Map<string, CacheEntry<unknown>>();
+// Two-layer TTL: edge cache (Cache API) holds parsed upstream data, HTTP tells browsers/CDN to reuse responses.
+// Keep HTTP < edge so clients see updated data soon after the edge cache expires.
+const EDGE_TTL_SECONDS = 3600;
+export const CLIENT_TTL_SECONDS = 600;
+const CACHE_KEY_PREFIX = "https://cache.dku/";
 
 async function cached<T>(
   key: string,
-  kv: CacheKV | undefined,
   compute: () => Promise<T>,
 ): Promise<T> {
-  const entry = mem.get(key);
-  if (entry && Date.now() <= entry.expiresAt) return entry.value as T;
+  const cache =
+    typeof caches !== "undefined" ? caches.default : null;
+  const url = `${CACHE_KEY_PREFIX}${encodeURIComponent(key)}`;
 
-  if (kv) {
+  if (cache) {
     try {
-      const raw = await kv.get(key);
-      if (raw) {
-        const value = JSON.parse(raw) as T;
-        mem.set(key, { value, expiresAt: Date.now() + CACHE_TTL_MS });
-        return value;
-      }
+      const hit = await cache.match(url);
+      if (hit) return (await hit.json()) as T;
     } catch {
       /* miss */
     }
   }
 
   const value = await compute();
-  mem.set(key, { value, expiresAt: Date.now() + CACHE_TTL_MS });
-  kv?.put(key, JSON.stringify(value), {
-    expirationTtl: Math.ceil(CACHE_TTL_MS / 1000),
-  }).catch(() => {});
+  cache
+    ?.put(
+      url,
+      new Response(JSON.stringify(value), {
+        headers: { "cache-control": `s-maxage=${EDGE_TTL_SECONDS}` },
+      }),
+    )
+    .catch(() => {});
   return value;
 }
 
@@ -74,19 +60,18 @@ async function fetchText(path: string): Promise<string> {
   }
 }
 
-export async function getMeta(env: RuntimeEnv): Promise<MetaPayload> {
-  return cached("meta", env.CACHE, async () => {
+export async function getMeta(): Promise<MetaPayload> {
+  return cached("meta", async () => {
     const html = await fetchText("frames/navbar.htm");
     return parseNavHtml(html);
   });
 }
 
 async function getSchedule(
-  env: RuntimeEnv,
   groupCode: string,
   weekValue: string,
 ): Promise<GroupWeekSchedule> {
-  const meta = await getMeta(env);
+  const meta = await getMeta();
   const week = meta.weeks.find((w) => w.value === weekValue);
   if (!week) throw new Error(`Unknown week: ${weekValue}`);
   const group = meta.groups.find(
@@ -94,7 +79,7 @@ async function getSchedule(
   );
   if (!group) throw new Error(`Unknown group: ${groupCode}`);
 
-  return cached(`schedule:${week.value}:${group.id}`, env.CACHE, async () => {
+  return cached(`schedule:${week.value}:${group.id}`, async () => {
     const path = `${week.value}/c/c${String(group.id).padStart(5, "0")}.htm`;
     const parsed = parseTimetablePage(await fetchText(path), group, week);
     return { group, week, events: parsed.events, cohorts: parsed.cohorts };
@@ -111,12 +96,11 @@ function isAssessment(e: LessonEvent): boolean {
 }
 
 export async function buildMergedSchedule(
-  env: RuntimeEnv,
   groupCode: string,
   weekValue: string,
   selectedCohorts: string[],
 ): Promise<GroupWeekSchedule> {
-  const core = await getSchedule(env, groupCode, weekValue);
+  const core = await getSchedule(groupCode, weekValue);
   const cohorts = [...core.cohorts].sort(
     (a, b) => a.track.localeCompare(b.track) || a.code.localeCompare(b.code),
   );

@@ -17,7 +17,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 		return json({ error: 'group is required' }, { status: 400 });
 	}
 
-	const meta = await getMeta(platform?.env ?? {});
+	const meta = await getMeta();
 	const week = body.week ?? meta.weeks[0]?.value;
 	if (!week) {
 		return json({ error: 'week is required and source has no defaults' }, { status: 400 });
@@ -28,8 +28,12 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 		? body.cohorts.map((item) => String(item).trim()).filter(Boolean)
 		: [];
 
+	const secret = platform?.env?.TOKEN_SECRET;
+	if (!secret) {
+		return json({ error: 'Server misconfigured' }, { status: 500 });
+	}
+
 	const exp = Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 180;
-	const secret = platform?.env?.TOKEN_SECRET ?? '';
 	const token = await signToken({ g: body.group, w: week, c: cohorts, l: lang, exp }, secret);
 
 	return json({ token });
