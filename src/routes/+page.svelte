@@ -6,6 +6,7 @@
 	import ControlBar from '$lib/components/timetable/ControlBar.svelte';
 	import WeekView from '$lib/components/timetable/WeekView.svelte';
 	import type { GroupOption, Cohort, LessonEvent, WeekOption } from '$lib/components/timetable/types';
+	import { Temporal } from 'temporal-polyfill';
 	import LinkIcon from '@lucide/svelte/icons/link';
 	import CalendarIcon from '@lucide/svelte/icons/calendar';
 	import GithubIcon from '@lucide/svelte/icons/github';
@@ -44,7 +45,7 @@
 	);
 
 	const uiLocale = $derived((getLocale() === 'de' ? 'de' : 'ru') as 'ru' | 'de');
-	const todayIso = $derived(todayIsoInAlmaty());
+	const todayIso = $derived(Temporal.Now.plainDateISO('Asia/Almaty').toString());
 
 	const displayEvents = $derived.by(() => {
 		// Map cohortCode to category
@@ -159,35 +160,6 @@
 		return track;
 	}
 
-	function todayIsoInAlmaty(): string {
-		const parts = new Intl.DateTimeFormat('en-GB', {
-			timeZone: 'Asia/Almaty',
-			year: 'numeric',
-			month: '2-digit',
-			day: '2-digit'
-		}).formatToParts(new Date());
-
-		let year = '1970';
-		let month = '01';
-		let day = '01';
-		for (const part of parts) {
-			if (part.type === 'year') year = part.value;
-			if (part.type === 'month') month = part.value;
-			if (part.type === 'day') day = part.value;
-		}
-		return `${year}-${month}-${day}`;
-	}
-
-	function dayOfWeekInAlmaty(): number {
-		const formatter = new Intl.DateTimeFormat('en-US', {
-			timeZone: 'Asia/Almaty',
-			weekday: 'short'
-		});
-		const dayName = formatter.format(new Date());
-		const map: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
-		return map[dayName] ?? 0;
-	}
-
 	function chooseInitialGroup(candidates: GroupOption[], preferred: string): string {
 		if (preferred) {
 			const resolved = candidates.find(
@@ -201,19 +173,16 @@
 
 	function chooseCurrentWeek(candidates: WeekOption[]): string {
 		if (candidates.length === 0) return '';
-		const today = todayIsoInAlmaty();
-		const isSunday = dayOfWeekInAlmaty() === 0;
-
+		const today = Temporal.Now.plainDateISO('Asia/Almaty');
 		let targetDate = today;
-		if (isSunday) {
-			const d = new Date(today + 'T00:00:00');
-			d.setDate(d.getDate() + 1);
-			targetDate = d.toISOString().slice(0, 10);
+		if (today.dayOfWeek === 7) {
+			targetDate = today.add({ days: 1 });
 		}
+		const targetStr = targetDate.toString();
 
 		let best = candidates[0]!.value;
 		for (const week of candidates) {
-			if (week.startDateIso <= targetDate) {
+			if (week.startDateIso <= targetStr) {
 				best = week.value;
 			}
 		}

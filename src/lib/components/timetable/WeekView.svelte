@@ -49,7 +49,7 @@
 			if (orderedDates.length === 0) return;
 			const target = orderedDates.includes(todayIso)
 				? todayIso
-				: orderedDates.findLast((d) => d <= todayIso) ?? orderedDates[orderedDates.length - 1];
+				: orderedDates.findLast((d) => d <= todayIso) ?? orderedDates[0];
 			void tick().then(() => {
 				document.getElementById(`day-${target}`)
 					?.scrollIntoView({ behavior: 'auto', block: 'center', inline: 'center' });

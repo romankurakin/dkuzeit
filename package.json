@@ -23,6 +23,7 @@
     "bits-ui": "^2.15.5",
     "parse5": "^8.0.0",
     "runed": "^0.37.1",
+    "temporal-polyfill": "^0.3.0",
     "ts-ics": "^2.4.0"
   },
   "devDependencies": {
