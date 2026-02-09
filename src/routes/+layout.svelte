@@ -24,7 +24,7 @@
 </svelte:head>
 
 <div class="mx-auto max-w-screen-2xl space-y-0 p-4">
-	<header class="mb-6 flex items-center justify-between border-b-4 border-black pb-4">
+	<header class="mb-6 flex items-center justify-between brutal-border-b pb-4">
 		<span class="text-sm font-bold tracking-widest uppercase">{m.app_title()}</span>
 		<nav aria-label={m.language_switch_label()}>
 			<ToggleGroup.Root

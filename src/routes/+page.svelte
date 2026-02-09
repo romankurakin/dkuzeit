@@ -112,8 +112,8 @@
 		}}
 	>
 		{#snippet children(ctx)}
-			<main class="mb-0">
-				<div class="mb-0 flex flex-wrap gap-3 border-b-4 border-black pb-6">
+			<main>
+				<div class="flex flex-wrap gap-3 brutal-border-b pb-6">
 					{@render selectBox(
 						m.group_label(),
 						ctx.selectedGroup,
@@ -136,7 +136,7 @@
 				</div>
 
 				{#if ctx.error}
-					<div class="brutal-micro border-4 border-red-600 bg-red-50 p-4 text-red-900">
+					<div class="brutal-micro border-[3px] border-red-600 bg-red-50 p-4 text-red-900">
 						{ctx.error}
 					</div>
 				{/if}
@@ -263,7 +263,7 @@
 				{/if}
 			</main>
 
-			<footer class="mt-0 border-t-4 border-black pt-5">
+			<footer class="brutal-border-t pt-5">
 				<div class="flex flex-wrap gap-3">
 					<button
 						type="button"
