@@ -12,7 +12,7 @@
 	let { data }: PageProps = $props();
 	const meta = $derived(data.meta);
 	const schedule = $derived(data.schedule);
-	const todayIso = $derived(data.todayIso);
+	const todayIso = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Almaty' }).format(new Date());
 
 	const urlCohorts = $derived(
 		(page.url.searchParams.get('cohorts') ?? '')

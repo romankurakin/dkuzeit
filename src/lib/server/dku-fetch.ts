@@ -1,0 +1,50 @@
+export const BASE_URL = 'https://timetable.dku.kz';
+
+// Two-layer TTL: edge cache (Cache API) holds parsed upstream data, HTTP tells browsers/CDN to reuse responses.
+// Keep HTTP < edge so clients see updated data soon after the edge cache expires.
+// stale-while-revalidate covers the remaining edge window so users never wait.
+export const EDGE_TTL_SECONDS = 3600;
+export const CLIENT_TTL_SECONDS = 600;
+const SWR_SECONDS = EDGE_TTL_SECONDS - CLIENT_TTL_SECONDS;
+export const CLIENT_CACHE_HEADER = `public, max-age=${CLIENT_TTL_SECONDS}, stale-while-revalidate=${SWR_SECONDS}`;
+
+export async function cached<T>(key: string, compute: () => Promise<T>): Promise<T> {
+	const cache = typeof caches !== 'undefined' ? caches.default : null;
+	const url = `${BASE_URL}/_cache/${encodeURIComponent(key)}`;
+
+	if (cache) {
+		try {
+			const hit = await cache.match(url);
+			if (hit) return (await hit.json()) as T;
+		} catch {
+			/* miss */
+		}
+	}
+
+	const value = await compute();
+	cache
+		?.put(
+			url,
+			new Response(JSON.stringify(value), {
+				headers: { 'cache-control': `s-maxage=${EDGE_TTL_SECONDS}` }
+			})
+		)
+		.catch(() => {});
+	return value;
+}
+
+export async function fetchText(path: string): Promise<string> {
+	const url = `${BASE_URL}/${path}`;
+	const controller = new AbortController();
+	const timeout = setTimeout(() => controller.abort(), 15_000);
+	try {
+		const res = await fetch(url, {
+			signal: controller.signal,
+			headers: { 'cache-control': 'no-cache' }
+		});
+		if (!res.ok) throw new Error(`Failed to fetch ${url} (${res.status})`);
+		return await res.text();
+	} finally {
+		clearTimeout(timeout);
+	}
+}

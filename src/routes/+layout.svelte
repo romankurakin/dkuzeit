@@ -1,6 +1,5 @@
 <script lang="ts">
 	import '../app.css';
-	import faviconSvg from '$lib/assets/favicon.svg';
 	import { m } from '$lib/paraglide/messages';
 	import { getLocale, setLocale } from '$lib/paraglide/runtime';
 	import { ToggleGroup } from 'bits-ui';
@@ -19,7 +18,7 @@
 <svelte:head>
 	<meta name="theme-color" content="#000000" />
 	<link rel="icon" href="/favicon.ico" sizes="32x32" />
-	<link rel="icon" href={faviconSvg} type="image/svg+xml" />
+	<link rel="icon" href="/icon.svg" type="image/svg+xml" />
 	<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 	<link rel="manifest" href="/manifest.webmanifest" />
 </svelte:head>

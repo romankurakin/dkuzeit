@@ -1,4 +1,5 @@
 import { buildMergedSchedule, getMeta, CLIENT_CACHE_HEADER } from '$lib/server/dku';
+import { ALMATY_TIME_ZONE } from '$lib/server/time';
 import type { Cohort, GroupOption, LessonEvent, WeekOption } from '$lib/server/types';
 import type { PageServerLoad } from './$types';
 
@@ -11,8 +12,8 @@ function resolveGroup(groups: GroupOption[], param: string): string {
 function resolveWeekByDate(weeks: WeekOption[]): string {
 	if (weeks.length === 0) return '';
 	const now = new Date();
-	const dateFmt = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Almaty' });
-	const dowFmt = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Almaty', weekday: 'short' });
+	const dateFmt = new Intl.DateTimeFormat('en-CA', { timeZone: ALMATY_TIME_ZONE });
+	const dowFmt = new Intl.DateTimeFormat('en-US', { timeZone: ALMATY_TIME_ZONE, weekday: 'short' });
 	let target = dateFmt.format(now);
 	if (dowFmt.format(now) === 'Sun') {
 		target = dateFmt.format(new Date(now.getTime() + 86_400_000));
@@ -35,11 +36,8 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
 	const meta = await getMeta();
 	const groupCode = resolveGroup(meta.groups, url.searchParams.get('group') ?? '');
 	const weekValue = resolveWeek(meta.weeks, url.searchParams.get('week') ?? '');
-	const todayIso = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Almaty' }).format(new Date());
-
 	if (!groupCode || !weekValue) {
 		return {
-			todayIso,
 			meta: { groups: meta.groups, weeks: meta.weeks, resolvedWeek: weekValue },
 			schedule: {
 				events: [],
@@ -60,7 +58,6 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
 		/* keep empty schedule */
 	}
 	return {
-		todayIso,
 		meta: { groups: meta.groups, weeks: meta.weeks, resolvedWeek: weekValue },
 		schedule: {
 			events,

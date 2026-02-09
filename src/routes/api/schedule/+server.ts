@@ -1,5 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { buildMergedSchedule, getMeta, CLIENT_CACHE_HEADER } from '$lib/server/dku';
+import { parseCohortsCsv } from '$lib/server/cohorts';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ url }) => {
@@ -14,10 +15,7 @@ export const GET: RequestHandler = async ({ url }) => {
 		return json({ error: 'No weeks available in source timetable' }, { status: 503 });
 	}
 
-	const cohorts = (url.searchParams.get('cohorts') ?? '')
-		.split(',')
-		.map((item) => item.trim())
-		.filter(Boolean);
+	const cohorts = parseCohortsCsv(url.searchParams.get('cohorts'));
 
 	try {
 		const schedule = await buildMergedSchedule(group, week, cohorts);

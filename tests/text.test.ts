@@ -3,10 +3,7 @@ import {
 	cleanText,
 	russianOnlyLabel,
 	germanOnlyLabel,
-	extractLessonType,
-	stripParenSuffix,
-	normalizeCodeKey,
-	leftSideCode
+	stripParenSuffix
 } from '../src/lib/server/text';
 
 describe('cleanText', () => {
@@ -63,32 +60,6 @@ describe('germanOnlyLabel', () => {
 	});
 });
 
-describe('extractLessonType', () => {
-	it('extracts single lesson type', () => {
-		expect(extractLessonType('Экономическая теория/Wirtschaftstheorie лекция')).toBe('лекция');
-	});
-
-	it('extracts compound lesson type with slash', () => {
-		expect(extractLessonType('Социология/Soziologie лекция/семинар')).toBe('лекция/семинар');
-	});
-
-	it('extracts short lesson type', () => {
-		expect(extractLessonType('Казахский язык/Kasachisch пр.')).toBe('пр.');
-	});
-
-	it('returns empty for no slash', () => {
-		expect(extractLessonType('IT Grundlagen')).toBe('');
-	});
-
-	it('returns empty when no Cyrillic suffix after German name', () => {
-		expect(extractLessonType('Логистика/Logistik')).toBe('');
-	});
-
-	it('extracts known lesson type from no-slash entry', () => {
-		expect(extractLessonType('Business  and Soft Skills БД(B2.1-C1) гр.2 пр.')).toBe('пр.');
-	});
-});
-
 describe('stripParenSuffix', () => {
 	it('removes parenthesized suffix', () => {
 		expect(stripParenSuffix('1-IM-IBE/IBE гр.1(MA)')).toBe('1-IM-IBE/IBE гр.1');
@@ -96,17 +67,5 @@ describe('stripParenSuffix', () => {
 
 	it('leaves text without parens unchanged', () => {
 		expect(stripParenSuffix('3А-ТЛ')).toBe('3А-ТЛ');
-	});
-});
-
-describe('normalizeCodeKey', () => {
-	it('uppercases and strips dots and trailing slash', () => {
-		expect(normalizeCodeKey('.экт.л/')).toBe('ЭКТ.Л');
-	});
-});
-
-describe('leftSideCode', () => {
-	it('extracts normalized left side of a slash-separated code', () => {
-		expect(leftSideCode('.ЭкТ.л/W')).toBe('ЭКТ.Л');
 	});
 });

@@ -1,4 +1,4 @@
-export function decodeHtml(value: string): string {
+function decodeHtml(value: string): string {
 	return value
 		.replace(/&nbsp;/g, ' ')
 		.replace(/&amp;/g, '&')
@@ -37,32 +37,6 @@ export function germanOnlyLabel(input: string): string {
 	return (match ? match[1]!.trim() : rest) || value;
 }
 
-/**
- * Extract Cyrillic lesson-type suffix from a bilingual full subject name.
- * "Социология/Soziologie лекция/семинар" → "лекция/семинар"
- * "Немецкий язык/Deutsch пр." → "пр."
- */
-export function extractLessonType(input: string): string {
-	const value = cleanText(input).replace(/^[.*]+/, '');
-	const slashIdx = value.indexOf('/');
-	if (slashIdx === -1) {
-		const known = value.match(/\s+(пр\.|лек\.|лекция|практика|семинар)$/);
-		return known ? known[1]! : '';
-	}
-	const rest = value.slice(slashIdx + 1).trim();
-	const match = rest.match(/\s+([А-Яа-яЁёҚқӘәҒғҢңӨөҰұҮүІіҺһ].*)$/);
-	return match ? match[1]! : '';
-}
-
 export function stripParenSuffix(value: string): string {
 	return value.replace(/\s*\(.*$/, '');
-}
-
-export function normalizeCodeKey(input: string): string {
-	return cleanText(input).replace(/^\.+/, '').replace(/\s+/g, '').replace(/\/$/, '').toUpperCase();
-}
-
-export function leftSideCode(input: string): string {
-	const left = cleanText(input).split('/')[0] ?? input;
-	return normalizeCodeKey(left);
 }

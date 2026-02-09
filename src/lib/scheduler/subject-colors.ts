@@ -1,4 +1,4 @@
-import type { LessonEvent } from '$lib/components/timetable/types';
+import type { LessonEvent } from '$lib/server/types';
 
 const PALETTE = [
 	'red',

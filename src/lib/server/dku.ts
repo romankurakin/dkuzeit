@@ -1,56 +1,10 @@
 import { cleanText } from './text';
 import { parseNavHtml, parseTimetablePage } from './parser';
 import type { GroupWeekSchedule, LessonEvent, MetaPayload, WeekOption } from './types';
+import { todayInAlmaty } from './time';
+import { cached, fetchText } from './dku-fetch';
 
-const BASE_URL = 'https://timetable.dku.kz';
-
-// Two-layer TTL: edge cache (Cache API) holds parsed upstream data, HTTP tells browsers/CDN to reuse responses.
-// Keep HTTP < edge so clients see updated data soon after the edge cache expires.
-// stale-while-revalidate covers the remaining edge window so users never wait.
-const EDGE_TTL_SECONDS = 3600;
-export const CLIENT_TTL_SECONDS = 600;
-const SWR_SECONDS = EDGE_TTL_SECONDS - CLIENT_TTL_SECONDS;
-export const CLIENT_CACHE_HEADER = `public, max-age=${CLIENT_TTL_SECONDS}, stale-while-revalidate=${SWR_SECONDS}`;
-async function cached<T>(key: string, compute: () => Promise<T>): Promise<T> {
-	const cache = typeof caches !== 'undefined' ? caches.default : null;
-	const url = `${BASE_URL}/_cache/${encodeURIComponent(key)}`;
-
-	if (cache) {
-		try {
-			const hit = await cache.match(url);
-			if (hit) return (await hit.json()) as T;
-		} catch {
-			/* miss */
-		}
-	}
-
-	const value = await compute();
-	cache
-		?.put(
-			url,
-			new Response(JSON.stringify(value), {
-				headers: { 'cache-control': `s-maxage=${EDGE_TTL_SECONDS}` }
-			})
-		)
-		.catch(() => {});
-	return value;
-}
-
-async function fetchText(path: string): Promise<string> {
-	const url = `${BASE_URL}/${path}`;
-	const controller = new AbortController();
-	const timeout = setTimeout(() => controller.abort(), 15_000);
-	try {
-		const res = await fetch(url, {
-			signal: controller.signal,
-			headers: { 'cache-control': 'no-cache' }
-		});
-		if (!res.ok) throw new Error(`Failed to fetch ${url} (${res.status})`);
-		return await res.text();
-	} finally {
-		clearTimeout(timeout);
-	}
-}
+export { CLIENT_CACHE_HEADER, CLIENT_TTL_SECONDS } from './dku-fetch';
 
 export async function getMeta(): Promise<MetaPayload> {
 	return cached('meta', async () => {
@@ -106,17 +60,6 @@ export function buildCalendarTitle(groupCode: string): string {
 	return `DKU ${groupCode}`;
 }
 
-function todayInAlmaty(now: Date): string {
-	const p = new Intl.DateTimeFormat('en-GB', {
-		timeZone: 'Asia/Almaty',
-		year: 'numeric',
-		month: '2-digit',
-		day: '2-digit'
-	}).formatToParts(now);
-	const get = (t: string) => p.find((x) => x.type === t)?.value ?? '01';
-	return `${get('year')}-${get('month')}-${get('day')}`;
-}
-
 export function pickRollingWeeksForCalendar(
 	weeks: WeekOption[],
 	anchor: string,
@@ -125,7 +68,7 @@ export function pickRollingWeeksForCalendar(
 	if (weeks.length === 0) return [];
 	const sorted = [...weeks].sort((a, b) => a.startDateIso.localeCompare(b.startDateIso));
 	const size = Math.max(1, opts.windowSize ?? 2);
-	const today = todayInAlmaty(opts.now ?? new Date());
+	const today = todayInAlmaty(opts.now);
 
 	const anchorIdx = sorted.findIndex((w) => w.value === anchor);
 	const anchorDate = anchorIdx >= 0 ? sorted[anchorIdx]!.startDateIso : '';

@@ -1,4 +1,4 @@
-import { parse as parseHtml5, type DefaultTreeAdapterTypes } from 'parse5';
+import { parse as parseHtml5 } from 'parse5';
 import { cleanText, germanOnlyLabel, russianOnlyLabel, stripParenSuffix } from './text';
 import type {
 	GroupOption,
@@ -10,53 +10,16 @@ import type {
 	WeekOption
 } from './types';
 import { trackRules, cohortCodeRules, genericCodes } from './cohort-config';
-
-type ParseParentNode = Pick<DefaultTreeAdapterTypes.ParentNode, 'childNodes'>;
-type ParseElement = DefaultTreeAdapterTypes.Element;
-type ParseNode = DefaultTreeAdapterTypes.Node;
-
-function isElement(node: ParseNode | undefined): node is ParseElement {
-	return Boolean(node && typeof node === 'object' && 'tagName' in node);
-}
-
-/** Collapse whitespace in text already extracted from the DOM (no tags/entities to strip). */
-function collapseSpaces(input: string): string {
-	return input.replace(/[\s\u00a0]+/g, ' ').trim();
-}
-
-function isTextNode(node: ParseNode): node is DefaultTreeAdapterTypes.TextNode {
-	return node.nodeName === '#text';
-}
-
-function attrValue(node: ParseElement, key: string): string | null {
-	for (const attr of node.attrs) {
-		if (attr.name === key) return attr.value;
-	}
-	return null;
-}
-
-function nodeText(node: ParseNode): string {
-	if (isTextNode(node)) return node.value;
-	if (!('childNodes' in node) || !Array.isArray(node.childNodes)) return '';
-	let result = '';
-	for (const child of node.childNodes) result += nodeText(child);
-	return result;
-}
-
-function findFirstByTag(parent: ParseParentNode, tag: string): ParseElement | null {
-	const needle = tag;
-	const stack: ParseNode[] = parent.childNodes.slice().reverse();
-	while (stack.length > 0) {
-		const current = stack.pop()!;
-		if (isElement(current) && current.tagName === needle) return current;
-		if ('childNodes' in current && Array.isArray(current.childNodes)) {
-			for (let i = current.childNodes.length - 1; i >= 0; i--) {
-				stack.push(current.childNodes[i]!);
-			}
-		}
-	}
-	return null;
-}
+import { fnv1aHex } from './hash';
+import {
+	attrValue,
+	collapseSpaces,
+	directChildrenByTag,
+	findFirstByTag,
+	nodeText
+} from './html-utils';
+import { makeLegendResolver, parseLegendEntries } from './legend';
+import { isMissingGermanName, sanitizeLabel, splitBilingualLabel } from './bilingual';
 
 function parseWeekLabelDate(label: string): string {
 	const match = label.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
@@ -98,65 +61,6 @@ export function parseNavHtml(html: string): MetaPayload {
 	return { weeks: weekOptions, groups };
 }
 
-function directChildrenByTag(parent: ParseParentNode, tag: string): ParseElement[] {
-	const output: ParseElement[] = [];
-	for (const node of parent.childNodes) {
-		if (isElement(node) && node.tagName === tag) output.push(node);
-	}
-	return output;
-}
-
-function parseLegendEntries(html: string, heading: string): Array<{ code: string; value: string }> {
-	const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-	const pattern = new RegExp(
-		`<B>${escaped}<\\/B>[\\s\\S]*?<TABLE[^>]*>([\\s\\S]*?)<\\/TABLE>`,
-		'i'
-	);
-	const tableMatch = html.match(pattern);
-	if (!tableMatch) return [];
-
-	const cells = Array.from(tableMatch[1]!.matchAll(/<TD[^>]*>([\s\S]*?)<\/TD>/gi)).map((entry) =>
-		cleanText(entry[1]!)
-	);
-
-	const output: Array<{ code: string; value: string }> = [];
-	for (let i = 0; i + 1 < cells.length; i += 2) {
-		const code = cells[i];
-		const value = cells[i + 1];
-		if (!code || !value) continue;
-		if (code === 'Имя' || value === 'Полное назв/имя') continue;
-		if (code === '&nbsp;' || value === '&nbsp;') continue;
-		output.push({ code, value });
-	}
-	return output;
-}
-
-/** Normalize a code key: strip leading dots, collapse spaces, strip trailing slash, uppercase.
- *  Like normalizeCodeKey but skips cleanText since inputs are already tag-free & decoded. */
-function fastCodeKey(input: string): string {
-	return input.replace(/^\.+/, '').replace(/\s+/g, '').replace(/\/$/, '').toUpperCase();
-}
-
-function fastLeftKey(input: string): string {
-	return fastCodeKey(input.split('/')[0] ?? input);
-}
-
-function makeLegendResolver(
-	entries: Array<{ code: string; value: string }>
-): (code: string) => string {
-	const byFull = new Map<string, string>();
-	const byLeft = new Map<string, string>();
-
-	for (const entry of entries) {
-		byFull.set(fastCodeKey(entry.code), entry.value);
-		byLeft.set(fastLeftKey(entry.code), entry.value);
-	}
-
-	return (code: string): string => {
-		return byFull.get(fastCodeKey(code)) ?? byLeft.get(fastLeftKey(code)) ?? '';
-	};
-}
-
 function parseFooterYear(html: string, fallbackYear: number): number {
 	const match = html.match(/ЛС\/SS\s+\d{1,2}\.\d{1,2}\.(\d{4})/i);
 	if (!match) return fallbackYear;
@@ -193,7 +97,7 @@ function parseTimeRange(text: string): { start: string; end: string } | null {
 	return { start: padTime(times[0]!), end: padTime(times[times.length - 1]!) };
 }
 
-function extractCellLines(td: ParseElement): string[] {
+function extractCellLines(td: import('./html-utils').ParseElement): string[] {
 	const nestedTable = directChildrenByTag(td, 'table')[0] ?? findFirstByTag(td, 'table');
 	if (!nestedTable) {
 		const fallback = collapseSpaces(nodeText(td));
@@ -231,57 +135,8 @@ function extractCohortCode(subjectCodeRaw: string): { code: string; track: Cohor
 	return null;
 }
 
-/** Strip trailing slashes, leading dashes and other source data artifacts */
-function sanitizeLabel(value: string): string {
-	return value.replace(/\/$/, '').replace(/^-+/, '').trim();
-}
-
-const CYRILLIC_START_AFTER_SLASH = /^[А-Яа-яЁёҚқӘәҒғҢңӨөҰұҮүІіҺһ]/;
-const GERMAN_NAME_PREFIX_RE = /^(.*?)\s+[А-Яа-яЁёҚқӘәҒғҢңӨөҰұҮүІіҺһ]/;
-const LESSON_TYPE_SUFFIX_RE = /\s+([А-Яа-яЁёҚқӘәҒғҢңӨөҰұҮүІіҺһ].*)$/;
-const KNOWN_LESSON_TYPE_RE = /\s+(пр\.|лек\.|лекция|практика|семинар)$/;
-
-/** Detect bilingual names where the part after "/" is Kazakh, not German */
-function isMissingGermanName(subjectFullRaw: string): boolean {
-	const slashIdx = subjectFullRaw.indexOf('/');
-	if (slashIdx === -1) return false;
-	const afterSlash = subjectFullRaw.slice(slashIdx + 1).trim();
-	return CYRILLIC_START_AFTER_SLASH.test(afterSlash);
-}
-
-function splitBilingualLabel(
-	raw: string,
-	noGerman: boolean
-): { ru: string; de: string; lessonType: string } {
-	const value = raw.replace(/^[.*]+/, '').trim();
-	const slashIdx = value.indexOf('/');
-	if (slashIdx === -1) {
-		const ltMatch = value.match(KNOWN_LESSON_TYPE_RE);
-		if (ltMatch) {
-			const stripped = value.slice(0, -ltMatch[0].length).trim();
-			return { ru: stripped, de: stripped, lessonType: ltMatch[1]! };
-		}
-		return { ru: value, de: value, lessonType: '' };
-	}
-
-	const ru = value.slice(0, slashIdx).trim() || value;
-	const rest = value.slice(slashIdx + 1).trim();
-	const lessonTypeMatch = rest.match(LESSON_TYPE_SUFFIX_RE);
-	const lessonType = lessonTypeMatch ? lessonTypeMatch[1]! : '';
-	if (noGerman) return { ru, de: ru, lessonType };
-
-	const germanMatch = rest.match(GERMAN_NAME_PREFIX_RE);
-	const de = (germanMatch ? germanMatch[1]!.trim() : rest) || value;
-	return { ru, de, lessonType };
-}
-
 function stableEventId(input: string): string {
-	let hash = 2166136261;
-	for (let i = 0; i < input.length; i += 1) {
-		hash ^= input.charCodeAt(i);
-		hash = Math.imul(hash, 16777619);
-	}
-	return `e${(hash >>> 0).toString(16)}`;
+	return `e${fnv1aHex(input)}`;
 }
 
 /** Fast regex-only check: does this timetable page contain any events? */

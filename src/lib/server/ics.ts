@@ -6,6 +6,7 @@ import {
 	type IcsTimezone
 } from 'ts-ics';
 import type { LessonEvent, UiLanguage } from './types';
+import { fnv1aHex } from './hash';
 
 const ALMATY_TZ: IcsTimezone = {
 	id: 'Asia/Almaty',
@@ -31,19 +32,10 @@ function toDateObject(dateIso: string, hhmm: string): IcsDateObject {
 	};
 }
 
-function stableHash(input: string): string {
-	let hash = 2166136261;
-	for (let i = 0; i < input.length; i += 1) {
-		hash ^= input.charCodeAt(i);
-		hash = Math.imul(hash, 16777619);
-	}
-	return (hash >>> 0).toString(16);
-}
-
 function buildUid(event: LessonEvent): string {
 	// Room is excluded so that room changes don't create a new calendar event
 	const base = `${event.dateIso}|${event.startTime}|${event.endTime}|${event.groupCode}|${event.subjectShortRaw}|${event.cohortCode ?? ''}`;
-	return `${stableHash(base)}@dku-timetable`;
+	return `${fnv1aHex(base)}@dku-timetable`;
 }
 
 export function buildIcsCalendar(

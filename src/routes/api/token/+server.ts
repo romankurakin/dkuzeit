@@ -1,4 +1,5 @@
 import { json } from '@sveltejs/kit';
+import { normalizeCohortList } from '$lib/server/cohorts';
 import { getMeta } from '$lib/server/dku';
 import { signToken } from '$lib/server/token';
 import type { UiLanguage } from '$lib/server/types';
@@ -24,9 +25,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 	}
 
 	const lang: UiLanguage = body.lang === 'de' ? 'de' : 'ru';
-	const cohorts = Array.isArray(body.cohorts)
-		? body.cohorts.map((item) => String(item).trim()).filter(Boolean)
-		: [];
+	const cohorts = normalizeCohortList(body.cohorts);
 
 	const secret = platform?.env?.TOKEN_SECRET;
 	if (!secret) {
