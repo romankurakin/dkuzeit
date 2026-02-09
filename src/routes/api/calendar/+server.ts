@@ -30,7 +30,7 @@ export const GET: RequestHandler = async ({ url, platform }) => {
 	const weeks = pickRollingWeeksForCalendar(meta.weeks, '', { windowSize: CALENDAR_ROLLING_WEEKS });
 
 	const schedules = await Promise.all(
-		weeks.map((week) => buildMergedSchedule(payload.g, week.value, payload.c))
+		weeks.map((week) => buildMergedSchedule(payload.g, week.value, payload.c, meta))
 	);
 	const events = schedules.flatMap((s) => s.events);
 

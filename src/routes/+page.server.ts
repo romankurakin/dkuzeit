@@ -32,11 +32,14 @@ function resolveWeek(weeks: WeekOption[], param: string): string {
 }
 
 export const load: PageServerLoad = async ({ url, setHeaders }) => {
-	setHeaders({ 'cache-control': CLIENT_CACHE_HEADER });
 	const meta = await getMeta();
 	const groupCode = resolveGroup(meta.groups, url.searchParams.get('group') ?? '');
 	const weekValue = resolveWeek(meta.weeks, url.searchParams.get('week') ?? '');
+	let cacheControl = CLIENT_CACHE_HEADER;
 	if (!groupCode || !weekValue) {
+		// Return 200 with empty state, but avoid caching this fallback document.
+		cacheControl = 'private, no-store';
+		setHeaders({ 'cache-control': cacheControl });
 		return {
 			meta: { groups: meta.groups, weeks: meta.weeks, resolvedWeek: weekValue },
 			schedule: {
@@ -51,12 +54,15 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
 	let events: LessonEvent[] = [];
 	let cohorts: Cohort[] = [];
 	try {
-		const merged = await buildMergedSchedule(groupCode, weekValue, []);
+		const merged = await buildMergedSchedule(groupCode, weekValue, [], meta);
 		events = merged.events;
 		cohorts = merged.cohorts;
 	} catch {
-		/* keep empty schedule */
+		// Do not cache fallback HTML, otherwise an intermittent upstream failure can poison the document cache with an empty schedule.
+		cacheControl = 'private, no-store';
+		// Keep empty schedule.
 	}
+	setHeaders({ 'cache-control': cacheControl });
 	return {
 		meta: { groups: meta.groups, weeks: meta.weeks, resolvedWeek: weekValue },
 		schedule: {

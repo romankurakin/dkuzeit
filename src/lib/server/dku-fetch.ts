@@ -8,6 +8,8 @@ export const CLIENT_TTL_SECONDS = 600;
 const SWR_SECONDS = EDGE_TTL_SECONDS - CLIENT_TTL_SECONDS;
 export const CLIENT_CACHE_HEADER = `public, max-age=${CLIENT_TTL_SECONDS}, stale-while-revalidate=${SWR_SECONDS}`;
 
+const inflight = new Map<string, Promise<unknown>>();
+
 export async function cached<T>(key: string, compute: () => Promise<T>): Promise<T> {
 	const cache = typeof caches !== 'undefined' ? caches.default : null;
 	const url = `${BASE_URL}/_cache/${encodeURIComponent(key)}`;
@@ -21,7 +23,13 @@ export async function cached<T>(key: string, compute: () => Promise<T>): Promise
 		}
 	}
 
-	const value = await compute();
+	let pending = inflight.get(key) as Promise<T> | undefined;
+	if (!pending) {
+		pending = compute().finally(() => inflight.delete(key));
+		inflight.set(key, pending);
+	}
+	const value = await pending;
+
 	cache
 		?.put(
 			url,

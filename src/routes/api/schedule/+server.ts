@@ -18,7 +18,7 @@ export const GET: RequestHandler = async ({ url }) => {
 	const cohorts = parseCohortsCsv(url.searchParams.get('cohorts'));
 
 	try {
-		const schedule = await buildMergedSchedule(group, week, cohorts);
+		const schedule = await buildMergedSchedule(group, week, cohorts, meta);
 		return json(
 			{ cohorts: schedule.cohorts, events: schedule.events },
 			{ headers: { 'cache-control': CLIENT_CACHE_HEADER } }

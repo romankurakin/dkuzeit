@@ -13,8 +13,11 @@ export async function getMeta(): Promise<MetaPayload> {
 	});
 }
 
-async function getSchedule(groupCode: string, weekValue: string): Promise<GroupWeekSchedule> {
-	const meta = await getMeta();
+async function getSchedule(
+	meta: MetaPayload,
+	groupCode: string,
+	weekValue: string
+): Promise<GroupWeekSchedule> {
 	const week = meta.weeks.find((w) => w.value === weekValue);
 	if (!week) throw new Error(`Unknown week: ${weekValue}`);
 	const group = meta.groups.find((g) => g.codeRaw === groupCode || g.codeRu === groupCode);
@@ -39,9 +42,11 @@ function isAssessment(e: LessonEvent): boolean {
 export async function buildMergedSchedule(
 	groupCode: string,
 	weekValue: string,
-	selectedCohorts: string[]
+	selectedCohorts: string[],
+	meta?: MetaPayload
 ): Promise<GroupWeekSchedule> {
-	const core = await getSchedule(groupCode, weekValue);
+	const resolvedMeta = meta ?? (await getMeta());
+	const core = await getSchedule(resolvedMeta, groupCode, weekValue);
 	const cohorts = [...core.cohorts].sort(
 		(a, b) => a.track.localeCompare(b.track) || a.code.localeCompare(b.code)
 	);
