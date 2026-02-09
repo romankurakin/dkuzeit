@@ -40,6 +40,14 @@ body {
 	letter-spacing: 0.15em;
 }
 
+/* Minimum event cell height — shared between skeleton and real content */
+@utility brutal-cell {
+	min-height: 3rem;
+}
+@utility brutal-cell-mobile {
+	min-height: 3.5rem;
+}
+
 /* Invert on hover: black bg + white text */
 @utility brutal-hover {
 	transition-property: color, background-color;

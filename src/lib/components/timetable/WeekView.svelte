@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { tick } from 'svelte';
-	import { watch } from 'runed';
 	import { m } from '$lib/paraglide/messages';
 	import { formatDateLabel } from '$lib/scheduler/date-format';
 	import type { LessonEvent } from './types';
@@ -35,19 +34,16 @@
 		return event.cohortCode ? `${base} ${event.cohortCode}` : base;
 	}
 
-	watch(
-		() => orderedDates,
-		() => {
-			if (orderedDates.length === 0) return;
-			const target = orderedDates.includes(todayIso)
-				? todayIso
-				: orderedDates.findLast((d) => d <= todayIso) ?? orderedDates[0];
-			void tick().then(() => {
-				document.getElementById(`day-${target}`)
-					?.scrollIntoView({ behavior: 'auto', block: 'center', inline: 'center' });
-			});
-		}
-	);
+	$effect(() => {
+		if (orderedDates.length === 0) return;
+		const target = orderedDates.includes(todayIso)
+			? todayIso
+			: orderedDates.findLast((d) => d <= todayIso) ?? orderedDates[0];
+		void tick().then(() => {
+			document.getElementById(`day-${target}`)
+				?.scrollIntoView({ behavior: 'auto', block: 'center', inline: 'center' });
+		});
+	});
 </script>
 
 <section>

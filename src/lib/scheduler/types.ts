@@ -26,16 +26,14 @@ export interface SchedulerContext {
 
 	uiLocale: 'ru' | 'de';
 	todayIso: string;
-	isLoadingMeta: boolean;
-	isLoadingSchedule: boolean;
 	error: string;
 	isGeneratingLinks: boolean;
 	copiedField: 'site' | 'calendar' | null;
 	calendarWarning: string;
 
-	onGroupChange: (value: string) => Promise<void>;
-	onWeekChange: (value: string) => Promise<void>;
-	onCohortChange: (trackLabel: string, code: string) => Promise<void>;
+	onGroupChange: (value: string) => void;
+	onWeekChange: (value: string) => void;
+	onCohortChange: (trackLabel: string, code: string) => void;
 	onCopySiteLink: () => Promise<void>;
 	onCopyCalendarLink: () => Promise<void>;
 
