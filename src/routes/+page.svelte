@@ -12,6 +12,7 @@
 	let { data }: PageProps = $props();
 	const meta = $derived(data.meta);
 	const schedule = $derived(data.schedule);
+	const todayIso = $derived(data.todayIso);
 
 	const urlCohorts = $derived(
 		(page.url.searchParams.get('cohorts') ?? '')
@@ -88,6 +89,7 @@
 		cohorts={schedule.cohorts}
 		resolvedGroup={schedule.resolvedGroup}
 		resolvedWeek={schedule.resolvedWeek}
+		{todayIso}
 		{urlCohorts}
 		onGroupChange={handleGroupChange}
 		onWeekChange={handleWeekChange}

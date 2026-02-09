@@ -9,7 +9,6 @@
 		LessonEvent,
 		WeekOption
 	} from '$lib/components/timetable/types';
-	import { Temporal } from 'temporal-polyfill';
 	import { buildSubjectColorMap } from '$lib/scheduler/subject-colors';
 	import { formatDateLabel } from '$lib/scheduler/date-format';
 	import type { SchedulerContext } from '$lib/scheduler/types';
@@ -22,6 +21,7 @@
 		cohorts,
 		resolvedGroup,
 		resolvedWeek,
+		todayIso,
 		urlCohorts,
 		onGroupChange,
 		onWeekChange,
@@ -34,6 +34,7 @@
 		cohorts: Cohort[];
 		resolvedGroup: string;
 		resolvedWeek: string;
+		todayIso: string;
 		urlCohorts: string[];
 		onGroupChange: (group: string) => void;
 		onWeekChange: (week: string) => void;
@@ -46,8 +47,6 @@
 	let error = $state('');
 
 	const uiLocale = $derived((getLocale() === 'de' ? 'de' : 'ru') as 'ru' | 'de');
-	const todayIso = $derived(Temporal.Now.plainDateISO('Asia/Almaty').toString());
-
 	const categoryLabels = $derived<Record<string, string>>({
 		de: m.category_de(),
 		en: m.category_en(),

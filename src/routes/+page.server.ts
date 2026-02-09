@@ -35,9 +35,11 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
 	const meta = await getMeta();
 	const groupCode = resolveGroup(meta.groups, url.searchParams.get('group') ?? '');
 	const weekValue = resolveWeek(meta.weeks, url.searchParams.get('week') ?? '');
+	const todayIso = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Almaty' }).format(new Date());
 
 	if (!groupCode || !weekValue) {
 		return {
+			todayIso,
 			meta: { groups: meta.groups, weeks: meta.weeks, resolvedWeek: weekValue },
 			schedule: {
 				events: [],
@@ -58,6 +60,7 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
 		/* keep empty schedule */
 	}
 	return {
+		todayIso,
 		meta: { groups: meta.groups, weeks: meta.weeks, resolvedWeek: weekValue },
 		schedule: {
 			events,
