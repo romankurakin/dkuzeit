@@ -2,6 +2,7 @@
 	import { tick } from 'svelte';
 	import { watch } from 'runed';
 	import { m } from '$lib/paraglide/messages';
+	import { formatDateLabel } from '$lib/scheduler/date-format';
 	import type { LessonEvent } from './types';
 
 	let {
@@ -17,15 +18,6 @@
 		todayIso: string;
 		uiLocale: 'ru' | 'de';
 	} = $props();
-
-	function formatDateLabel(dateIso: string): string {
-		const date = new Date(`${dateIso}T00:00:00+05:00`);
-		return new Intl.DateTimeFormat(uiLocale === 'de' ? 'de-DE' : 'ru-RU', {
-			weekday: 'short',
-			day: '2-digit',
-			month: 'short'
-		}).format(date);
-	}
 
 	function isToday(dateIso: string): boolean {
 		return dateIso === todayIso;
@@ -64,11 +56,11 @@
 	{:else if orderedDates.length === 0}
 		<p>{m.no_events()}</p>
 	{:else}
-		<div class="sm:grid sm:grid-flow-col sm:auto-cols-fr gap-4">
+		<div class="lg:grid lg:grid-flow-col lg:auto-cols-fr gap-4">
 			{#each orderedDates as date (date)}
 				<div id={`day-${date}`} class="mb-4 sm:mb-0">
 					<div class="border-b pb-2 mb-2">
-						{formatDateLabel(date)}
+						{formatDateLabel(date, uiLocale)}
 						{#if isToday(date)} *{/if}
 					</div>
 					<div class="space-y-2">

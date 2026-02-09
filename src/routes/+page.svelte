@@ -1,7 +1,7 @@
 <script lang="ts">
 	import SchedulerShell from '$lib/components/SchedulerShell.svelte';
 	import { Select } from 'bits-ui';
-	import { cv } from '$lib/scheduler/subject-colors';
+	import { cv, subjectColorKey } from '$lib/scheduler/subject-colors';
 	import { m } from '$lib/paraglide/messages';
 	import CalendarIcon from '@lucide/svelte/icons/calendar';
 	import GithubIcon from '@lucide/svelte/icons/github';
@@ -92,8 +92,8 @@
 					{m.no_events()}
 				</div>
 			{:else}
-				<div class="hidden sm:block overflow-x-auto -mb-0.75">
-					<table class="w-full border-collapse brutal-border-b table-fixed">
+				<div class="hidden lg:block overflow-x-auto -mb-0.75">
+					<table class="w-full border-collapse table-fixed">
 						<thead>
 							<tr>
 								<th class="w-18 min-w-18 p-0"></th>
@@ -121,17 +121,17 @@
 									</td>
 									{#each ctx.orderedDates as date (date)}
 										{@const slotEvents = ctx.getSlotEvents(date, slot.key)}
-										{@const firstColor = slotEvents.length === 1 ? ctx.subjectColorMap.get(slotEvents[0]!.subjectShortRu) : undefined}
+										{@const firstColor = slotEvents.length === 1 ? ctx.subjectColorMap.get(subjectColorKey(slotEvents[0]!)) : undefined}
 										<td
 											class="brutal-border-l p-0 {slotEvents.length === 0 ? 'bg-neutral-50' : ''}"
-											style={firstColor ? `background: ${cv(firstColor, 300)};` : ''}
+											style={firstColor ? `background: ${cv(firstColor, 400)};` : ''}
 										>
 											{#each slotEvents as event, ei (event.id)}
-												{@const color = ctx.subjectColorMap.get(event.subjectShortRu)}
+												{@const color = ctx.subjectColorMap.get(subjectColorKey(event))}
 												<div
 													class="p-2.5 {ei > 0 ? 'border-t border-black/20' : ''} {!color ? 'bg-neutral-100 text-neutral-500' : ''}"
 													style={slotEvents.length > 1 && color
-														? `background: ${cv(color, 300)};`
+														? `background: ${cv(color, 400)};`
 														: ''}
 												>
 													<div class="font-bold text-xs leading-tight">
@@ -157,7 +157,7 @@
 					</table>
 				</div>
 
-				<div class="sm:hidden">
+				<div class="lg:hidden">
 					{#each ctx.orderedDates as date (date)}
 						<div id="day-mobile-{date}" class="brutal-border-t">
 							<div
@@ -169,11 +169,11 @@
 								{ctx.formatDateLabel(date)}
 							</div>
 							{#each ctx.groupedEvents[date] ?? [] as event (event.id)}
-								{@const color = ctx.subjectColorMap.get(event.subjectShortRu)}
+								{@const color = ctx.subjectColorMap.get(subjectColorKey(event))}
 								<div
 									class="border-t border-black/20 p-3 flex items-start gap-3"
 									style={color
-										? `background: ${cv(color, 300)};`
+										? `background: ${cv(color, 400)};`
 										: ''}
 								>
 									<div class="text-xs font-bold shrink-0 w-16 pt-0.5 {color ? '' : 'text-neutral-400'}">
@@ -198,7 +198,6 @@
 							{/each}
 						</div>
 					{/each}
-					<div class="brutal-border-t"></div>
 				</div>
 			{/if}
 		</main>

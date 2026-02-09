@@ -8,6 +8,7 @@
 	import type { GroupOption, Cohort, LessonEvent, WeekOption } from '$lib/components/timetable/types';
 	import { Temporal } from 'temporal-polyfill';
 	import { buildSubjectColorMap } from '$lib/scheduler/subject-colors';
+	import { formatDateLabel } from '$lib/scheduler/date-format';
 	import type { SchedulerContext } from '$lib/scheduler/types';
 
 	let { children }: { children: Snippet<[SchedulerContext]> } = $props();
@@ -174,15 +175,6 @@
 		}
 		return [...map.values()];
 	});
-
-	function formatDateLabel(dateIso: string): string {
-		const date = new Date(`${dateIso}T00:00:00+05:00`);
-		return new Intl.DateTimeFormat(uiLocale === 'de' ? 'de-DE' : 'ru-RU', {
-			weekday: 'short',
-			day: '2-digit',
-			month: 'short'
-		}).format(date);
-	}
 
 	function isToday(dateIso: string): boolean {
 		return dateIso === todayIso;
@@ -403,7 +395,7 @@
 	onCohortChange: handleCohortChange,
 	onCopySiteLink: handleCopySiteLink,
 	onCopyCalendarLink: handleCopyCalendarLink,
-	formatDateLabel,
+	formatDateLabel: (dateIso: string) => formatDateLabel(dateIso, uiLocale),
 	eventTitleLabel,
 	isToday,
 	timeSlots,
