@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import { buildMergedSchedule, getMeta, CLIENT_TTL_SECONDS } from '$lib/server/dku';
+import { buildMergedSchedule, getMeta, CLIENT_CACHE_HEADER } from '$lib/server/dku';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ url }) => {
@@ -23,7 +23,7 @@ export const GET: RequestHandler = async ({ url }) => {
 		const schedule = await buildMergedSchedule(group, week, cohorts);
 		return json(
 			{ cohorts: schedule.cohorts, events: schedule.events },
-			{ headers: { 'cache-control': `public, max-age=${CLIENT_TTL_SECONDS}` } }
+			{ headers: { 'cache-control': CLIENT_CACHE_HEADER } }
 		);
 	} catch (error) {
 		return json(

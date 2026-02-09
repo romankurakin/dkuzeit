@@ -37,7 +37,7 @@ export const GET: RequestHandler = async ({ url, platform }) => {
 		headers: {
 			'content-type': 'text/calendar; charset=utf-8',
 			'content-disposition': `inline; filename="dku-${payload.g}.ics"`,
-			'cache-control': 'no-cache'
+			'cache-control': 'private, no-cache'
 		}
 	});
 };

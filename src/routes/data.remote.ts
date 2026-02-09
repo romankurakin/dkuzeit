@@ -1,5 +1,5 @@
-import { query } from '$app/server';
-import { getMeta, buildMergedSchedule } from '$lib/server/dku';
+import { getRequestEvent, query } from '$app/server';
+import { getMeta, buildMergedSchedule, CLIENT_CACHE_HEADER } from '$lib/server/dku';
 import type { GroupOption, WeekOption, LessonEvent, Cohort } from '$lib/server/types';
 
 function resolveGroup(groups: GroupOption[], param: string): string {
@@ -27,6 +27,9 @@ function resolveWeek(weeks: WeekOption[]): string {
 }
 
 export const fetchMeta = query(async () => {
+	const { setHeaders } = getRequestEvent();
+	setHeaders({ 'cache-control': CLIENT_CACHE_HEADER });
+
 	const meta = await getMeta();
 	return {
 		groups: meta.groups,
@@ -38,6 +41,9 @@ export const fetchMeta = query(async () => {
 export const fetchSchedule = query(
 	'unchecked',
 	async (args: { group: string; week: string }) => {
+		const { setHeaders } = getRequestEvent();
+		setHeaders({ 'cache-control': CLIENT_CACHE_HEADER });
+
 		const meta = await getMeta();
 		const groupCode = resolveGroup(meta.groups, args.group);
 		const weekValue = args.week || resolveWeek(meta.weeks);
