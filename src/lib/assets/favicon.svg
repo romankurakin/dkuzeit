@@ -1,10 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
-  <rect width="128" height="128" fill="#000"/>
-  <rect x="8" y="8" width="112" height="36" fill="#86efac"/>
-  <text x="64" y="36" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="900" font-size="28" fill="#000">DKU</text>
-  <rect x="8" y="50" width="112" height="36" fill="#c4b5fd"/>
-  <text x="64" y="78" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="900" font-size="28" fill="#000">ZEIT</text>
-  <rect x="8" y="92" width="36" height="28" fill="#fda4af"/>
-  <rect x="48" y="92" width="36" height="28" fill="#fcd34d"/>
-  <rect x="88" y="92" width="32" height="28" fill="#7dd3fc"/>
-</svg>
+<svg height="128" viewBox="0 0 128 128" width="128" xmlns="http://www.w3.org/2000/svg"><path d="m0 0h128v128h-128z"/><path d="m20 20h88v28h-88z" fill="#86efac"/><text font-family="system-ui,sans-serif" font-size="22" font-weight="900" text-anchor="middle" x="64" y="41">DKU</text><path d="m20 52h88v28h-88z" fill="#c4b5fd"/><text font-family="system-ui,sans-serif" font-size="22" font-weight="900" text-anchor="middle" x="64" y="73">ZEIT</text><path d="m20 84h27v24h-27z" fill="#fda4af"/><path d="m50 84h28v24h-28z" fill="#fcd34d"/><path d="m81 84h27v24h-27z" fill="#7dd3fc"/></svg>
