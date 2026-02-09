@@ -1,7 +1,7 @@
 {
   "$schema": "https://inlang.com/schema/inlang-message-format",
   "app_title": "DKU Stundenplan",
-  "meta_description": "DKU Stundenplan mit mobiler Wochenansicht und personalisiertem Link mit Sprachgruppen-Filter.",
+  "meta_description": "Stundenplan der DKU — nach Gruppen, nach Wochen, mit Apple Kalender.",
   "language_switch_label": "Sprache",
   "language_ru": "Русский",
   "language_de": "Deutsch",
