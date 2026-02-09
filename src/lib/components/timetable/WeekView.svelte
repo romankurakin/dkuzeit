@@ -38,9 +38,10 @@
 		if (orderedDates.length === 0) return;
 		const target = orderedDates.includes(todayIso)
 			? todayIso
-			: orderedDates.findLast((d) => d <= todayIso) ?? orderedDates[0];
+			: (orderedDates.findLast((d) => d <= todayIso) ?? orderedDates[0]);
 		void tick().then(() => {
-			document.getElementById(`day-${target}`)
+			document
+				.getElementById(`day-${target}`)
 				?.scrollIntoView({ behavior: 'auto', block: 'center', inline: 'center' });
 		});
 	});
@@ -52,12 +53,13 @@
 	{:else if orderedDates.length === 0}
 		<p>{m.no_events()}</p>
 	{:else}
-		<div class="lg:grid lg:grid-flow-col lg:auto-cols-fr gap-4">
+		<div class="gap-4 lg:grid lg:auto-cols-fr lg:grid-flow-col">
 			{#each orderedDates as date (date)}
 				<div id={`day-${date}`} class="mb-4 sm:mb-0">
-					<div class="border-b pb-2 mb-2">
+					<div class="mb-2 border-b pb-2">
 						{formatDateLabel(date, uiLocale)}
-						{#if isToday(date)} *{/if}
+						{#if isToday(date)}
+							*{/if}
 					</div>
 					<div class="space-y-2">
 						{#each groupedEvents[date] as event (event.id)}

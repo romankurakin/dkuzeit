@@ -42,3 +42,9 @@ jobs:
 
       - run: npx tsx tests/bench-parser.ts
         name: Parser benchmark
+
+      - run: npx playwright install --with-deps chromium
+        name: Install Playwright browser
+
+      - run: npm run test:e2e
+        name: E2E smoke tests

@@ -80,7 +80,12 @@ suite('parseTimetablePage - label quality', () => {
 		for (const week of meta.weeks) {
 			if (manifest.weeks.indexOf(week.value) === -1) continue;
 			for (const group of meta.groups) {
-				const rel = path.join(fixtureRoot, week.value, 'c', `c${String(group.id).padStart(5, '0')}.htm`);
+				const rel = path.join(
+					fixtureRoot,
+					week.value,
+					'c',
+					`c${String(group.id).padStart(5, '0')}.htm`
+				);
 				if (existsSync(rel) === false) continue;
 				const html = await readFile(rel, 'utf8');
 				const { events } = parseTimetablePage(html, group, week);
@@ -103,7 +108,12 @@ suite('parseTimetablePage - label quality', () => {
 		for (const week of meta.weeks) {
 			if (manifest.weeks.indexOf(week.value) === -1) continue;
 			for (const group of meta.groups) {
-				const rel = path.join(fixtureRoot, week.value, 'c', `c${String(group.id).padStart(5, '0')}.htm`);
+				const rel = path.join(
+					fixtureRoot,
+					week.value,
+					'c',
+					`c${String(group.id).padStart(5, '0')}.htm`
+				);
 				if (existsSync(rel) === false) continue;
 				const html = await readFile(rel, 'utf8');
 				const { events } = parseTimetablePage(html, group, week);
@@ -126,13 +136,20 @@ suite('parseTimetablePage - label quality', () => {
 		for (const week of meta.weeks) {
 			if (manifest.weeks.indexOf(week.value) === -1) continue;
 			for (const group of meta.groups) {
-				const rel = path.join(fixtureRoot, week.value, 'c', `c${String(group.id).padStart(5, '0')}.htm`);
+				const rel = path.join(
+					fixtureRoot,
+					week.value,
+					'c',
+					`c${String(group.id).padStart(5, '0')}.htm`
+				);
 				if (existsSync(rel) === false) continue;
 				const html = await readFile(rel, 'utf8');
 				const { events } = parseTimetablePage(html, group, week);
 
 				for (const e of events) {
-					expect(e.lessonType, `${group.codeRaw} ${e.subjectFullRaw}`).not.toMatch(/[ҚқӘәҒғҢңӨөҰұҮүІіҺһ]/);
+					expect(e.lessonType, `${group.codeRaw} ${e.subjectFullRaw}`).not.toMatch(
+						/[ҚқӘәҒғҢңӨөҰұҮүІіҺһ]/
+					);
 				}
 			}
 		}
@@ -145,14 +162,21 @@ suite('parseTimetablePage - label quality', () => {
 		for (const week of meta.weeks) {
 			if (manifest.weeks.indexOf(week.value) === -1) continue;
 			for (const group of meta.groups) {
-				const rel = path.join(fixtureRoot, week.value, 'c', `c${String(group.id).padStart(5, '0')}.htm`);
+				const rel = path.join(
+					fixtureRoot,
+					week.value,
+					'c',
+					`c${String(group.id).padStart(5, '0')}.htm`
+				);
 				if (existsSync(rel) === false) continue;
 				const html = await readFile(rel, 'utf8');
 				const { events } = parseTimetablePage(html, group, week);
 
 				for (const e of events) {
 					if (e.subjectFullDe !== e.subjectFullRu) {
-						expect(e.subjectFullDe, `${group.codeRaw} ${e.subjectFullRaw}`).not.toMatch(/^[А-Яа-яЁёҚқӘәҒғҢңӨөҰұҮүІіҺһ]/);
+						expect(e.subjectFullDe, `${group.codeRaw} ${e.subjectFullRaw}`).not.toMatch(
+							/^[А-Яа-яЁёҚқӘәҒғҢңӨөҰұҮүІіҺһ]/
+						);
 					}
 				}
 			}

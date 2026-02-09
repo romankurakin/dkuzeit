@@ -39,13 +39,16 @@ export async function signToken(payload: CalendarTokenPayload, secret: string): 
 	return `${body}.${await hmac(body, secret)}`;
 }
 
-export async function verifyToken(token: string, secret: string): Promise<CalendarTokenPayload | null> {
+export async function verifyToken(
+	token: string,
+	secret: string
+): Promise<CalendarTokenPayload | null> {
 	const dot = token.indexOf('.');
 	if (dot < 1) return null;
 
 	const body = token.slice(0, dot);
 	const sig = token.slice(dot + 1);
-	if (sig !== await hmac(body, secret)) return null;
+	if (sig !== (await hmac(body, secret))) return null;
 
 	try {
 		const p = JSON.parse(new TextDecoder().decode(fromBase64Url(body))) as CalendarTokenPayload;

@@ -1,10 +1,9 @@
-@import "tailwindcss";
-@import "@evilmartians/harmony/tailwind.css";
+@import 'tailwindcss';
+@import '@evilmartians/harmony/tailwind.css';
 
 body {
 	font-family: system-ui, sans-serif;
 }
-
 
 /* 3px solid black border — the core brutalist element */
 @utility brutal-border {

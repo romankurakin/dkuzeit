@@ -24,25 +24,25 @@
 	<link rel="manifest" href="/manifest.webmanifest" />
 </svelte:head>
 
-<div class="p-4 space-y-0 max-w-screen-2xl mx-auto">
-	<header class="flex items-center justify-between border-b-4 border-black pb-4 mb-6">
-		<span class="text-sm font-bold uppercase tracking-widest">{m.app_title()}</span>
+<div class="mx-auto max-w-screen-2xl space-y-0 p-4">
+	<header class="mb-6 flex items-center justify-between border-b-4 border-black pb-4">
+		<span class="text-sm font-bold tracking-widest uppercase">{m.app_title()}</span>
 		<nav aria-label={m.language_switch_label()}>
 			<ToggleGroup.Root
 				type="single"
 				value={currentLocale}
 				onValueChange={handleLocaleChange}
-				class="inline-flex brutal-border"
+				class="brutal-border inline-flex"
 			>
 				<ToggleGroup.Item
 					value="ru"
-					class="px-3 py-1.5 brutal-micro brutal-hover data-[state=on]:bg-black data-[state=on]:text-white"
+					class="brutal-micro brutal-hover px-3 py-1.5 data-[state=on]:bg-black data-[state=on]:text-white"
 				>
 					RU
 				</ToggleGroup.Item>
 				<ToggleGroup.Item
 					value="de"
-					class="px-3 py-1.5 brutal-micro brutal-hover brutal-border-l data-[state=on]:bg-black data-[state=on]:text-white"
+					class="brutal-micro brutal-hover brutal-border-l px-3 py-1.5 data-[state=on]:bg-black data-[state=on]:text-white"
 				>
 					DE
 				</ToggleGroup.Item>

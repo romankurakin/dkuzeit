@@ -18,7 +18,7 @@ export const trackRules: TrackRule[] = [
 	{ track: 'en', namePattern: /Английский язык/i },
 	{ track: 'en', namePattern: /Business and Soft Skills/i },
 	{ track: 'pe', namePattern: /Физическая культура.*девушк/i },
-	{ track: 'pe', namePattern: /Физическая культура.*юнош/i },
+	{ track: 'pe', namePattern: /Физическая культура.*юнош/i }
 ];
 
 export const cohortCodeRules: CohortCodeRule[] = [
@@ -28,7 +28,7 @@ export const cohortCodeRules: CohortCodeRule[] = [
 	{ track: 'kz', codePattern: /^Каз\.?(\d+)/i, code: 'Каз.$1' },
 	{ track: 'en', codePattern: /^BSг\.?(\d+)/i, code: 'BS$1' },
 	{ track: 'pe', codePattern: /^ФК\(д\)/i, code: 'ФК(д)' },
-	{ track: 'pe', codePattern: /^ФК\(ю\)/i, code: 'ФК(ю)' },
+	{ track: 'pe', codePattern: /^ФК\(ю\)/i, code: 'ФК(ю)' }
 ];
 
 export const genericCodes = new Set(['DE', 'EN', 'KAZ', 'KAZ-B']);

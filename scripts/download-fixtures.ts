@@ -39,7 +39,9 @@ async function save(relativePath: string, contents: string): Promise<void> {
 function parseWeeks(html: string): string[] {
 	const select = html.match(/<select\s+name="week"[\s\S]*?<\/select>/i);
 	if (!select) throw new Error('Failed to parse week selector in navbar fixture');
-	return Array.from(select[0].matchAll(/<option\s+value="(\d+)"/gi), (entry) => entry[1].padStart(2, '0'));
+	return Array.from(select[0].matchAll(/<option\s+value="(\d+)"/gi), (entry) =>
+		entry[1].padStart(2, '0')
+	);
 }
 
 function parseClassCount(html: string): number {
@@ -55,7 +57,11 @@ interface Job {
 	relativePath: string;
 }
 
-async function mapWithConcurrency<T, R>(items: T[], limit: number, iteratee: (item: T, index: number) => Promise<R>): Promise<R[]> {
+async function mapWithConcurrency<T, R>(
+	items: T[],
+	limit: number,
+	iteratee: (item: T, index: number) => Promise<R>
+): Promise<R[]> {
 	const output = new Array<R>(items.length);
 	let cursor = 0;
 

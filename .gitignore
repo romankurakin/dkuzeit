@@ -15,5 +15,8 @@ node_modules
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
+# Playwright
+test-results/
+
 # Downloaded parser fixtures
 tests/fixtures/live/

@@ -59,15 +59,10 @@ export function stripParenSuffix(value: string): string {
 }
 
 export function normalizeCodeKey(input: string): string {
-	return cleanText(input)
-		.replace(/^\.+/, '')
-		.replace(/\s+/g, '')
-		.replace(/\/$/, '')
-		.toUpperCase();
+	return cleanText(input).replace(/^\.+/, '').replace(/\s+/g, '').replace(/\/$/, '').toUpperCase();
 }
 
 export function leftSideCode(input: string): string {
 	const left = cleanText(input).split('/')[0] ?? input;
 	return normalizeCodeKey(left);
 }
-

@@ -3,7 +3,12 @@
 	import { tick } from 'svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { getLocale, localizeHref } from '$lib/paraglide/runtime';
-	import type { GroupOption, Cohort, LessonEvent, WeekOption } from '$lib/components/timetable/types';
+	import type {
+		GroupOption,
+		Cohort,
+		LessonEvent,
+		WeekOption
+	} from '$lib/components/timetable/types';
 	import { Temporal } from 'temporal-polyfill';
 	import { buildSubjectColorMap } from '$lib/scheduler/subject-colors';
 	import { formatDateLabel } from '$lib/scheduler/date-format';
@@ -107,8 +112,8 @@
 			});
 		}
 
-		result.sort((a, b) =>
-			a.dateIso.localeCompare(b.dateIso) || a.startTime.localeCompare(b.startTime)
+		result.sort(
+			(a, b) => a.dateIso.localeCompare(b.dateIso) || a.startTime.localeCompare(b.startTime)
 		);
 		return result;
 	});
@@ -137,9 +142,7 @@
 	});
 
 	function getSlotEvents(date: string, slotKey: string): LessonEvent[] {
-		return (groupedEvents[date] ?? []).filter(
-			(e) => `${e.startTime}-${e.endTime}` === slotKey
-		);
+		return (groupedEvents[date] ?? []).filter((e) => `${e.startTime}-${e.endTime}` === slotKey);
 	}
 
 	const groupSelectItems = $derived(
@@ -149,9 +152,7 @@
 		}))
 	);
 
-	const weekSelectItems = $derived(
-		weeks.map((week) => ({ value: week.value, label: week.label }))
-	);
+	const weekSelectItems = $derived(weeks.map((week) => ({ value: week.value, label: week.label })));
 
 	const cohortGroups = $derived.by(() => {
 		const map = new Map<
@@ -180,16 +181,10 @@
 		let base: string;
 		if (uiLocale === 'de') {
 			base =
-				event.subjectFullDe ||
-				event.subjectShortDe ||
-				event.subjectFullRu ||
-				event.subjectShortRu;
+				event.subjectFullDe || event.subjectShortDe || event.subjectFullRu || event.subjectShortRu;
 		} else {
 			base =
-				event.subjectFullRu ||
-				event.subjectShortRu ||
-				event.subjectFullDe ||
-				event.subjectShortDe;
+				event.subjectFullRu || event.subjectShortRu || event.subjectFullDe || event.subjectShortDe;
 		}
 		return event.cohortCode ? `${base} ${event.cohortCode}` : base;
 	}
@@ -227,9 +222,7 @@
 			});
 			await navigator.clipboard.write([
 				new ClipboardItem({
-					'text/plain': textPromise.then(
-						(text) => new Blob([text], { type: 'text/plain' })
-					)
+					'text/plain': textPromise.then((text) => new Blob([text], { type: 'text/plain' }))
 				})
 			]);
 			copiedField = 'calendar';
@@ -251,8 +244,7 @@
 			: (orderedDates.findLast((d) => d <= todayIso) ?? orderedDates[0]);
 		void tick().then(() => {
 			const el =
-				document.getElementById(`day-mobile-${target}`) ??
-				document.getElementById(`day-${target}`);
+				document.getElementById(`day-mobile-${target}`) ?? document.getElementById(`day-${target}`);
 			el?.scrollIntoView({ behavior: 'auto', block: 'center', inline: 'center' });
 		});
 	});
@@ -279,7 +271,9 @@
 	onCopySiteLink: async () => {
 		await navigator.clipboard.writeText(location.href);
 		copiedField = 'site';
-		setTimeout(() => { copiedField = null; }, 1500);
+		setTimeout(() => {
+			copiedField = null;
+		}, 1500);
 	},
 	onCopyCalendarLink: handleCopyCalendarLink,
 	formatDateLabel: (dateIso: string) => formatDateLabel(dateIso, uiLocale),

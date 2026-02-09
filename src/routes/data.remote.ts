@@ -1,12 +1,10 @@
-import { getRequestEvent, query } from '$app/server';
-import { getMeta, buildMergedSchedule, CLIENT_CACHE_HEADER } from '$lib/server/dku';
+import { query } from '$app/server';
+import { getMeta, buildMergedSchedule } from '$lib/server/dku';
 import type { GroupOption, WeekOption, LessonEvent, Cohort } from '$lib/server/types';
 
 function resolveGroup(groups: GroupOption[], param: string): string {
 	if (!param) return groups[0]?.codeRaw ?? '';
-	const match = groups.find(
-		(g) => g.codeRaw === param || g.codeRu === param || g.codeDe === param
-	);
+	const match = groups.find((g) => g.codeRaw === param || g.codeRu === param || g.codeDe === param);
 	return match?.codeRaw ?? groups[0]?.codeRaw ?? '';
 }
 
@@ -27,9 +25,6 @@ function resolveWeek(weeks: WeekOption[]): string {
 }
 
 export const fetchMeta = query(async () => {
-	const { setHeaders } = getRequestEvent();
-	setHeaders({ 'cache-control': CLIENT_CACHE_HEADER });
-
 	const meta = await getMeta();
 	return {
 		groups: meta.groups,
@@ -38,40 +33,34 @@ export const fetchMeta = query(async () => {
 	};
 });
 
-export const fetchSchedule = query(
-	'unchecked',
-	async (args: { group: string; week: string }) => {
-		const { setHeaders } = getRequestEvent();
-		setHeaders({ 'cache-control': CLIENT_CACHE_HEADER });
+export const fetchSchedule = query('unchecked', async (args: { group: string; week: string }) => {
+	const meta = await getMeta();
+	const groupCode = resolveGroup(meta.groups, args.group);
+	const weekValue = args.week || resolveWeek(meta.weeks);
 
-		const meta = await getMeta();
-		const groupCode = resolveGroup(meta.groups, args.group);
-		const weekValue = args.week || resolveWeek(meta.weeks);
-
-		if (!groupCode || !weekValue) {
-			return {
-				events: [] as LessonEvent[],
-				cohorts: [] as Cohort[],
-				resolvedGroup: groupCode,
-				resolvedWeek: weekValue
-			};
-		}
-
-		try {
-			const schedule = await buildMergedSchedule(groupCode, weekValue, []);
-			return {
-				events: schedule.events,
-				cohorts: schedule.cohorts,
-				resolvedGroup: groupCode,
-				resolvedWeek: weekValue
-			};
-		} catch {
-			return {
-				events: [] as LessonEvent[],
-				cohorts: [] as Cohort[],
-				resolvedGroup: groupCode,
-				resolvedWeek: weekValue
-			};
-		}
+	if (!groupCode || !weekValue) {
+		return {
+			events: [] as LessonEvent[],
+			cohorts: [] as Cohort[],
+			resolvedGroup: groupCode,
+			resolvedWeek: weekValue
+		};
 	}
-);
+
+	try {
+		const schedule = await buildMergedSchedule(groupCode, weekValue, []);
+		return {
+			events: schedule.events,
+			cohorts: schedule.cohorts,
+			resolvedGroup: groupCode,
+			resolvedWeek: weekValue
+		};
+	} catch {
+		return {
+			events: [] as LessonEvent[],
+			cohorts: [] as Cohort[],
+			resolvedGroup: groupCode,
+			resolvedWeek: weekValue
+		};
+	}
+});

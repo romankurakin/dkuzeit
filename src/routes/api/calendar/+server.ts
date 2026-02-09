@@ -1,4 +1,9 @@
-import { buildCalendarTitle, buildMergedSchedule, getMeta, pickRollingWeeksForCalendar } from '$lib/server/dku';
+import {
+	buildCalendarTitle,
+	buildMergedSchedule,
+	getMeta,
+	pickRollingWeeksForCalendar
+} from '$lib/server/dku';
 import { buildIcsCalendar } from '$lib/server/ics';
 import { verifyToken } from '$lib/server/token';
 import type { RequestHandler } from './$types';

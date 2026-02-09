@@ -4,6 +4,9 @@ compatibility_date = "2026-02-06"
 compatibility_flags = ["nodejs_compat"]
 routes = [{ pattern = "dkuzeit.net", custom_domain = true }]
 
+[dev]
+port = 8787
+
 [assets]
 directory = ".svelte-kit/cloudflare"
 binding = "ASSETS"

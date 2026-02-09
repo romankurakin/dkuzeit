@@ -27,10 +27,17 @@ async function run() {
 	const navStart = performance.now();
 	const meta = parseNavHtml(navbarHtml);
 	const navMs = performance.now() - navStart;
-	console.log(`parseNavHtml: ${navMs.toFixed(2)}ms (${meta.groups.length} groups, ${meta.weeks.length} weeks)`);
+	console.log(
+		`parseNavHtml: ${navMs.toFixed(2)}ms (${meta.groups.length} groups, ${meta.weeks.length} weeks)`
+	);
 
 	// Pre-load all HTML files into memory to measure only parse time
-	const pages: Array<{ html: string; group: typeof meta.groups[number]; week: typeof meta.weeks[number]; rel: string }> = [];
+	const pages: Array<{
+		html: string;
+		group: (typeof meta.groups)[number];
+		week: (typeof meta.weeks)[number];
+		rel: string;
+	}> = [];
 	for (const week of meta.weeks) {
 		if (!manifest.weeks.includes(week.value)) continue;
 		for (const group of meta.groups) {
@@ -58,7 +65,9 @@ async function run() {
 	}
 	const parseMs = performance.now() - parseStart;
 	const perPage = parseMs / pages.length;
-	console.log(`parseTimetablePage: ${parseMs.toFixed(2)}ms total, ${perPage.toFixed(2)}ms/page (${pages.length} pages, ${totalEvents} events, ${failures} failures)`);
+	console.log(
+		`parseTimetablePage: ${parseMs.toFixed(2)}ms total, ${perPage.toFixed(2)}ms/page (${pages.length} pages, ${totalEvents} events, ${failures} failures)`
+	);
 	console.log(`Total: ${(navMs + parseMs).toFixed(2)}ms`);
 }
 

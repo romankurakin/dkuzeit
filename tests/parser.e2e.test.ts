@@ -85,9 +85,9 @@ suite('DKU parser E2E (fixtures)', () => {
 if (!fixtureReady) {
 	describe('DKU parser E2E prerequisites', () => {
 		it('requires fixture snapshot', () => {
-			expect(
-				`Fixture snapshot missing at ${manifestPath}. Run: npm run fixtures:sync`
-			).toBeTypeOf('string');
+			expect(`Fixture snapshot missing at ${manifestPath}. Run: npm run fixtures:sync`).toBeTypeOf(
+				'string'
+			);
 		});
 	});
 }

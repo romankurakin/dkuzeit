@@ -26,7 +26,7 @@
 <label>
 	<span>{label}</span>
 	<Select.Root type="single" {value} onValueChange={onChange} {items} {disabled}>
-		<Select.Trigger class="border p-2 flex items-center justify-between w-full">
+		<Select.Trigger class="flex w-full items-center justify-between border p-2">
 			<span>{selected?.label ?? label}</span>
 			<span aria-hidden="true">▾</span>
 		</Select.Trigger>

@@ -1,4 +1,10 @@
-import { generateIcsCalendar, type IcsCalendar, type IcsEvent, type IcsDateObject, type IcsTimezone } from 'ts-ics';
+import {
+	generateIcsCalendar,
+	type IcsCalendar,
+	type IcsEvent,
+	type IcsDateObject,
+	type IcsTimezone
+} from 'ts-ics';
 import type { LessonEvent, UiLanguage } from './types';
 
 const ALMATY_TZ: IcsTimezone = {
@@ -40,15 +46,27 @@ function buildUid(event: LessonEvent): string {
 	return `${stableHash(base)}@dku-timetable`;
 }
 
-export function buildIcsCalendar(title: string, events: LessonEvent[], lang: UiLanguage = 'ru'): string {
+export function buildIcsCalendar(
+	title: string,
+	events: LessonEvent[],
+	lang: UiLanguage = 'ru'
+): string {
 	const now = new Date();
 	const stamp: IcsDateObject = { date: now };
 
 	const icsEvents: IcsEvent[] = events.map((event) => {
 		const summary =
 			lang === 'de'
-				? event.subjectFullDe || event.subjectShortDe || event.subjectFullRu || event.subjectShortRu || event.subjectShortRaw
-				: event.subjectFullRu || event.subjectShortRu || event.subjectFullDe || event.subjectShortDe || event.subjectShortRaw;
+				? event.subjectFullDe ||
+					event.subjectShortDe ||
+					event.subjectFullRu ||
+					event.subjectShortRu ||
+					event.subjectShortRaw
+				: event.subjectFullRu ||
+					event.subjectShortRu ||
+					event.subjectFullDe ||
+					event.subjectShortDe ||
+					event.subjectShortRaw;
 
 		return {
 			summary,
