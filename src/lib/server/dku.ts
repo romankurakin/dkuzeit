@@ -13,15 +13,13 @@ const BASE_URL = "https://timetable.dku.kz";
 // Keep HTTP < edge so clients see updated data soon after the edge cache expires.
 const EDGE_TTL_SECONDS = 3600;
 export const CLIENT_TTL_SECONDS = 600;
-const CACHE_KEY_PREFIX = "https://cache.dku/";
-
 async function cached<T>(
   key: string,
   compute: () => Promise<T>,
 ): Promise<T> {
   const cache =
     typeof caches !== "undefined" ? caches.default : null;
-  const url = `${CACHE_KEY_PREFIX}${encodeURIComponent(key)}`;
+  const url = `${BASE_URL}/_cache/${encodeURIComponent(key)}`;
 
   if (cache) {
     try {
