@@ -38,6 +38,10 @@ function buildUid(event: LessonEvent): string {
 	return `${fnv1aHex(base)}@dku-timetable`;
 }
 
+function buildProdId(lang: UiLanguage): string {
+	return `-//DKUZeit//DKU Timetable//${lang === 'de' ? 'DE' : 'RU'}`;
+}
+
 export function buildIcsCalendar(
 	title: string,
 	events: LessonEvent[],
@@ -73,7 +77,7 @@ export function buildIcsCalendar(
 
 	const calendar: IcsCalendar = {
 		version: '2.0',
-		prodId: '-//DKU Timetable//EN',
+		prodId: buildProdId(lang),
 		method: 'PUBLISH',
 		name: title,
 		timezones: [ALMATY_TZ],

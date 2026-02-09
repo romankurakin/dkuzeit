@@ -29,6 +29,7 @@ describe('ics generation', () => {
 
 		expect(ics).toContain('BEGIN:VCALENDAR');
 		expect(ics).toContain('END:VCALENDAR');
+		expect(ics).toContain('PRODID:-//DKUZeit//DKU Timetable//RU');
 		expect(ics).toContain('BEGIN:VTIMEZONE');
 		expect(ics).toContain('Asia/Almaty');
 		expect(ics).toContain('BEGIN:VEVENT');
@@ -36,5 +37,10 @@ describe('ics generation', () => {
 		expect(ics).toContain('DTEND;TZID=Asia/Almaty:20260209T140000');
 		expect(ics).toContain('LOCATION:305');
 		expect(ics).not.toContain('DESCRIPTION');
+	});
+
+	it('uses DE prodId for German calendar', () => {
+		const ics = buildIcsCalendar('DKU 3-TM (E3)', [event], 'de');
+		expect(ics).toContain('PRODID:-//DKUZeit//DKU Timetable//DE');
 	});
 });
