@@ -323,7 +323,7 @@
 		isGeneratingLinks = true;
 		error = '';
 		try {
-			const response = await fetch('/api/token', {
+			const textPromise = fetch('/api/token', {
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
 				body: JSON.stringify({
@@ -332,11 +332,20 @@
 					cohorts: myCohorts,
 					lang: uiLocale
 				})
+			}).then(async (response) => {
+				if (!response.ok) throw new Error(m.api_error_calendar());
+				const payload = (await response.json()) as { token: string };
+				return `${location.origin}${localizeHref('/api/calendar', { locale: uiLocale })}?token=${encodeURIComponent(payload.token)}`;
 			});
-			if (!response.ok) throw new Error(m.api_error_calendar());
-			const payload = (await response.json()) as { token: string };
-			const calendarUrl = `${location.origin}${localizeHref('/api/calendar', { locale: uiLocale })}?token=${encodeURIComponent(payload.token)}`;
-			await navigator.clipboard.writeText(calendarUrl);
+			// Safari requires clipboard write in the same user-gesture microtask.
+			// ClipboardItem with a lazy blob promise preserves the gesture context.
+			await navigator.clipboard.write([
+				new ClipboardItem({
+					'text/plain': textPromise.then(
+						(text) => new Blob([text], { type: 'text/plain' })
+					)
+				})
+			]);
 			copiedField = 'calendar';
 			setTimeout(() => {
 				copiedField = null;
