@@ -45,7 +45,10 @@ export function germanOnlyLabel(input: string): string {
 export function extractLessonType(input: string): string {
 	const value = cleanText(input).replace(/^[.*]+/, '');
 	const slashIdx = value.indexOf('/');
-	if (slashIdx === -1) return '';
+	if (slashIdx === -1) {
+		const known = value.match(/\s+(пр\.|лек\.|лекция|практика|семинар)$/);
+		return known ? known[1]! : '';
+	}
 	const rest = value.slice(slashIdx + 1).trim();
 	const match = rest.match(/\s+([А-Яа-яЁёҚқӘәҒғҢңӨөҰұҮүІіҺһ].*)$/);
 	return match ? match[1]! : '';

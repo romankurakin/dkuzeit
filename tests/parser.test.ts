@@ -208,6 +208,14 @@ suite('parseTimetablePage - specific groups', () => {
 			expect(e.cohortCode).toBeNull();
 		}
 	});
+
+	it('Business and Soft Skills extracts пр. as lessonType from no-slash legend entry', async () => {
+		const { events } = await loadSchedule('2А-МО');
+		const bs = events.find((e) => e.subjectFullRaw.includes('Business'));
+		if (bs === undefined) return; // not every week has this subject
+		expect(bs.lessonType).toBe('пр.');
+		expect(bs.subjectFullRu).not.toContain('пр.');
+	});
 });
 
 if (fixtureReady === false) {

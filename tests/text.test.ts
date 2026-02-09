@@ -83,6 +83,10 @@ describe('extractLessonType', () => {
 	it('returns empty when no Cyrillic suffix after German name', () => {
 		expect(extractLessonType('Логистика/Logistik')).toBe('');
 	});
+
+	it('extracts known lesson type from no-slash entry', () => {
+		expect(extractLessonType('Business  and Soft Skills БД(B2.1-C1) гр.2 пр.')).toBe('пр.');
+	});
 });
 
 describe('stripParenSuffix', () => {

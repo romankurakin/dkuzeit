@@ -1,312 +1,10 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import SchedulerShell from '$lib/components/SchedulerShell.svelte';
+	import { Select } from 'bits-ui';
+	import { cv } from '$lib/scheduler/subject-colors';
 	import { m } from '$lib/paraglide/messages';
-	import { getLocale, localizeHref } from '$lib/paraglide/runtime';
-	import { useSearchParams, createSearchParamsSchema } from 'runed/kit';
-	import ControlBar from '$lib/components/timetable/ControlBar.svelte';
-	import WeekView from '$lib/components/timetable/WeekView.svelte';
-	import type { GroupOption, Cohort, LessonEvent, WeekOption } from '$lib/components/timetable/types';
-	import { Temporal } from 'temporal-polyfill';
-	import LinkIcon from '@lucide/svelte/icons/link';
 	import CalendarIcon from '@lucide/svelte/icons/calendar';
 	import GithubIcon from '@lucide/svelte/icons/github';
-
-	const searchParamsSchema = createSearchParamsSchema({
-		group: { type: 'string', default: '' },
-		cohorts: { type: 'string', default: '' }
-	});
-
-	const params = useSearchParams(searchParamsSchema, {
-		pushHistory: false,
-		showDefaults: false,
-		noScroll: true
-	});
-
-	let groups = $state<GroupOption[]>([]);
-	let weeks = $state<WeekOption[]>([]);
-	let cohorts = $state<Cohort[]>([]);
-	let events = $state<LessonEvent[]>([]);
-
-	let selectedWeek = $state('');
-
-	let isLoadingMeta = $state(false);
-	let isLoadingSchedule = $state(false);
-	let error = $state('');
-	let isGeneratingLinks = $state(false);
-	let copiedField = $state<'site' | 'calendar' | null>(null);
-	let calendarWarning = $state('');
-
-	const selectedGroup = $derived(params.group);
-	const myCohorts = $derived(
-		params.cohorts
-			.split(',')
-			.map((s) => s.trim())
-			.filter(Boolean)
-	);
-
-	const uiLocale = $derived((getLocale() === 'de' ? 'de' : 'ru') as 'ru' | 'de');
-	const todayIso = $derived(Temporal.Now.plainDateISO('Asia/Almaty').toString());
-
-	const displayEvents = $derived.by(() => {
-		// Map cohortCode to category
-		const codeToCategory = new Map<string, string>();
-		for (const c of cohorts) {
-			codeToCategory.set(c.code, trackCategory(c.track));
-		}
-
-		// Which categories have a selection?
-		const selectedCodes = new Set(myCohorts);
-		const selectedCategories = new Set<string>();
-		for (const code of myCohorts) {
-			const cat = codeToCategory.get(code);
-			if (cat) selectedCategories.add(cat);
-		}
-
-		const result: LessonEvent[] = [];
-		const toCollapse = new Map<string, LessonEvent[]>();
-
-		for (const event of events) {
-			if (event.scope === 'core_fixed' || !event.cohortCode) {
-				result.push(event);
-				continue;
-			}
-
-			const cat = codeToCategory.get(event.cohortCode);
-			if (!cat) {
-				result.push(event);
-				continue;
-			}
-
-			if (selectedCategories.has(cat)) {
-				if (selectedCodes.has(event.cohortCode)) {
-					result.push(event);
-				}
-			} else {
-				const key = `${event.dateIso}|${event.startTime}|${event.endTime}|${cat}`;
-				if (!toCollapse.has(key)) toCollapse.set(key, []);
-				toCollapse.get(key)!.push(event);
-			}
-		}
-
-		// Merge collapsed groups into single placeholder events
-		for (const [key, group] of toCollapse) {
-			const first = group[0]!;
-			const cat = key.split('|')[3]!;
-			const label = categoryLabels[cat] ?? cat;
-			result.push({
-				...first,
-				id: first.id + '_merged',
-				subjectShortRu: label,
-				subjectFullRu: label,
-				subjectShortDe: label,
-				subjectFullDe: label,
-				lessonType: '',
-				cohortCode: null,
-				room: ''
-			});
-		}
-
-		result.sort((a, b) =>
-			a.dateIso.localeCompare(b.dateIso) || a.startTime.localeCompare(b.startTime)
-		);
-		return result;
-	});
-
-	const groupedEvents = $derived.by(() => {
-		const acc: Record<string, LessonEvent[]> = {};
-		for (const event of displayEvents) {
-			if (!acc[event.dateIso]) acc[event.dateIso] = [];
-			acc[event.dateIso]!.push(event);
-		}
-		return acc;
-	});
-	const orderedDates = $derived(Object.keys(groupedEvents).sort((a, b) => a.localeCompare(b)));
-	const groupSelectItems = $derived(
-		groups.map((group) => ({
-			value: group.codeRaw,
-			label: uiLocale === 'de' ? group.codeDe : group.codeRu
-		}))
-	);
-	const weekSelectItems = $derived(weeks.map((week) => ({ value: week.value, label: week.label })));
-
-	const categoryLabels = $derived<Record<string, string>>({
-		de: m.category_de(),
-		en: m.category_en(),
-		kz: m.category_kz(),
-		pe: m.category_pe()
-	});
-
-	const cohortGroups = $derived.by(() => {
-		const map = new Map<string, { label: string; items: { value: string; label: string }[]; value: string }>();
-		for (const c of cohorts) {
-			const cat = trackCategory(c.track);
-			if (!map.has(cat)) {
-				map.set(cat, {
-					label: categoryLabels[cat] ?? cat,
-					items: [],
-					value: ''
-				});
-			}
-			const group = map.get(cat)!;
-			group.items.push({ value: c.code, label: c.code });
-			if (myCohorts.includes(c.code)) {
-				group.value = c.code;
-			}
-		}
-		return [...map.values()];
-	});
-
-	function trackCategory(track: Cohort['track']): string {
-		return track;
-	}
-
-	function chooseInitialGroup(candidates: GroupOption[], preferred: string): string {
-		if (preferred) {
-			const resolved = candidates.find(
-				(group) =>
-					group.codeRaw === preferred || group.codeRu === preferred || group.codeDe === preferred
-			);
-			if (resolved) return resolved.codeRaw;
-		}
-		return candidates[0]?.codeRaw ?? '';
-	}
-
-	function chooseCurrentWeek(candidates: WeekOption[]): string {
-		if (candidates.length === 0) return '';
-		const today = Temporal.Now.plainDateISO('Asia/Almaty');
-		let targetDate = today;
-		if (today.dayOfWeek === 7) {
-			targetDate = today.add({ days: 1 });
-		}
-		const targetStr = targetDate.toString();
-
-		let best = candidates[0]!.value;
-		for (const week of candidates) {
-			if (week.startDateIso <= targetStr) {
-				best = week.value;
-			}
-		}
-		return best;
-	}
-
-	async function loadMeta(): Promise<void> {
-		isLoadingMeta = true;
-		error = '';
-		try {
-			const response = await fetch('/api/meta');
-			if (!response.ok) throw new Error(m.api_error_meta());
-			const data = (await response.json()) as { groups: GroupOption[]; weeks: WeekOption[] };
-			groups = data.groups;
-			weeks = data.weeks;
-
-			params.group = chooseInitialGroup(groups, params.group);
-			selectedWeek = chooseCurrentWeek(weeks);
-		} catch (err) {
-			error = err instanceof Error ? err.message : m.api_error_meta();
-		} finally {
-			isLoadingMeta = false;
-		}
-	}
-
-	async function loadSchedule(): Promise<void> {
-		if (!selectedGroup || !selectedWeek) return;
-		isLoadingSchedule = true;
-		error = '';
-
-		try {
-			const fetchParams = new URLSearchParams({ group: selectedGroup, week: selectedWeek });
-
-			const response = await fetch(`/api/schedule?${fetchParams.toString()}`);
-			if (!response.ok) {
-				const payload = (await response.json()) as { error?: string };
-				throw new Error(payload.error ?? m.api_error_schedule());
-			}
-
-			const data = (await response.json()) as { events: LessonEvent[]; cohorts: Cohort[] };
-			events = data.events;
-			cohorts = data.cohorts;
-
-			// Validate selected cohorts against what's available for this group
-			const allowed = new Set(cohorts.map((c) => c.code));
-			const valid = myCohorts.filter((c) => allowed.has(c));
-			params.cohorts = valid.join(',');
-		} catch (err) {
-			error = err instanceof Error ? err.message : m.api_error_schedule();
-			events = [];
-		} finally {
-			isLoadingSchedule = false;
-		}
-	}
-
-	async function handleGroupValueChange(value: string): Promise<void> {
-		if (!value || value === selectedGroup) return;
-		params.group = value;
-		await loadSchedule();
-	}
-
-	async function handleWeekValueChange(value: string): Promise<void> {
-		if (!value || value === selectedWeek) return;
-		selectedWeek = value;
-		await loadSchedule();
-	}
-
-	async function handleCohortChange(_trackLabel: string, code: string): Promise<void> {
-		calendarWarning = '';
-		const cohort = cohorts.find((c) => c.code === code);
-		if (!cohort) return;
-		const category = trackCategory(cohort.track);
-		const sameCategory = new Set(
-			cohorts.filter((c) => trackCategory(c.track) === category).map((c) => c.code)
-		);
-		const filtered = myCohorts.filter((c) => !sameCategory.has(c));
-		params.cohorts = [...filtered, code].join(',');
-	}
-
-	async function handleCopySiteLink(): Promise<void> {
-		await navigator.clipboard.writeText(location.href);
-		copiedField = 'site';
-		setTimeout(() => { copiedField = null; }, 1500);
-	}
-
-	async function handleCopyCalendarLink(): Promise<void> {
-		if (!selectedGroup || !selectedWeek) return;
-		const unselected = cohortGroups.filter(cg => !cg.value);
-		if (unselected.length > 0) {
-			calendarWarning = m.calendar_select_cohorts() + ' ' + unselected.map(g => g.label).join(', ');
-			return;
-		}
-		calendarWarning = '';
-		isGeneratingLinks = true;
-		error = '';
-		try {
-			const response = await fetch('/api/token', {
-				method: 'POST',
-				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({
-					group: selectedGroup,
-					week: selectedWeek,
-					cohorts: myCohorts,
-					lang: uiLocale
-				})
-			});
-			if (!response.ok) throw new Error(m.api_error_calendar());
-			const payload = (await response.json()) as { token: string };
-			const calendarUrl = `${location.origin}${localizeHref('/api/calendar', { locale: uiLocale })}?token=${encodeURIComponent(payload.token)}`;
-			await navigator.clipboard.writeText(calendarUrl);
-			copiedField = 'calendar';
-			setTimeout(() => { copiedField = null; }, 1500);
-		} catch (err) {
-			error = err instanceof Error ? err.message : m.api_error_calendar();
-		} finally {
-			isGeneratingLinks = false;
-		}
-	}
-
-	onMount(async () => {
-		await loadMeta();
-		if (!selectedGroup || !selectedWeek) return;
-		await loadSchedule();
-	});
 </script>
 
 <svelte:head>
@@ -314,58 +12,223 @@
 	<meta name="description" content={m.meta_description()} />
 </svelte:head>
 
-<main>
-	<ControlBar
-		groupLabel={m.group_label()}
-		weekLabel={m.week_label()}
-		groupValue={selectedGroup}
-		weekValue={selectedWeek}
-		groupItems={groupSelectItems}
-		weekItems={weekSelectItems}
-		{cohortGroups}
-		isDisabled={isLoadingMeta}
-		isLoading={isLoadingSchedule}
-		onGroupChange={handleGroupValueChange}
-		onWeekChange={handleWeekValueChange}
-		onCohortChange={handleCohortChange}
-	/>
+{#snippet selectBox(label: string, value: string, items: {value: string; label: string}[], disabled: boolean, onChange: (v: string) => void)}
+	<label class="flex-1 min-w-44">
+		<span class="block brutal-micro mb-1.5 text-neutral-500 tracking-[0.25em]">
+			{label}
+		</span>
+		<Select.Root type="single" {value} onValueChange={onChange} {items} {disabled}>
+			<Select.Trigger
+				class="brutal-border brutal-hover p-2.5 w-full flex items-center justify-between text-xs font-bold uppercase tracking-wider disabled:opacity-30"
+			>
+				<span class="truncate">{items.find((i) => i.value === value)?.label ?? '—'}</span>
+				<span aria-hidden="true" class="ml-2 brutal-micro">&#9660;</span>
+			</Select.Trigger>
+			<Select.Portal>
+				<Select.Content
+					sideOffset={0}
+					class="z-50 w-(--bits-select-anchor-width) brutal-border bg-white"
+				>
+					<Select.Viewport class="max-h-64 overflow-y-auto">
+						{#each items as item (item.value)}
+							<Select.Item
+								value={item.value}
+								label={item.label}
+								class="p-2.5 text-xs font-bold uppercase tracking-wider cursor-pointer brutal-hover data-highlighted:bg-black data-highlighted:text-white"
+							>
+								{item.label}
+							</Select.Item>
+						{/each}
+					</Select.Viewport>
+				</Select.Content>
+			</Select.Portal>
+		</Select.Root>
+	</label>
+{/snippet}
 
-	{#if error}
-		<section>{error}</section>
-	{/if}
+<SchedulerShell>
+	{#snippet children(ctx)}
+		<main class="mb-0">
+			<div class="border-b-4 border-black pb-6 mb-0 flex flex-wrap gap-3">
+				{@render selectBox(
+					m.group_label(),
+					ctx.selectedGroup,
+					ctx.groupSelectItems,
+					ctx.isLoadingMeta,
+					ctx.onGroupChange
+				)}
+				{#each ctx.cohortGroups as cg (cg.label)}
+					{@render selectBox(
+						cg.label,
+						cg.value,
+						cg.items,
+						ctx.isLoadingMeta || ctx.isLoadingSchedule,
+						(v) => ctx.onCohortChange(cg.label, v)
+					)}
+				{/each}
+				{@render selectBox(
+					m.week_label(),
+					ctx.selectedWeek,
+					ctx.weekSelectItems,
+					ctx.isLoadingMeta,
+					ctx.onWeekChange
+				)}
+			</div>
 
-	<WeekView
-		{orderedDates}
-		{groupedEvents}
-		isLoading={isLoadingMeta || isLoadingSchedule}
-		{todayIso}
-		{uiLocale}
-	/>
-</main>
+			{#if ctx.error}
+				<div class="border-4 border-red-600 bg-red-50 p-4 text-red-900 brutal-micro">
+					{ctx.error}
+				</div>
+			{/if}
 
-<footer class="border-t pt-4 space-y-2">
-	<div class="flex gap-2">
-		<button
-			type="button"
-			class="border p-2 inline-flex items-center gap-1"
-			disabled={isGeneratingLinks || isLoadingSchedule}
-			onclick={handleCopySiteLink}
-		>
-			<LinkIcon size={16} />
-			{copiedField === 'site' ? m.copied() : m.copy_site_link()}
-		</button>
-		<button
-			type="button"
-			class="border p-2 inline-flex items-center gap-1"
-			disabled={isGeneratingLinks || isLoadingSchedule}
-			onclick={handleCopyCalendarLink}
-		>
-			<CalendarIcon size={16} />
-			{copiedField === 'calendar' ? m.copied() : m.copy_calendar_link()}
-		</button>
-	</div>
-	{#if calendarWarning}
-		<p>{calendarWarning}</p>
-	{/if}
-	<p class="inline-flex items-center gap-1">{m.made_by()} <a href="https://github.com/romankurakin" class="inline-flex items-center gap-1"><GithubIcon size={16} /> Roman</a></p>
-</footer>
+			{#if ctx.isLoadingMeta || ctx.isLoadingSchedule}
+				<div class="py-20 text-center">
+					<span class="text-xl font-bold uppercase tracking-[0.3em] animate-pulse">
+						{m.loading()}
+					</span>
+				</div>
+			{:else if ctx.orderedDates.length === 0}
+				<div class="py-20 text-center text-sm uppercase tracking-widest text-neutral-400">
+					{m.no_events()}
+				</div>
+			{:else}
+				<div class="hidden sm:block overflow-x-auto -mb-0.75">
+					<table class="w-full border-collapse brutal-border-b table-fixed">
+						<thead>
+							<tr>
+								<th class="w-18 min-w-18 p-0"></th>
+								{#each ctx.orderedDates as date (date)}
+									<th
+										id="day-{date}"
+										class="p-3 brutal-day text-left brutal-border-l"
+										class:bg-black={ctx.isToday(date)}
+										class:text-white={ctx.isToday(date)}
+										class:bg-neutral-100={!ctx.isToday(date)}
+									>
+										{ctx.formatDateLabel(date)}
+									</th>
+								{/each}
+							</tr>
+						</thead>
+						<tbody>
+							{#each ctx.timeSlots as slot (slot.key)}
+								<tr class="brutal-border-t">
+									<td class="p-0 align-top">
+										<div class="px-2 py-3 flex flex-col items-end leading-none">
+											<span class="text-xs font-bold text-black">{slot.start}</span>
+											<span class="text-xs font-bold text-black mt-0.5">{slot.end}</span>
+										</div>
+									</td>
+									{#each ctx.orderedDates as date (date)}
+										{@const slotEvents = ctx.getSlotEvents(date, slot.key)}
+										{@const firstColor = slotEvents.length === 1 ? ctx.subjectColorMap.get(slotEvents[0]!.subjectShortRu) : undefined}
+										<td
+											class="brutal-border-l p-0 {slotEvents.length === 0 ? 'bg-neutral-50' : ''}"
+											style={firstColor ? `background: ${cv(firstColor, 300)};` : ''}
+										>
+											{#each slotEvents as event, ei (event.id)}
+												{@const color = ctx.subjectColorMap.get(event.subjectShortRu)}
+												<div
+													class="p-2.5 {ei > 0 ? 'border-t border-black/20' : ''} {!color ? 'bg-neutral-100 text-neutral-500' : ''}"
+													style={slotEvents.length > 1 && color
+														? `background: ${cv(color, 300)};`
+														: ''}
+												>
+													<div class="font-bold text-xs leading-tight">
+														{ctx.eventTitleLabel(event)}
+													</div>
+													{#if event.lessonType && ctx.uiLocale !== 'de'}
+														<div class="brutal-micro mt-1 opacity-50">
+															{event.lessonType}
+														</div>
+													{/if}
+													{#if event.room}
+														<div class="font-bold text-xs leading-tight mt-0.5">
+															{event.room}
+														</div>
+													{/if}
+												</div>
+											{/each}
+										</td>
+									{/each}
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+
+				<div class="sm:hidden">
+					{#each ctx.orderedDates as date (date)}
+						<div id="day-mobile-{date}" class="brutal-border-t">
+							<div
+								class="p-3 brutal-day sticky top-0 z-10"
+								class:bg-black={ctx.isToday(date)}
+								class:text-white={ctx.isToday(date)}
+								class:bg-neutral-100={!ctx.isToday(date)}
+							>
+								{ctx.formatDateLabel(date)}
+							</div>
+							{#each ctx.groupedEvents[date] ?? [] as event (event.id)}
+								{@const color = ctx.subjectColorMap.get(event.subjectShortRu)}
+								<div
+									class="border-t border-black/20 p-3 flex items-start gap-3"
+									style={color
+										? `background: ${cv(color, 300)};`
+										: ''}
+								>
+									<div class="text-xs font-bold shrink-0 w-16 pt-0.5 {color ? '' : 'text-neutral-400'}">
+										{event.startTime}<br />{event.endTime}
+									</div>
+									<div class="flex-1 min-w-0">
+										<div class="font-bold text-sm leading-tight">
+											{ctx.eventTitleLabel(event)}
+										</div>
+										{#if event.lessonType && ctx.uiLocale !== 'de'}
+											<div class="brutal-micro mt-1 opacity-50">
+												{event.lessonType}
+											</div>
+										{/if}
+										{#if event.room}
+											<div class="font-bold text-sm leading-tight mt-0.5">
+												{event.room}
+											</div>
+										{/if}
+									</div>
+								</div>
+							{/each}
+						</div>
+					{/each}
+					<div class="brutal-border-t"></div>
+				</div>
+			{/if}
+		</main>
+
+		<footer class="border-t-4 border-black pt-5 mt-0">
+			<div class="flex gap-3 flex-wrap">
+				<button
+					type="button"
+					class="brutal-border brutal-hover brutal-micro p-2.5 inline-flex items-center gap-2 disabled:opacity-30"
+					disabled={ctx.isGeneratingLinks || ctx.isLoadingSchedule}
+					onclick={ctx.onCopyCalendarLink}
+				>
+					<CalendarIcon size={12} />
+					{ctx.copiedField === 'calendar' ? m.copied() : m.copy_calendar_link()}
+				</button>
+			</div>
+			{#if ctx.calendarWarning}
+				<p class="mt-3 brutal-micro text-red-600">
+					{ctx.calendarWarning}
+				</p>
+			{/if}
+			<p class="mt-4 text-xs font-bold leading-tight inline-flex items-center gap-1">
+				{m.made_by()}
+				<a
+					href="https://github.com/romankurakin"
+					class="inline-flex items-center gap-1 hover:underline"
+				>
+					<GithubIcon size={12} /> Roman Kurakin
+				</a>
+			</p>
+		</footer>
+	{/snippet}
+</SchedulerShell>

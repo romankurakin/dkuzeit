@@ -1,1 +1,51 @@
 @import "tailwindcss";
+@import "@evilmartians/harmony/tailwind.css";
+
+body {
+	font-family: system-ui, sans-serif;
+}
+
+
+/* 3px solid black border — the core brutalist element */
+@utility brutal-border {
+	border-width: 3px;
+	border-style: solid;
+	border-color: var(--color-black);
+}
+
+/* Directional 3px black borders */
+@utility brutal-border-l {
+	border-left: 3px solid var(--color-black);
+}
+@utility brutal-border-t {
+	border-top: 3px solid var(--color-black);
+}
+@utility brutal-border-b {
+	border-bottom: 3px solid var(--color-black);
+}
+
+/* Micro label: 10px bold uppercase wide-tracked */
+@utility brutal-micro {
+	font-size: 10px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.2em;
+}
+
+/* Day column header: slightly larger micro variant */
+@utility brutal-day {
+	font-size: 11px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.15em;
+}
+
+/* Invert on hover: black bg + white text */
+@utility brutal-hover {
+	transition-property: color, background-color;
+	transition-duration: 100ms;
+	&:hover {
+		background-color: var(--color-black);
+		color: var(--color-white);
+	}
+}

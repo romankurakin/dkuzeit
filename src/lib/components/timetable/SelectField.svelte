@@ -31,7 +31,7 @@
 			<span aria-hidden="true">▾</span>
 		</Select.Trigger>
 		<Select.Portal>
-			<Select.Content sideOffset={4} class="z-50 w-[var(--bits-select-anchor-width)] border bg-white">
+			<Select.Content sideOffset={4} class="z-50 w-(--bits-select-anchor-width) border bg-white">
 				<Select.Viewport class="max-h-64 overflow-y-auto">
 					{#each items as item (item.value)}
 						<Select.Item value={item.value} label={item.label} class="p-2">
