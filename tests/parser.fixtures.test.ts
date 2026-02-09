@@ -18,7 +18,7 @@ const fixtureReady = existsSync(manifestPath);
 
 const suite = fixtureReady ? describe : describe.skip;
 
-suite('DKU parser E2E (fixtures)', () => {
+suite('DKU parser (fixtures)', () => {
 	it('parses navbar fixture and validates shape', async () => {
 		const navbarHtml = await readFile(path.join(fixtureRoot, 'frames/navbar.htm'), 'utf8');
 		const meta = parseNavHtml(navbarHtml);
@@ -83,7 +83,7 @@ suite('DKU parser E2E (fixtures)', () => {
 });
 
 if (!fixtureReady) {
-	describe('DKU parser E2E prerequisites', () => {
+	describe('DKU parser fixture prerequisites', () => {
 		it('requires fixture snapshot', () => {
 			expect(`Fixture snapshot missing at ${manifestPath}. Run: npm run fixtures:sync`).toBeTypeOf(
 				'string'
