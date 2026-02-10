@@ -3,7 +3,7 @@ const GERMAN_NAME_PREFIX_RE = /^(.*?)\s+[А-Яа-яЁёҚқӘәҒғҢңӨөҰұ�
 const LESSON_TYPE_SUFFIX_RE = /\s+([А-Яа-яЁёҚқӘәҒғҢңӨөҰұҮүІіҺһ].*)$/;
 const KNOWN_LESSON_TYPE_RE = /\s+(пр\.|лек\.|лекция|практика|семинар)$/;
 
-/** Detect bilingual names where the part after "/" is Kazakh, not German */
+// True when text after "/" is Kazakh not German
 export function isMissingGermanName(subjectFullRaw: string): boolean {
 	const slashIdx = subjectFullRaw.indexOf('/');
 	if (slashIdx === -1) return false;
@@ -37,7 +37,7 @@ export function splitBilingualLabel(
 	return { ru, de, lessonType };
 }
 
-/** Strip trailing slashes, leading dashes and other source data artifacts */
+// Strip trailing slashes, leading dashes and source artifacts
 export function sanitizeLabel(value: string): string {
 	return value.replace(/\/$/, '').replace(/^-+/, '').trim();
 }

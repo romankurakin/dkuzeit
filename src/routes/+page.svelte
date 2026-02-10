@@ -24,14 +24,14 @@
 	function handleGroupChange(value: string): void {
 		const params = new URLSearchParams(page.url.searchParams);
 		params.set('group', value);
-		// eslint-disable-next-line svelte/no-navigation-without-resolve -- query-param-only navigation on current page
+		// eslint-disable-next-line svelte/no-navigation-without-resolve -- same-page query param change
 		goto(`/?${params.toString()}`, { replaceState: true, noScroll: true });
 	}
 
 	function handleWeekChange(value: string): void {
 		const params = new URLSearchParams(page.url.searchParams);
 		params.set('week', value);
-		// eslint-disable-next-line svelte/no-navigation-without-resolve -- query-param-only navigation on current page
+		// eslint-disable-next-line svelte/no-navigation-without-resolve -- same-page query param change
 		goto(`/?${params.toString()}`, { replaceState: true, noScroll: true });
 	}
 </script>
@@ -107,13 +107,13 @@
 			} else {
 				params.delete('cohorts');
 			}
-			// eslint-disable-next-line svelte/no-navigation-without-resolve -- query-param-only navigation on current page
+			// eslint-disable-next-line svelte/no-navigation-without-resolve -- same-page query param change
 			goto(`/?${params.toString()}`, { replaceState: true, noScroll: true });
 		}}
 	>
 		{#snippet children(ctx)}
 			<main>
-				<div class="flex flex-wrap gap-3 brutal-border-b pb-6">
+				<div class="brutal-border-b flex flex-wrap gap-3 pb-6">
 					{@render selectBox(
 						m.group_label(),
 						ctx.selectedGroup,
@@ -129,7 +129,9 @@
 						ctx.onWeekChange
 					)}
 					{#each ctx.cohortGroups as cg (cg.label)}
-						{@render selectBox(cg.label, cg.value, cg.items, false, (v) => ctx.onCohortChange(cg.label, v))}
+						{@render selectBox(cg.label, cg.value, cg.items, false, (v) =>
+							ctx.onCohortChange(cg.label, v)
+						)}
 					{/each}
 				</div>
 

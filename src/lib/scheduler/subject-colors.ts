@@ -46,11 +46,7 @@ export function cv(color: HarmonyColor, shade: number): string {
 	return `var(--color-${color}-${shade})`;
 }
 
-/**
- * Tailwind v4 tree-shakes @theme CSS variables that aren't used by any utility class.
- * This safelist ensures the scanner sees these class names so it emits the variables.
- * The array is never used at runtime — only its string literals matter for the scanner.
- */
+// TW v4 safelist, these literals make the scanner emit the @theme CSS vars
 export const _TW_SAFELIST = [
 	'bg-red-400',
 	'bg-red-500',

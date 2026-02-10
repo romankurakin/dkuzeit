@@ -32,7 +32,7 @@ export function germanOnlyLabel(input: string): string {
 	const slashIdx = value.indexOf('/');
 	if (slashIdx === -1) return value;
 	const rest = value.slice(slashIdx + 1).trim();
-	// Strip Cyrillic suffix (lesson type), keep only the Latin German name
+	// Strip Cyrillic suffix, keep Latin German name
 	const match = rest.match(/^(.*?)\s+[А-Яа-яЁёҚқӘәҒғҢңӨөҰұҮүІіҺһ]/);
 	return (match ? match[1]!.trim() : rest) || value;
 }

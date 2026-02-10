@@ -131,7 +131,7 @@
 		}
 	}
 
-	// Auto-scroll to today when data loads
+	// Auto-scroll to today on data load
 	$effect(() => {
 		if (orderedDates.length === 0) return;
 		const target = orderedDates.includes(todayIso)

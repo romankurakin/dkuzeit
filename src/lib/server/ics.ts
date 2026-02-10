@@ -24,7 +24,7 @@ const ALMATY_TZ: IcsTimezone = {
 function toDateObject(dateIso: string, hhmm: string): IcsDateObject {
 	const [year, month, day] = dateIso.split('-').map(Number) as [number, number, number];
 	const [hours, minutes] = hhmm.split(':').map(Number) as [number, number];
-	// ts-ics uses getUTC* on date, so encode local Almaty time in UTC slots
+	// ts-ics reads getUTC* so we encode Almaty time in UTC slots
 	const date = new Date(Date.UTC(year, month - 1, day, hours, minutes));
 	return {
 		date,
@@ -33,7 +33,7 @@ function toDateObject(dateIso: string, hhmm: string): IcsDateObject {
 }
 
 function buildUid(event: LessonEvent): string {
-	// Room is excluded so that room changes don't create a new calendar event
+	// Exclude room so room changes dont split events
 	const base = `${event.dateIso}|${event.startTime}|${event.endTime}|${event.groupCode}|${event.subjectShortRaw}|${event.cohortCode ?? ''}`;
 	return `${fnv1aHex(base)}@dku-timetable`;
 }
