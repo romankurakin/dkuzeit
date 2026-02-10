@@ -3,12 +3,15 @@ import { parseNavHtml, parseTimetablePage } from './parser';
 import type { GroupWeekSchedule, LessonEvent, MetaPayload, WeekOption } from './types';
 import { todayInAlmaty } from './time';
 import { cached, fetchText } from './dku-fetch';
+import { traceFetch, traceFn } from './tracing';
 
 export { CLIENT_CACHE_HEADER, CLIENT_TTL_SECONDS } from './dku-fetch';
 
 export async function getMeta(): Promise<MetaPayload> {
 	return cached('meta', async () => {
-		const html = await fetchText('frames/navbar.htm');
+		const html = await traceFetch('GET timetable.dku.kz/frames/navbar.htm', () =>
+			fetchText('frames/navbar.htm')
+		);
 		return parseNavHtml(html);
 	});
 }
@@ -25,7 +28,12 @@ async function getSchedule(
 
 	return cached(`schedule:${week.value}:${group.id}`, async () => {
 		const path = `${week.value}/c/c${String(group.id).padStart(5, '0')}.htm`;
-		const parsed = await parseTimetablePage(await fetchText(path), group, week);
+		const html = await traceFetch(`GET timetable.dku.kz/${path}`, () => fetchText(path));
+		const parsed = await traceFn(
+			'parseTimetablePage',
+			{ group: group.codeRaw, week: week.value },
+			() => parseTimetablePage(html, group, week)
+		);
 		return { group, week, events: parsed.events, cohorts: parsed.cohorts };
 	});
 }

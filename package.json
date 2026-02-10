@@ -27,10 +27,13 @@
 		"ts-ics": "^2.4.0"
 	},
 	"devDependencies": {
+		"@commitlint/cli": "^20.4.1",
+		"@commitlint/config-conventional": "^20.4.1",
 		"@eslint/js": "^9.39.2",
 		"@inlang/paraglide-js": "^2.10.0",
 		"@inlang/plugin-m-function-matcher": "^2.2.0",
 		"@inlang/plugin-message-format": "^4.2.0",
+		"@j178/prek": "^0.3.2",
 		"@playwright/test": "^1.58.2",
 		"@sveltejs/adapter-cloudflare": "^7.2.6",
 		"@sveltejs/kit": "^2.50.2",

@@ -5,6 +5,7 @@ import {
 	pickRollingWeeksForCalendar
 } from '$lib/server/dku';
 import { buildIcsCalendar } from '$lib/server/ics';
+import { traceSerialize } from '$lib/server/tracing';
 import { verifyToken } from '$lib/server/token';
 import type { RequestHandler } from './$types';
 
@@ -36,7 +37,9 @@ export const GET: RequestHandler = async ({ url, platform }) => {
 
 	const group = meta.groups.find((g) => g.codeRaw === payload.g);
 	const calendarTitle = buildCalendarTitle(group?.codeRu ?? payload.g);
-	const calendar = buildIcsCalendar(calendarTitle, events, lang);
+	const calendar = traceSerialize('buildIcsCalendar', { eventCount: events.length }, () =>
+		buildIcsCalendar(calendarTitle, events, lang)
+	);
 
 	return new Response(calendar, {
 		headers: {

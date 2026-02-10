@@ -1,3 +1,5 @@
+import { traceCacheGet } from './tracing';
+
 export const BASE_URL = 'https://timetable.dku.kz';
 
 // Two-layer TTL: edge cache (Cache API) holds parsed upstream data, HTTP tells browsers/CDN to reuse responses.
@@ -15,12 +17,20 @@ export async function cached<T>(key: string, compute: () => Promise<T>): Promise
 	const url = `${BASE_URL}/_cache/${encodeURIComponent(key)}`;
 
 	if (cache) {
-		try {
-			const hit = await cache.match(url);
-			if (hit) return (await hit.json()) as T;
-		} catch {
-			/* miss */
-		}
+		const hit = await traceCacheGet(key, async (setHit) => {
+			try {
+				const res = await cache.match(url);
+				if (res) {
+					setHit(true);
+					return (await res.json()) as T;
+				}
+			} catch {
+				/* miss */
+			}
+			setHit(false);
+			return undefined;
+		});
+		if (hit !== undefined) return hit;
 	}
 
 	let pending = inflight.get(key) as Promise<T> | undefined;

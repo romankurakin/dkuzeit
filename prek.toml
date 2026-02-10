@@ -1,0 +1,53 @@
+default_install_hook_types = ["pre-commit", "commit-msg", "pre-push"]
+
+[[repos]]
+repo = "local"
+
+[[repos.hooks]]
+id = "prettier"
+name = "Prettier"
+language = "system"
+entry = "npx prettier --check --ignore-unknown"
+stages = ["pre-commit", "pre-push"]
+
+[[repos.hooks]]
+id = "eslint"
+name = "ESLint"
+language = "system"
+entry = "npx eslint"
+types_or = ["javascript", "ts", "svelte"]
+stages = ["pre-commit", "pre-push"]
+
+[[repos.hooks]]
+id = "check"
+name = "Svelte Check"
+language = "system"
+entry = "npm run check"
+pass_filenames = false
+always_run = true
+stages = ["pre-commit", "pre-push"]
+
+[[repos.hooks]]
+id = "test"
+name = "Unit Tests"
+language = "system"
+entry = "npm run test"
+pass_filenames = false
+always_run = true
+stages = ["pre-commit", "pre-push"]
+
+[[repos.hooks]]
+id = "test-e2e"
+name = "E2E Tests"
+language = "system"
+entry = "npm run test:e2e"
+pass_filenames = false
+always_run = true
+stages = ["pre-push"]
+
+[[repos.hooks]]
+id = "commitlint"
+name = "Conventional Commit"
+language = "system"
+entry = "npx commitlint --edit"
+stages = ["commit-msg"]
