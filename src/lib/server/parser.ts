@@ -297,7 +297,7 @@ function stableEventId(input: string): string {
 	return `e${fnv1aHex(input)}`;
 }
 
-/** Fast regex-only check: does this timetable page contain any events? */
+// Regex check for events on a timetable page
 export function hasEvents(html: string): boolean {
 	return parseLegendEntries(html, 'Дисциплины').length > 0;
 }

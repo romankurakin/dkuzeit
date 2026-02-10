@@ -1,4 +1,4 @@
-// See https://svelte.dev/docs/kit/types#app.d.ts
+// https://svelte.dev/docs/kit/types#app.d.ts
 
 declare global {
 	namespace App {
@@ -9,7 +9,7 @@ declare global {
 		}
 	}
 
-	// Cloudflare Workers exposes caches.default (not in standard CacheStorage)
+	// CF Workers caches.default, not in standard CacheStorage
 	interface CacheStorage {
 		default: Cache;
 	}

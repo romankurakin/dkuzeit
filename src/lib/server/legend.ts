@@ -28,7 +28,7 @@ export function parseLegendEntries(
 	return output;
 }
 
-/** Normalize a code key: strip leading dots, collapse spaces, strip trailing slash, uppercase. */
+// Normalize to uppercase, strip dots and slashes, collapse spaces
 function fastCodeKey(input: string): string {
 	return input.replace(/^\.+/, '').replace(/\s+/g, '').replace(/\/$/, '').toUpperCase();
 }

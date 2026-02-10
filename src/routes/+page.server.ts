@@ -37,7 +37,7 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
 	const weekValue = resolveWeek(meta.weeks, url.searchParams.get('week') ?? '');
 	let cacheControl = CLIENT_CACHE_HEADER;
 	if (!groupCode || !weekValue) {
-		// Return 200 with empty state, but avoid caching this fallback document.
+		// Empty state, skip cache
 		cacheControl = 'private, no-store';
 		setHeaders({ 'cache-control': cacheControl });
 		return {
@@ -58,9 +58,9 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
 		events = merged.events;
 		cohorts = merged.cohorts;
 	} catch {
-		// Do not cache fallback HTML, otherwise an intermittent upstream failure can poison the document cache with an empty schedule.
+		// Upstream failure, dont cache empty schedule
 		cacheControl = 'private, no-store';
-		// Keep empty schedule.
+		// Keep empty schedule
 	}
 	setHeaders({ 'cache-control': cacheControl });
 	return {
