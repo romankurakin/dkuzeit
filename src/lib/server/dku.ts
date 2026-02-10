@@ -25,7 +25,7 @@ async function getSchedule(
 
 	return cached(`schedule:${week.value}:${group.id}`, async () => {
 		const path = `${week.value}/c/c${String(group.id).padStart(5, '0')}.htm`;
-		const parsed = parseTimetablePage(await fetchText(path), group, week);
+		const parsed = await parseTimetablePage(await fetchText(path), group, week);
 		return { group, week, events: parsed.events, cohorts: parsed.cohorts };
 	});
 }

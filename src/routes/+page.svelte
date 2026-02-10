@@ -129,9 +129,7 @@
 						ctx.onWeekChange
 					)}
 					{#each ctx.cohortGroups as cg (cg.label)}
-						{@render selectBox(cg.label, cg.value, cg.items, false, (v) =>
-							ctx.onCohortChange(cg.label, v)
-						)}
+						{@render selectBox(cg.label, cg.value, cg.items, false, (v) => ctx.onCohortChange(cg.label, v))}
 					{/each}
 				</div>
 

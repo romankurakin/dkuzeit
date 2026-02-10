@@ -1,4 +1,3 @@
-import { parse as parseHtml5 } from 'parse5';
 import { cleanText, germanOnlyLabel, russianOnlyLabel, stripParenSuffix } from './text';
 import type {
 	GroupOption,
@@ -11,15 +10,9 @@ import type {
 } from './types';
 import { trackRules, cohortCodeRules, genericCodes } from './cohort-config';
 import { fnv1aHex } from './hash';
-import {
-	attrValue,
-	collapseSpaces,
-	directChildrenByTag,
-	findFirstByTag,
-	nodeText
-} from './html-utils';
 import { makeLegendResolver, parseLegendEntries } from './legend';
 import { isMissingGermanName, sanitizeLabel, splitBilingualLabel } from './bilingual';
+import { runHtmlRewriter } from './html-rewriter-runtime';
 
 function parseWeekLabelDate(label: string): string {
 	const match = label.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
@@ -97,23 +90,188 @@ function parseTimeRange(text: string): { start: string; end: string } | null {
 	return { start: padTime(times[0]!), end: padTime(times[times.length - 1]!) };
 }
 
-function extractCellLines(td: import('./html-utils').ParseElement): string[] {
-	const nestedTable = directChildrenByTag(td, 'table')[0] ?? findFirstByTag(td, 'table');
-	if (!nestedTable) {
-		const fallback = collapseSpaces(nodeText(td));
-		return fallback ? [fallback] : [];
-	}
+function collapseSpaces(input: string): string {
+	return input.replace(/[\s\u00a0]+/g, ' ').trim();
+}
 
-	const tbody = directChildrenByTag(nestedTable, 'tbody')[0] ?? nestedTable;
-	const rows = directChildrenByTag(tbody, 'tr');
-	const lines: string[] = [];
-	for (const row of rows) {
-		const cells = directChildrenByTag(row, 'td');
-		if (cells.length === 0) continue;
-		const value = collapseSpaces(nodeText(cells[0]!));
-		if (value) lines.push(value);
-	}
-	return lines;
+interface ParsedCell {
+	colSpan: number;
+	rowSpan: number;
+	fallbackText: string;
+	nestedLines: string[];
+}
+
+interface ParsedRow {
+	cells: ParsedCell[];
+}
+
+interface OpenNestedRow {
+	capture: boolean;
+	cellIndex: number;
+	firstCellBuffer: string | null;
+}
+
+interface OpenMainCell {
+	cell: ParsedCell;
+	nestedTableDepth: number;
+	targetNestedTableDepth: number | null;
+	nestedRows: OpenNestedRow[];
+}
+
+function extractCellLines(cell: ParsedCell): string[] {
+	if (cell.nestedLines.length > 0) return cell.nestedLines;
+	const fallback = collapseSpaces(cell.fallbackText);
+	return fallback ? [fallback] : [];
+}
+
+async function collectMainTableRows(
+	html: string
+): Promise<{ rows: ParsedRow[]; foundMainTable: boolean }> {
+	const rows: ParsedRow[] = [];
+	let centerTableCount = 0;
+	let insideMainTable = false;
+	let foundMainTable = false;
+	let activeMainRow: ParsedRow | null = null;
+	let activeMainCell: OpenMainCell | null = null;
+
+	await runHtmlRewriter(html, (rewriter) => {
+		rewriter.on('center > table', {
+			element(element) {
+				centerTableCount += 1;
+				const isMainTable = centerTableCount === 1;
+				if (isMainTable) {
+					foundMainTable = true;
+					insideMainTable = true;
+				}
+
+				element.onEndTag(() => {
+					if (isMainTable) insideMainTable = false;
+				});
+			}
+		});
+
+		rewriter.on('center > table > tbody > tr, center > table > tr', {
+			element(element) {
+				if (!insideMainTable) return;
+				const row: ParsedRow = { cells: [] };
+				activeMainRow = row;
+
+				element.onEndTag(() => {
+					rows.push(row);
+					if (activeMainRow === row) activeMainRow = null;
+				});
+			}
+		});
+
+		rewriter.on('center > table > tbody > tr > td, center > table > tr > td', {
+			element(element) {
+				if (!insideMainTable || !activeMainRow) return;
+
+				const colSpanRaw = Number(element.getAttribute('colspan') ?? '1');
+				const rowSpanRaw = Number(element.getAttribute('rowspan') ?? '1');
+				const parsedCell: ParsedCell = {
+					colSpan: Number.isFinite(colSpanRaw) && colSpanRaw > 0 ? colSpanRaw : 1,
+					rowSpan: Number.isFinite(rowSpanRaw) && rowSpanRaw > 0 ? rowSpanRaw : 1,
+					fallbackText: '',
+					nestedLines: []
+				};
+				activeMainRow.cells.push(parsedCell);
+
+				const openCell: OpenMainCell = {
+					cell: parsedCell,
+					nestedTableDepth: 0,
+					targetNestedTableDepth: null,
+					nestedRows: []
+				};
+				activeMainCell = openCell;
+
+				element.onEndTag(() => {
+					if (activeMainCell === openCell) activeMainCell = null;
+				});
+			},
+			text(text) {
+				if (!insideMainTable || !activeMainCell) return;
+				activeMainCell.cell.fallbackText += text.text;
+			}
+		});
+
+		rewriter.on('center > table > tbody > tr > td table, center > table > tr > td table', {
+			element(element) {
+				const openCell = activeMainCell;
+				if (!insideMainTable || !openCell) return;
+
+				openCell.nestedTableDepth += 1;
+				const depthAtEntry = openCell.nestedTableDepth;
+				if (openCell.targetNestedTableDepth === null) {
+					openCell.targetNestedTableDepth = depthAtEntry;
+				}
+
+				element.onEndTag(() => {
+					openCell.nestedTableDepth = Math.max(0, openCell.nestedTableDepth - 1);
+				});
+			}
+		});
+
+		rewriter.on('center > table > tbody > tr > td table tr, center > table > tr > td table tr', {
+			element(element) {
+				const openCell = activeMainCell;
+				if (!insideMainTable || !openCell) return;
+
+				const targetDepth = openCell.targetNestedTableDepth;
+				const nestedRow: OpenNestedRow = {
+					capture: targetDepth !== null && openCell.nestedTableDepth === targetDepth,
+					cellIndex: 0,
+					firstCellBuffer: null
+				};
+				openCell.nestedRows.push(nestedRow);
+
+				element.onEndTag(() => {
+					const idx = openCell.nestedRows.lastIndexOf(nestedRow);
+					if (idx >= 0) openCell.nestedRows.splice(idx, 1);
+				});
+			}
+		});
+
+		rewriter.on(
+			'center > table > tbody > tr > td table tr > td, center > table > tr > td table tr > td',
+			{
+				element(element) {
+					const openCell = activeMainCell;
+					if (!insideMainTable || !openCell) return;
+
+					const nestedRow = openCell.nestedRows[openCell.nestedRows.length - 1];
+					if (!nestedRow || !nestedRow.capture) return;
+
+					const currentCellIndex = nestedRow.cellIndex;
+					nestedRow.cellIndex += 1;
+					if (currentCellIndex !== 0) return;
+
+					nestedRow.firstCellBuffer = '';
+					element.onEndTag(() => {
+						const raw = nestedRow.firstCellBuffer;
+						nestedRow.firstCellBuffer = null;
+						if (typeof raw !== 'string') return;
+						const value = collapseSpaces(raw);
+						if (value) openCell.cell.nestedLines.push(value);
+					});
+				},
+				text(text) {
+					const openCell = activeMainCell;
+					if (!insideMainTable || !openCell) return;
+
+					const nestedRow = openCell.nestedRows[openCell.nestedRows.length - 1];
+					if (!nestedRow || !nestedRow.capture) return;
+					if (nestedRow.firstCellBuffer === null) return;
+
+					const targetDepth = openCell.targetNestedTableDepth;
+					if (targetDepth === null || openCell.nestedTableDepth !== targetDepth) return;
+					nestedRow.firstCellBuffer += text.text;
+				}
+			}
+		);
+	});
+
+	return { rows, foundMainTable };
 }
 
 function detectTrack(subjectFullRaw: string): CohortTrack {
@@ -144,27 +302,20 @@ export function hasEvents(html: string): boolean {
 	return parseLegendEntries(html, 'Дисциплины').length > 0;
 }
 
-export function parseTimetablePage(
+export async function parseTimetablePage(
 	html: string,
 	group: GroupOption,
 	week: WeekOption
-): Pick<GroupWeekSchedule, 'events' | 'cohorts'> {
-	const document = parseHtml5(html);
-	const center = findFirstByTag(document, 'center');
-	if (!center) throw new Error('Timetable center container not found');
+): Promise<Pick<GroupWeekSchedule, 'events' | 'cohorts'>> {
+	if (!/<center\b/i.test(html)) throw new Error('Timetable center container not found');
 
-	const topLevelTables = directChildrenByTag(center, 'table');
-	const mainTable = topLevelTables[0];
-	if (!mainTable) throw new Error('Main timetable table not found');
-
-	const rowContainer = directChildrenByTag(mainTable, 'tbody')[0] ?? mainTable;
-	const rows = directChildrenByTag(rowContainer, 'tr');
+	const { rows, foundMainTable } = await collectMainTableRows(html);
+	if (!foundMainTable) throw new Error('Main timetable table not found');
 	if (rows.length === 0) throw new Error('No rows in timetable table');
 
-	const firstRowCells = directChildrenByTag(rows[0]!, 'td');
+	const firstRowCells = rows[0]!.cells;
 	const colCount = firstRowCells.reduce((acc, cell) => {
-		const colSpan = Number(attrValue(cell, 'colspan') ?? '1') || 1;
-		return acc + colSpan;
+		return acc + cell.colSpan;
 	}, 0);
 
 	const occupancy = new Array<number>(Math.max(colCount, 1)).fill(0);
@@ -177,17 +328,17 @@ export function parseTimetablePage(
 
 	for (let rowIndex = 0; rowIndex < rows.length; rowIndex += 1) {
 		const row = rows[rowIndex]!;
-		const cells = directChildrenByTag(row, 'td');
+		const cells = row.cells;
 		let col = 0;
 
 		for (const cell of cells) {
 			while (col < occupancy.length && occupancy[col]! > 0) col += 1;
 
-			const colSpan = Number(attrValue(cell, 'colspan') ?? '1') || 1;
-			const rowSpan = Number(attrValue(cell, 'rowspan') ?? '1') || 1;
+			const colSpan = cell.colSpan;
+			const rowSpan = cell.rowSpan;
 
 			if (col === 0) {
-				const periodRange = parseTimeRange(collapseSpaces(nodeText(cell)));
+				const periodRange = parseTimeRange(collapseSpaces(cell.fallbackText));
 				if (periodRange) {
 					for (let r = rowIndex; r < Math.min(rows.length, rowIndex + rowSpan); r += 1) {
 						rowTimes[r] = periodRange;

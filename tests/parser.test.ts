@@ -37,7 +37,7 @@ async function loadSchedule(groupCode: string, weekValue?: string) {
 	if (week === undefined) throw new Error('Week not found');
 	const rel = path.join(fixtureRoot, week.value, 'c', `c${String(group.id).padStart(5, '0')}.htm`);
 	const html = await readFile(rel, 'utf8');
-	return { ...parseTimetablePage(html, group, week), group, week };
+	return { ...(await parseTimetablePage(html, group, week)), group, week };
 }
 
 suite('parseNavHtml', () => {
@@ -88,7 +88,7 @@ suite('parseTimetablePage - label quality', () => {
 				);
 				if (existsSync(rel) === false) continue;
 				const html = await readFile(rel, 'utf8');
-				const { events } = parseTimetablePage(html, group, week);
+				const { events } = await parseTimetablePage(html, group, week);
 
 				for (const e of events) {
 					const ctx = `${group.codeRaw} w${week.value} ${e.subjectShortRaw}`;
@@ -116,7 +116,7 @@ suite('parseTimetablePage - label quality', () => {
 				);
 				if (existsSync(rel) === false) continue;
 				const html = await readFile(rel, 'utf8');
-				const { events } = parseTimetablePage(html, group, week);
+				const { events } = await parseTimetablePage(html, group, week);
 
 				for (const e of events) {
 					const ctx = `${group.codeRaw} w${week.value} ${e.subjectShortRaw}`;
@@ -144,7 +144,7 @@ suite('parseTimetablePage - label quality', () => {
 				);
 				if (existsSync(rel) === false) continue;
 				const html = await readFile(rel, 'utf8');
-				const { events } = parseTimetablePage(html, group, week);
+				const { events } = await parseTimetablePage(html, group, week);
 
 				for (const e of events) {
 					expect(e.lessonType, `${group.codeRaw} ${e.subjectFullRaw}`).not.toMatch(
@@ -170,7 +170,7 @@ suite('parseTimetablePage - label quality', () => {
 				);
 				if (existsSync(rel) === false) continue;
 				const html = await readFile(rel, 'utf8');
-				const { events } = parseTimetablePage(html, group, week);
+				const { events } = await parseTimetablePage(html, group, week);
 
 				for (const e of events) {
 					if (e.subjectFullDe !== e.subjectFullRu) {

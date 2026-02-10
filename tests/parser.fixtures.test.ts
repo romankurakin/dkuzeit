@@ -53,7 +53,7 @@ suite('DKU parser (fixtures)', () => {
 
 				try {
 					const html = await readFile(filePath, 'utf8');
-					const parsed = parseTimetablePage(html, group, week);
+					const parsed = await parseTimetablePage(html, group, week);
 					parsedPages += 1;
 					totalEvents += parsed.events.length;
 					kzTracks += parsed.events.filter((event) => event.track === 'kz').length;
