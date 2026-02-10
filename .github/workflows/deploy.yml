@@ -25,6 +25,8 @@ jobs:
 
       - run: npm run build
         name: Build
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
 
       - run: npx wrangler deploy
         name: Deploy to Cloudflare Workers
