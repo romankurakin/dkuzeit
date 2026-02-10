@@ -5,8 +5,9 @@ export const BASE_URL = 'https://timetable.dku.kz';
 // Two-layer TTL: edge cache (Cache API) holds parsed upstream data, HTTP tells browsers/CDN to reuse responses.
 // Keep HTTP < edge so clients see updated data soon after the edge cache expires.
 // stale-while-revalidate covers the remaining edge window so users never wait.
+// Worst-case staleness: EDGE (60 min) + CLIENT (30 min) = 90 min.
 export const EDGE_TTL_SECONDS = 3600;
-export const CLIENT_TTL_SECONDS = 600;
+export const CLIENT_TTL_SECONDS = 1800;
 const SWR_SECONDS = EDGE_TTL_SECONDS - CLIENT_TTL_SECONDS;
 export const CLIENT_CACHE_HEADER = `public, max-age=${CLIENT_TTL_SECONDS}, stale-while-revalidate=${SWR_SECONDS}`;
 

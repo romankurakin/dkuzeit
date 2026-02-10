@@ -5,6 +5,7 @@ import {
 	pickRollingWeeksForCalendar
 } from '$lib/server/dku';
 import { buildIcsCalendar } from '$lib/server/ics';
+import { CLIENT_TTL_SECONDS } from '$lib/server/dku';
 import { traceSerialize } from '$lib/server/tracing';
 import { verifyToken } from '$lib/server/token';
 import type { RequestHandler } from './$types';
@@ -45,7 +46,7 @@ export const GET: RequestHandler = async ({ url, platform }) => {
 		headers: {
 			'content-type': 'text/calendar; charset=utf-8',
 			'content-disposition': `inline; filename="dku-${payload.g}.ics"`,
-			'cache-control': 'private, no-cache'
+			'cache-control': `private, max-age=${CLIENT_TTL_SECONDS}`
 		}
 	});
 };
