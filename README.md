@@ -1,14 +1,16 @@
 # dkuzeit
 
-Минималистичный сайт расписания DKU.
+DKU-Stundenplan-Viewer mit ICS-Export, der Stundenplanseiten parst und sie in
+einer klaren Form anzeigt.
 
-- Оригинальное расписание: https://timetable.dku.kz/
-- Этот проект парсит страницы расписания и показывает их в удобном виде.
-- Проект не аффилирован с DKU.
+## Quelleninformationen
 
-## Attribution
+Quelle des Stundenplans: <https://timetable.dku.kz/>
+Dieses Projekt ist nicht mit der DKU verbunden.
 
-- Pixel icons: HackerNoon Pixel Icon Library  
-  https://github.com/hackernoon/pixel-icon-library
-- License for icon files: CC BY 4.0  
-  https://creativecommons.org/licenses/by/4.0/
+## Quellenangaben
+
+- Pixel-Icons: HackerNoon Pixel Icon Library  
+  <https://github.com/hackernoon/pixel-icon-library>
+- Lizenz für die Icon-Dateien: CC BY 4.0  
+  <https://creativecommons.org/licenses/by/4.0/>
