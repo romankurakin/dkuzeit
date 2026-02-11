@@ -5,6 +5,7 @@ declare global {
 		interface Platform {
 			env: {
 				TOKEN_SECRET?: string;
+				CF_VERSION_METADATA?: { id: string; tag: string; timestamp: string };
 			};
 		}
 	}

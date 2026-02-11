@@ -2,6 +2,11 @@ import { traceCacheGet } from './tracing';
 
 export const BASE_URL = 'https://timetable.dku.kz';
 
+let cacheVersion = '';
+export function setCacheVersion(v: string) {
+	cacheVersion = v;
+}
+
 // Worst case staleness is EDGE_TTL + CLIENT_TTL
 export const EDGE_TTL_SECONDS = 3600;
 export const CLIENT_TTL_SECONDS = 1800;
@@ -12,7 +17,7 @@ const inflight = new Map<string, Promise<unknown>>();
 
 export async function cached<T>(key: string, compute: () => Promise<T>): Promise<T> {
 	const cache = typeof caches !== 'undefined' ? caches.default : null;
-	const url = `${BASE_URL}/_cache/${encodeURIComponent(key)}`;
+	const url = `${BASE_URL}/_cache/${cacheVersion}/${encodeURIComponent(key)}`;
 
 	if (cache) {
 		const hit = await traceCacheGet(key, async (setHit) => {
