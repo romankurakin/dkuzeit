@@ -3,15 +3,18 @@ import { parseNavHtml, parseTimetablePage } from './parser';
 import type { GroupWeekSchedule, LessonEvent, MetaPayload, WeekOption } from './types';
 import { todayInAlmaty } from './time';
 import { cached, fetchText } from './dku-fetch';
-import { traceFetch, traceFn } from './tracing';
+import { traceFn } from './tracing';
 
 export { CLIENT_CACHE_HEADER, CLIENT_TTL_SECONDS } from './dku-fetch';
 
+export function isUnknownEntityError(err: unknown): boolean {
+	if (!(err instanceof Error)) return false;
+	return /^Unknown (group|week): /.test(err.message);
+}
+
 export async function getMeta(): Promise<MetaPayload> {
 	return cached('meta', async () => {
-		const html = await traceFetch('GET timetable.dku.kz/frames/navbar.htm', () =>
-			fetchText('frames/navbar.htm')
-		);
+		const html = await fetchText('frames/navbar.htm');
 		return parseNavHtml(html);
 	});
 }
@@ -28,7 +31,7 @@ async function getSchedule(
 
 	return cached(`schedule:${week.value}:${group.id}`, async () => {
 		const path = `${week.value}/c/c${String(group.id).padStart(5, '0')}.htm`;
-		const html = await traceFetch(`GET timetable.dku.kz/${path}`, () => fetchText(path));
+		const html = await fetchText(path);
 		const parsed = await traceFn(
 			'parseTimetablePage',
 			{ group: group.codeRaw, week: week.value },

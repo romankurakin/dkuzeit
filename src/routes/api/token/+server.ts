@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { normalizeCohortList } from '$lib/server/cohorts';
 import { getMeta } from '$lib/server/dku';
+import { notFoundProblem } from '$lib/server/problem';
 import { signToken } from '$lib/server/token';
 import type { UiLanguage } from '$lib/server/types';
 import type { RequestHandler } from './$types';
@@ -22,6 +23,16 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 	const week = body.week ?? meta.weeks[0]?.value;
 	if (!week) {
 		return json({ error: 'week is required and source has no defaults' }, { status: 400 });
+	}
+
+	const groupExists = meta.groups.some((g) => g.codeRaw === body.group || g.codeRu === body.group);
+	if (!groupExists) {
+		return notFoundProblem('Requested group was not found', '/api/token');
+	}
+
+	const weekExists = meta.weeks.some((w) => w.value === week);
+	if (!weekExists) {
+		return notFoundProblem('Requested week was not found', '/api/token');
 	}
 
 	const lang: UiLanguage = body.lang === 'de' ? 'de' : 'ru';

@@ -5,6 +5,7 @@
 	import { m } from '$lib/paraglide/messages';
 	import { getLocale, setLocale } from '$lib/paraglide/runtime';
 	import { ToggleGroup } from 'bits-ui';
+	import { pwaInfo } from 'virtual:pwa-info';
 
 	let { children } = $props();
 
@@ -14,7 +15,7 @@
 		if (value && value !== getLocale()) {
 			setLocale(value as 'ru' | 'de');
 		} else if (!value) {
-			// bits-ui sets value="" on re-click; force it back
+			// bits ui sets empty value on reclick force it back
 			const current = getLocale();
 			selectedLocale = '';
 			tick().then(() => {
@@ -25,11 +26,17 @@
 </script>
 
 <svelte:head>
+	{#if pwaInfo}
+		<link
+			rel="manifest"
+			href={pwaInfo.webManifest.href}
+			crossorigin={pwaInfo.webManifest.useCredentials ? 'use-credentials' : undefined}
+		/>
+	{/if}
 	<meta name="theme-color" content="#141414" />
-	<link rel="icon" href="/favicon.ico" sizes="32x32" />
+	<link rel="icon" href="/favicon.ico" sizes="any" />
 	<link rel="icon" href="/icon.svg" type="image/svg+xml" />
 	<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-	<link rel="manifest" href="/manifest.webmanifest" />
 </svelte:head>
 
 <div class="mx-auto max-w-screen-2xl space-y-0 p-4">

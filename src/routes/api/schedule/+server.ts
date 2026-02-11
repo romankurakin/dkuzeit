@@ -1,6 +1,12 @@
 import { json } from '@sveltejs/kit';
-import { buildMergedSchedule, getMeta, CLIENT_CACHE_HEADER } from '$lib/server/dku';
+import {
+	buildMergedSchedule,
+	getMeta,
+	isUnknownEntityError,
+	CLIENT_CACHE_HEADER
+} from '$lib/server/dku';
 import { parseCohortsCsv } from '$lib/server/cohorts';
+import { notFoundProblem, serviceUnavailableProblem } from '$lib/server/problem';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ url }) => {
@@ -24,9 +30,9 @@ export const GET: RequestHandler = async ({ url }) => {
 			{ headers: { 'cache-control': CLIENT_CACHE_HEADER } }
 		);
 	} catch (error) {
-		return json(
-			{ error: error instanceof Error ? error.message : 'Unable to load schedule' },
-			{ status: 400 }
-		);
+		if (isUnknownEntityError(error)) {
+			return notFoundProblem('Requested schedule was not found', '/api/schedule');
+		}
+		return serviceUnavailableProblem('Unable to load schedule', '/api/schedule');
 	}
 };

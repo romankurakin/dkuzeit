@@ -1,4 +1,4 @@
-// https://svelte.dev/docs/kit/types#app.d.ts
+import 'vite-plugin-pwa/info';
 
 declare global {
 	namespace App {
@@ -10,7 +10,7 @@ declare global {
 		}
 	}
 
-	// CF Workers caches.default, not in standard CacheStorage
+	// CF Workers caches default not in standard CacheStorage
 	interface CacheStorage {
 		default: Cache;
 	}
