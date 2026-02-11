@@ -8,7 +8,7 @@
 		{ "src": "/icon-mask.png", "type": "image/png", "sizes": "512x512", "purpose": "maskable" },
 		{ "src": "/icon-512.png", "type": "image/png", "sizes": "512x512" }
 	],
-	"theme_color": "#000000",
-	"background_color": "#000000",
+	"theme_color": "#141414",
+	"background_color": "#141414",
 	"display": "standalone"
 }

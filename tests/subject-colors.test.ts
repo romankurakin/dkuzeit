@@ -80,6 +80,6 @@ describe('buildSubjectColorMap', () => {
 describe('cv', () => {
 	it('returns a CSS variable reference', () => {
 		expect(cv('blue', 400)).toBe('var(--color-blue-400)');
-		expect(cv('rose', 950)).toBe('var(--color-rose-950)');
+		expect(cv('pink', 950)).toBe('var(--color-pink-950)');
 	});
 });

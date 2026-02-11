@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import { tick } from 'svelte';
+	import { toast } from 'svelte-sonner';
 	import { m } from '$lib/paraglide/messages';
 	import { getLocale, localizeHref } from '$lib/paraglide/runtime';
 	import type { GroupOption, Cohort, LessonEvent, WeekOption } from '$lib/server/types';
@@ -45,8 +46,7 @@
 
 	let isGeneratingLinks = $state(false);
 	let copiedField = $state<'site' | 'calendar' | null>(null);
-	let calendarWarning = $state('');
-	let error = $state('');
+	let cohortWarningActive = $state(false);
 
 	const uiLocale = $derived((getLocale() === 'de' ? 'de' : 'ru') as 'ru' | 'de');
 	const categoryLabels = $derived<Record<string, string>>({
@@ -85,7 +85,6 @@
 	}
 
 	function handleCohortChangeInternal(trackLabel: string, code: string): void {
-		calendarWarning = '';
 		onCohortChange(trackLabel, code);
 	}
 
@@ -93,13 +92,26 @@
 		if (!resolvedGroup || !resolvedWeek) return;
 		const unselected = cohortGroups.filter((cg) => !cg.value);
 		if (unselected.length > 0) {
-			calendarWarning =
-				m.calendar_select_cohorts() + ' ' + unselected.map((g) => g.label).join(', ');
+			cohortWarningActive = true;
+			toast.warning(m.calendar_select_cohorts(), {
+				id: 'cohort-warning',
+				onDismiss: () => {
+					cohortWarningActive = false;
+				},
+				onAutoClose: () => {
+					cohortWarningActive = false;
+				}
+			});
+			const firstUnselected = document.querySelector<HTMLButtonElement>(
+				'button[data-cohort-empty]'
+			);
+			if (firstUnselected) {
+				firstUnselected.scrollIntoView({ behavior: 'smooth', block: 'center' });
+				setTimeout(() => firstUnselected.focus(), 400);
+			}
 			return;
 		}
-		calendarWarning = '';
 		isGeneratingLinks = true;
-		error = '';
 		try {
 			const textPromise = fetch('/api/token', {
 				method: 'POST',
@@ -125,7 +137,7 @@
 				copiedField = null;
 			}, 1500);
 		} catch (err) {
-			error = err instanceof Error ? err.message : m.api_error_calendar();
+			toast.error(err instanceof Error ? err.message : m.api_error_calendar());
 		} finally {
 			isGeneratingLinks = false;
 		}
@@ -156,10 +168,9 @@
 	selectedWeek: resolvedWeek,
 	uiLocale,
 	todayIso,
-	error,
 	isGeneratingLinks,
+	cohortWarningActive,
 	copiedField,
-	calendarWarning,
 	onGroupChange,
 	onWeekChange,
 	onCohortChange: handleCohortChangeInternal,

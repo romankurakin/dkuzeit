@@ -25,14 +25,26 @@ export async function runHtmlRewriter(
 	html: string,
 	register: (rewriter: HtmlRewriterLike) => void
 ): Promise<void> {
-	const nativeCtor = (globalThis as { HTMLRewriter?: new () => HtmlRewriterLike }).HTMLRewriter;
-	if (typeof nativeCtor !== 'function') {
+	const g = globalThis as { HTMLRewriter?: new () => HtmlRewriterLike };
+	if (typeof g.HTMLRewriter !== 'function') {
+		try {
+			const mod = await import('html-rewriter-wasm');
+			const ctor =
+				(mod as { HTMLRewriter?: unknown }).HTMLRewriter ??
+				(mod as { default?: { HTMLRewriter?: unknown } }).default?.HTMLRewriter;
+			if (typeof ctor === 'function') g.HTMLRewriter = ctor as unknown as typeof g.HTMLRewriter;
+		} catch {
+			// html-rewriter-wasm not available (production Cloudflare Workers)
+		}
+	}
+	if (typeof g.HTMLRewriter !== 'function') {
 		throw new Error('HTMLRewriter is unavailable in this runtime');
 	}
+	const nativeCtor = g.HTMLRewriter;
 
-	const rewriter = new (
-		nativeCtor as unknown as new (outputSink?: (chunk: Uint8Array) => void) => HtmlRewriterLike
-	)(() => undefined);
+	const rewriter = new (nativeCtor as unknown as new (
+		outputSink?: (chunk: Uint8Array) => void
+	) => HtmlRewriterLike)(() => undefined);
 	register(rewriter);
 	if (typeof rewriter.transform === 'function') {
 		const transformed = rewriter.transform(new Response(html));
