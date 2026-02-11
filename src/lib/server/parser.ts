@@ -324,7 +324,17 @@ export async function parseTimetablePage(
 
 	const subjectResolver = makeLegendResolver(parseLegendEntries(html, 'Дисциплины'));
 
-	const events: LessonEvent[] = [];
+	// Defer event creation until all rowTimes are populated so that
+	// multi-period cells (rowspan > 2) can be split correctly
+	interface DeferredEvent {
+		dayIndex: number;
+		subjectRaw: string;
+		roomRaw: string;
+		rowIndex: number;
+		rowSpan: number;
+	}
+
+	const deferred: DeferredEvent[] = [];
 
 	for (let rowIndex = 0; rowIndex < rows.length; rowIndex += 1) {
 		const row = rows[rowIndex]!;
@@ -352,46 +362,7 @@ export async function parseTimetablePage(
 				if (subjectRaw && !subjectRaw.includes('________________')) {
 					const dayIndex = Math.floor((col - 1) / 12);
 					if (dayIndex >= 0 && dayIndex < dayDates.length) {
-						const startRange = rowTimes[rowIndex];
-						const endRange =
-							rowTimes[Math.min(rows.length - 1, rowIndex + rowSpan - 1)] ?? startRange;
-						if (startRange && endRange) {
-							const subjectFullRaw = subjectResolver(subjectRaw);
-							const noGerman = isMissingGermanName(subjectFullRaw);
-							const shortLabels = splitBilingualLabel(subjectRaw, noGerman);
-							const fullLabels = splitBilingualLabel(subjectFullRaw, noGerman);
-							const lessonType = noGerman ? '' : fullLabels.lessonType;
-							const cohort = extractCohortCode(subjectRaw);
-							const nameTrack = detectTrack(subjectFullRaw);
-							const track = nameTrack !== 'none' ? nameTrack : (cohort?.track ?? 'none');
-							const cohortCode = cohort && !genericCodes.has(cohort.code) ? cohort.code : null;
-							const scope = cohortCode ? 'cohort_shared' : 'core_fixed';
-							const dateIso = dayDates[dayIndex]!;
-							const id = stableEventId(
-								`${group.codeRaw}|${dateIso}|${startRange.start}|${endRange.end}|${subjectRaw}|${roomRaw}|${cohortCode ?? ''}`
-							);
-
-							events.push({
-								id,
-								dateIso,
-								dayIndex,
-								startTime: startRange.start,
-								endTime: endRange.end,
-								subjectShortRaw: subjectRaw,
-								subjectShortRu: sanitizeLabel(shortLabels.ru),
-								subjectShortDe: sanitizeLabel(shortLabels.de),
-								subjectFullRaw,
-								subjectFullRu: sanitizeLabel(fullLabels.ru),
-								subjectFullDe: sanitizeLabel(fullLabels.de),
-								lessonType: sanitizeLabel(lessonType),
-								room: roomRaw,
-								groupCode: group.codeRaw,
-								originGroupCode: group.codeRaw,
-								track,
-								cohortCode,
-								scope
-							});
-						}
+						deferred.push({ dayIndex, subjectRaw, roomRaw, rowIndex, rowSpan });
 					}
 				}
 			}
@@ -407,8 +378,68 @@ export async function parseTimetablePage(
 		}
 	}
 
+	// Now that all rowTimes are known, create events and split
+	// multi-period cells into one event per time slot
+	const splitEvents: LessonEvent[] = [];
+
+	for (const d of deferred) {
+		const subjectFullRaw = subjectResolver(d.subjectRaw);
+		const noGerman = isMissingGermanName(subjectFullRaw);
+		const shortLabels = splitBilingualLabel(d.subjectRaw, noGerman);
+		const fullLabels = splitBilingualLabel(subjectFullRaw, noGerman);
+		const lessonType = noGerman ? '' : fullLabels.lessonType;
+		const cohort = extractCohortCode(d.subjectRaw);
+		const nameTrack = detectTrack(subjectFullRaw);
+		const track = nameTrack !== 'none' ? nameTrack : (cohort?.track ?? 'none');
+		const cohortCode = cohort && !genericCodes.has(cohort.code) ? cohort.code : null;
+		const scope = cohortCode ? 'cohort_shared' : 'core_fixed';
+		const dateIso = dayDates[d.dayIndex]!;
+
+		// Collect distinct time periods covered by this cell
+		const periods: Array<{ start: string; end: string }> = [];
+		{
+			const seen = new Set<string>();
+			for (let r = d.rowIndex; r < Math.min(rows.length, d.rowIndex + d.rowSpan); r += 1) {
+				const range = rowTimes[r];
+				if (!range) continue;
+				const pk = `${range.start}-${range.end}`;
+				if (!seen.has(pk)) {
+					seen.add(pk);
+					periods.push(range);
+				}
+			}
+		}
+
+		for (const period of periods) {
+			const id = stableEventId(
+				`${group.codeRaw}|${dateIso}|${period.start}|${period.end}|${d.subjectRaw}|${d.roomRaw}|${cohortCode ?? ''}`
+			);
+
+			splitEvents.push({
+				id,
+				dateIso,
+				dayIndex: d.dayIndex,
+				startTime: period.start,
+				endTime: period.end,
+				subjectShortRaw: d.subjectRaw,
+				subjectShortRu: sanitizeLabel(shortLabels.ru),
+				subjectShortDe: sanitizeLabel(shortLabels.de),
+				subjectFullRaw,
+				subjectFullRu: sanitizeLabel(fullLabels.ru),
+				subjectFullDe: sanitizeLabel(fullLabels.de),
+				lessonType: sanitizeLabel(lessonType),
+				room: d.roomRaw,
+				groupCode: group.codeRaw,
+				originGroupCode: group.codeRaw,
+				track,
+				cohortCode,
+				scope
+			});
+		}
+	}
+
 	const cohortMap = new Map<string, Cohort>();
-	for (const event of events) {
+	for (const event of splitEvents) {
 		if (!event.cohortCode || event.track === 'none') {
 			continue;
 		}
@@ -425,12 +456,12 @@ export async function parseTimetablePage(
 		}
 	}
 
-	events.sort(
+	splitEvents.sort(
 		(a, b) =>
 			a.dateIso.localeCompare(b.dateIso) ||
 			a.startTime.localeCompare(b.startTime) ||
 			a.subjectShortRaw.localeCompare(b.subjectShortRaw)
 	);
 
-	return { events, cohorts: Array.from(cohortMap.values()) };
+	return { events: splitEvents, cohorts: Array.from(cohortMap.values()) };
 }

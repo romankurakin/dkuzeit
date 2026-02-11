@@ -101,6 +101,74 @@ describe('parseTimetablePage HTMLRewriter state machine', () => {
 		expect(event.dayIndex).toBe(0);
 	});
 
+	it('splits a double-period cell (rowspan=4) into two separate events', async () => {
+		// Each period occupies 2 table rows (time cell rowspan=2),
+		// so a double-period event has rowspan=4 on the content cell
+		const html = wrapTimetable(
+			`
+				<tr>
+					<td rowspan="2">08:00 - 09:40</td>
+					<td colspan="12" rowspan="4">
+						<table>
+							<tr><td>Мат2.л</td></tr>
+							<tr><td>Жнб/Zh</td></tr>
+							<tr><td>17а</td></tr>
+						</table>
+					</td>
+				</tr>
+				<tr></tr>
+				<tr>
+					<td rowspan="2">09:50 - 11:30</td>
+				</tr>
+				<tr></tr>
+			`,
+			`<tr><td>Мат2.л</td><td>Математика 2/Mathematik 2 лекция</td></tr>`
+		);
+
+		const parsed = await parseTimetablePage(html, group, week);
+		expect(parsed.events).toHaveLength(2);
+
+		const [first, second] = parsed.events;
+		// Both events share the same subject
+		expect(first!.subjectShortRaw).toBe('Мат2.л');
+		expect(second!.subjectShortRaw).toBe('Мат2.л');
+		// First event covers period 1
+		expect(first!.startTime).toBe('08:00');
+		expect(first!.endTime).toBe('09:40');
+		// Second event covers period 2
+		expect(second!.startTime).toBe('09:50');
+		expect(second!.endTime).toBe('11:30');
+		// Same room for both
+		expect(first!.room).toBe('17а');
+		expect(second!.room).toBe('17а');
+		// Different IDs
+		expect(first!.id).not.toBe(second!.id);
+	});
+
+	it('single-period cell (rowspan=2) still produces one event', async () => {
+		const html = wrapTimetable(
+			`
+				<tr>
+					<td rowspan="2">08:00 - 09:40</td>
+					<td colspan="12" rowspan="2">
+						<table>
+							<tr><td>PHYS</td></tr>
+							<tr><td>Doc/Dc</td></tr>
+							<tr><td>301</td></tr>
+						</table>
+					</td>
+				</tr>
+				<tr></tr>
+			`,
+			`<tr><td>PHYS</td><td>Физика/Physik лекция</td></tr>`
+		);
+
+		const parsed = await parseTimetablePage(html, group, week);
+		expect(parsed.events).toHaveLength(1);
+		expect(parsed.events[0]!.startTime).toBe('08:00');
+		expect(parsed.events[0]!.endTime).toBe('09:40');
+	});
+
 	it('throws a clear error when center container is absent', async () => {
 		await expect(
 			parseTimetablePage('<html><body><table></table></body></html>', group, week)

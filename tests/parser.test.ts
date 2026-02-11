@@ -155,6 +155,40 @@ suite('parseTimetablePage - label quality', () => {
 		}
 	});
 
+	it('no event spans more than one standard period (multi-period events are split)', async () => {
+		const meta = await loadMeta();
+		const manifest = await loadManifest();
+
+		function minutesDuration(start: string, end: string): number {
+			const [sh, sm] = start.split(':').map(Number);
+			const [eh, em] = end.split(':').map(Number);
+			return eh! * 60 + em! - (sh! * 60 + sm!);
+		}
+
+		for (const week of meta.weeks) {
+			if (manifest.weeks.indexOf(week.value) === -1) continue;
+			for (const group of meta.groups) {
+				const rel = path.join(
+					fixtureRoot,
+					week.value,
+					'c',
+					`c${String(group.id).padStart(5, '0')}.htm`
+				);
+				if (existsSync(rel) === false) continue;
+				const html = await readFile(rel, 'utf8');
+				const { events } = await parseTimetablePage(html, group, week);
+
+				for (const e of events) {
+					const duration = minutesDuration(e.startTime, e.endTime);
+					expect(
+						duration,
+						`${group.codeRaw} w${week.value} ${e.subjectShortRaw} ${e.startTime}-${e.endTime}`
+					).toBeLessThanOrEqual(110);
+				}
+			}
+		}
+	});
+
 	it('fullDe is never Cyrillic-only when different from fullRu', async () => {
 		const meta = await loadMeta();
 		const manifest = await loadManifest();
