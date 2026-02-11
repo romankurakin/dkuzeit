@@ -4,7 +4,6 @@ import {
 	getMeta,
 	pickRollingWeeksForCalendar
 } from '$lib/server/dku';
-import { cached } from '$lib/server/dku-fetch';
 import { buildIcsCalendar } from '$lib/server/ics';
 import { traceSerialize } from '$lib/server/tracing';
 import { verifyToken } from '$lib/server/token';
@@ -30,22 +29,15 @@ export const GET: RequestHandler = async ({ url, platform }) => {
 	const lang = payload.l === 'de' ? 'de' : 'ru';
 	const meta = await getMeta();
 	const weeks = pickRollingWeeksForCalendar(meta.weeks, '', { windowSize: CALENDAR_ROLLING_WEEKS });
-	const weekKeys = weeks.map((w) => w.value).join(',');
-	const cohortKey = [...payload.c].sort().join(',');
-	const cacheKey = `ics:${payload.g}:${lang}:${cohortKey}:${weekKeys}`;
-
-	const calendar = await cached(cacheKey, async () => {
-		const schedules = await Promise.all(
-			weeks.map((week) => buildMergedSchedule(payload.g, week.value, payload.c, meta))
-		);
-		const events = schedules.flatMap((s) => s.events);
-
-		const group = meta.groups.find((g) => g.codeRaw === payload.g);
-		const calendarTitle = buildCalendarTitle(group?.codeRu ?? payload.g);
-		return traceSerialize('buildIcsCalendar', { eventCount: events.length }, () =>
-			buildIcsCalendar(calendarTitle, events, lang)
-		);
-	});
+	const schedules = await Promise.all(
+		weeks.map((week) => buildMergedSchedule(payload.g, week.value, payload.c, meta))
+	);
+	const events = schedules.flatMap((s) => s.events);
+	const group = meta.groups.find((g) => g.codeRaw === payload.g);
+	const calendarTitle = buildCalendarTitle(group?.codeRu ?? payload.g);
+	const calendar = traceSerialize('buildIcsCalendar', { eventCount: events.length }, () =>
+		buildIcsCalendar(calendarTitle, events, lang)
+	);
 
 	return new Response(calendar, {
 		headers: {

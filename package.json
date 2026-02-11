@@ -20,9 +20,11 @@
 	},
 	"dependencies": {
 		"@evilmartians/harmony": "^1.4.0",
+		"@hackernoon/pixel-icon-library": "^1.0.6",
 		"@lucide/svelte": "^0.563.1",
 		"@sentry/sveltekit": "^10.38.0",
 		"bits-ui": "^2.15.5",
+		"htmlparser2": "^10.1.0",
 		"runed": "^0.37.1",
 		"svelte-sonner": "^1.0.7",
 		"ts-ics": "^2.4.0"
@@ -44,7 +46,6 @@
 		"eslint": "^9.39.2",
 		"eslint-plugin-svelte": "^3.15.0",
 		"globals": "^17.3.0",
-		"html-rewriter-wasm": "^0.4.1",
 		"prettier": "^3.8.1",
 		"prettier-plugin-svelte": "^3.4.1",
 		"prettier-plugin-tailwindcss": "^0.7.2",

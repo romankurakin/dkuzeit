@@ -28,9 +28,14 @@ export function parseLegendEntries(
 	return output;
 }
 
-// Normalize to uppercase, strip dots and slashes, collapse spaces
+// Normalize to uppercase, strip source marker prefixes, collapse spaces
 function fastCodeKey(input: string): string {
-	return input.replace(/^\.+/, '').replace(/\s+/g, '').replace(/\/$/, '').toUpperCase();
+	return input
+		.replace(/^[.*]+/, '')
+		.replace(/\([A-Za-z]+\)/g, '')
+		.replace(/\s+/g, '')
+		.replace(/\/$/, '')
+		.toUpperCase();
 }
 
 function fastLeftKey(input: string): string {

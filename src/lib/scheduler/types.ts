@@ -27,6 +27,7 @@ export interface SchedulerContext {
 	uiLocale: 'ru' | 'de';
 	todayIso: string;
 	isGeneratingLinks: boolean;
+	calendarCopyState: 'idle' | 'pending' | 'success';
 	cohortWarningActive: boolean;
 	copiedField: 'site' | 'calendar' | null;
 
@@ -35,6 +36,7 @@ export interface SchedulerContext {
 	onCohortChange: (trackLabel: string, code: string) => void;
 	onCopySiteLink: () => Promise<void>;
 	onCopyCalendarLink: () => Promise<void>;
+	onClearCalendarCopyState: () => void;
 
 	formatDateLabel: (dateIso: string) => string;
 	eventTitleLabel: (event: LessonEvent) => string;

@@ -12,7 +12,8 @@ import { trackRules, cohortCodeRules, genericCodes } from './cohort-config';
 import { fnv1aHex } from './hash';
 import { makeLegendResolver, parseLegendEntries } from './legend';
 import { isMissingGermanName, sanitizeLabel, splitBilingualLabel } from './bilingual';
-import { runHtmlRewriter } from './html-rewriter-runtime';
+import { parseDocument } from 'htmlparser2';
+import type { ChildNode, Element } from 'domhandler';
 
 function parseWeekLabelDate(label: string): string {
 	const match = label.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
@@ -30,6 +31,18 @@ function parseJsStringArray(body: string): string[] {
 	return result;
 }
 
+function preserveYearPrefixForGermanGroupCode(codeRu: string, codeDe: string): string {
+	const normalizedDe = codeDe.replace(/^-+/, '');
+	if (!normalizedDe || /^\d/.test(normalizedDe)) return normalizedDe;
+
+	const year = codeRu.match(/^(\d+)/)?.[1];
+	if (!year) return normalizedDe;
+
+	// Keep A/B-like subgroup markers compact: 1 + A-IB => 1A-IB
+	if (/^[A-Za-z]-/.test(normalizedDe)) return `${year}${normalizedDe}`;
+	return `${year}-${normalizedDe}`;
+}
+
 export function parseNavHtml(html: string): MetaPayload {
 	const weekSelectMatch = html.match(/<select\s+name="week"[\s\S]*?<\/select>/i);
 	if (!weekSelectMatch) throw new Error('Week select not found in navbar');
@@ -44,12 +57,16 @@ export function parseNavHtml(html: string): MetaPayload {
 	const classesMatch = html.match(/var\s+classes\s*=\s*\[([\s\S]*?)\];/i);
 	if (!classesMatch) throw new Error('Classes array not found in navbar');
 
-	const groups: GroupOption[] = parseJsStringArray(classesMatch[1]!).map((codeRaw, idx) => ({
-		id: idx + 1,
-		codeRaw: cleanText(codeRaw),
-		codeRu: sanitizeLabel(stripParenSuffix(russianOnlyLabel(codeRaw))),
-		codeDe: sanitizeLabel(stripParenSuffix(germanOnlyLabel(codeRaw)))
-	}));
+	const groups: GroupOption[] = parseJsStringArray(classesMatch[1]!).map((codeRaw, idx) => {
+		const codeRu = sanitizeLabel(stripParenSuffix(russianOnlyLabel(codeRaw)));
+		const codeDeRaw = sanitizeLabel(stripParenSuffix(germanOnlyLabel(codeRaw)));
+		return {
+			id: idx + 1,
+			codeRaw: cleanText(codeRaw),
+			codeRu,
+			codeDe: preserveYearPrefixForGermanGroupCode(codeRu, codeDeRaw)
+		};
+	});
 
 	return { weeks: weekOptions, groups };
 }
@@ -94,6 +111,17 @@ function collapseSpaces(input: string): string {
 	return input.replace(/[\s\u00a0]+/g, ' ').trim();
 }
 
+function isDateMarkerCell(value: string): boolean {
+	// Day-block marker in source tables, not a real lesson
+	// Examples: 23.3.2026 or 23.3.2026-23.3.2026
+	return /^\d{1,2}\.\d{1,2}\.\d{4}(?:\s*-\s*\d{1,2}\.\d{1,2}\.\d{4})?$/.test(value);
+}
+
+function isUnknownPlaceholderSubject(value: string): boolean {
+	// Unknown slots in upstream tables (mostly admin pages): "?"
+	return /^\?+$/.test(value.trim());
+}
+
 interface ParsedCell {
 	colSpan: number;
 	rowSpan: number;
@@ -105,173 +133,138 @@ interface ParsedRow {
 	cells: ParsedCell[];
 }
 
-interface OpenNestedRow {
-	capture: boolean;
-	cellIndex: number;
-	firstCellBuffer: string | null;
-}
-
-interface OpenMainCell {
-	cell: ParsedCell;
-	nestedTableDepth: number;
-	targetNestedTableDepth: number | null;
-	nestedRows: OpenNestedRow[];
-}
-
 function extractCellLines(cell: ParsedCell): string[] {
 	if (cell.nestedLines.length > 0) return cell.nestedLines;
 	const fallback = collapseSpaces(cell.fallbackText);
 	return fallback ? [fallback] : [];
 }
 
-async function collectMainTableRows(
-	html: string
-): Promise<{ rows: ParsedRow[]; foundMainTable: boolean }> {
+function isElementNode(node: ChildNode): node is Element {
+	return node.type === 'tag' || node.type === 'script' || node.type === 'style';
+}
+
+function hasChildren(node: ChildNode | Element): node is ChildNode & { children: ChildNode[] } {
+	return 'children' in node && Array.isArray(node.children);
+}
+
+function collectText(node: ChildNode): string {
+	if (node.type === 'text') return node.data;
+	if (!hasChildren(node)) return '';
+	let out = '';
+	for (const child of node.children) out += collectText(child);
+	return out;
+}
+
+function collectTextWithoutNestedTables(node: ChildNode, insideTable: boolean): string {
+	if (node.type === 'text') return insideTable ? '' : node.data;
+	if (!hasChildren(node)) return '';
+
+	const nextInsideTable = insideTable || (isElementNode(node) && node.name === 'table');
+	let out = '';
+	for (const child of node.children) out += collectTextWithoutNestedTables(child, nextInsideTable);
+	return out;
+}
+
+function findFirstDescendantTable(node: Element): Element | null {
+	for (const child of node.children) {
+		if (!isElementNode(child)) continue;
+		if (child.name === 'table') return child;
+		const nested = findFirstDescendantTable(child);
+		if (nested) return nested;
+	}
+	return null;
+}
+
+function collectFirstLevelRows(table: Element): Element[] {
+	const rows: Element[] = [];
+
+	const walk = (nodes: ChildNode[], nearestTable: Element) => {
+		for (const node of nodes) {
+			if (!isElementNode(node)) continue;
+			if (node.name === 'tr' && nearestTable === table) rows.push(node);
+			const childNearestTable = node.name === 'table' ? node : nearestTable;
+			walk(node.children, childNearestTable);
+		}
+	};
+
+	walk(table.children, table);
+	return rows;
+}
+
+function collectNestedLines(cellElement: Element): string[] {
+	const firstNestedTable = findFirstDescendantTable(cellElement);
+	if (!firstNestedTable) return [];
+
+	const lines: string[] = [];
+	for (const row of collectFirstLevelRows(firstNestedTable)) {
+		let firstTd: Element | null = null;
+		for (const child of row.children) {
+			if (isElementNode(child) && child.name === 'td') {
+				firstTd = child;
+				break;
+			}
+		}
+		if (!firstTd) continue;
+		const value = collapseSpaces(collectTextWithoutNestedTables(firstTd, false));
+		if (value) lines.push(value);
+	}
+	return lines;
+}
+
+function collectRowCells(row: Element): ParsedCell[] {
+	const cells: ParsedCell[] = [];
+	for (const child of row.children) {
+		if (!isElementNode(child) || child.name !== 'td') continue;
+
+		const colSpanRaw = Number(child.attribs.colspan ?? '1');
+		const rowSpanRaw = Number(child.attribs.rowspan ?? '1');
+		cells.push({
+			colSpan: Number.isFinite(colSpanRaw) && colSpanRaw > 0 ? colSpanRaw : 1,
+			rowSpan: Number.isFinite(rowSpanRaw) && rowSpanRaw > 0 ? rowSpanRaw : 1,
+			fallbackText: collectText(child),
+			nestedLines: collectNestedLines(child)
+		});
+	}
+	return cells;
+}
+
+function findFirstMainTable(node: ChildNode): Element | null {
+	if (!hasChildren(node)) return null;
+
+	if (isElementNode(node) && node.name === 'center') {
+		for (const child of node.children) {
+			if (isElementNode(child) && child.name === 'table') return child;
+		}
+	}
+
+	for (const child of node.children) {
+		const found = findFirstMainTable(child);
+		if (found) return found;
+	}
+	return null;
+}
+
+function collectMainTableRows(html: string): { rows: ParsedRow[]; foundMainTable: boolean } {
+	const document = parseDocument(html);
+	const mainTable = findFirstMainTable(document);
+	if (!mainTable) return { rows: [], foundMainTable: false };
+
 	const rows: ParsedRow[] = [];
-	let centerTableCount = 0;
-	let insideMainTable = false;
-	let foundMainTable = false;
-	let activeMainRow: ParsedRow | null = null;
-	let activeMainCell: OpenMainCell | null = null;
+	for (const child of mainTable.children) {
+		if (!isElementNode(child)) continue;
+		if (child.name === 'tr') {
+			rows.push({ cells: collectRowCells(child) });
+			continue;
+		}
+		if (child.name !== 'tbody') continue;
 
-	await runHtmlRewriter(html, (rewriter) => {
-		rewriter.on('center > table', {
-			element(element) {
-				centerTableCount += 1;
-				const isMainTable = centerTableCount === 1;
-				if (isMainTable) {
-					foundMainTable = true;
-					insideMainTable = true;
-				}
+		for (const bodyChild of child.children) {
+			if (!isElementNode(bodyChild) || bodyChild.name !== 'tr') continue;
+			rows.push({ cells: collectRowCells(bodyChild) });
+		}
+	}
 
-				element.onEndTag(() => {
-					if (isMainTable) insideMainTable = false;
-				});
-			}
-		});
-
-		rewriter.on('center > table > tbody > tr, center > table > tr', {
-			element(element) {
-				if (!insideMainTable) return;
-				const row: ParsedRow = { cells: [] };
-				activeMainRow = row;
-
-				element.onEndTag(() => {
-					rows.push(row);
-					if (activeMainRow === row) activeMainRow = null;
-				});
-			}
-		});
-
-		rewriter.on('center > table > tbody > tr > td, center > table > tr > td', {
-			element(element) {
-				if (!insideMainTable || !activeMainRow) return;
-
-				const colSpanRaw = Number(element.getAttribute('colspan') ?? '1');
-				const rowSpanRaw = Number(element.getAttribute('rowspan') ?? '1');
-				const parsedCell: ParsedCell = {
-					colSpan: Number.isFinite(colSpanRaw) && colSpanRaw > 0 ? colSpanRaw : 1,
-					rowSpan: Number.isFinite(rowSpanRaw) && rowSpanRaw > 0 ? rowSpanRaw : 1,
-					fallbackText: '',
-					nestedLines: []
-				};
-				activeMainRow.cells.push(parsedCell);
-
-				const openCell: OpenMainCell = {
-					cell: parsedCell,
-					nestedTableDepth: 0,
-					targetNestedTableDepth: null,
-					nestedRows: []
-				};
-				activeMainCell = openCell;
-
-				element.onEndTag(() => {
-					if (activeMainCell === openCell) activeMainCell = null;
-				});
-			},
-			text(text) {
-				if (!insideMainTable || !activeMainCell) return;
-				activeMainCell.cell.fallbackText += text.text;
-			}
-		});
-
-		rewriter.on('center > table > tbody > tr > td table, center > table > tr > td table', {
-			element(element) {
-				const openCell = activeMainCell;
-				if (!insideMainTable || !openCell) return;
-
-				openCell.nestedTableDepth += 1;
-				const depthAtEntry = openCell.nestedTableDepth;
-				if (openCell.targetNestedTableDepth === null) {
-					openCell.targetNestedTableDepth = depthAtEntry;
-				}
-
-				element.onEndTag(() => {
-					openCell.nestedTableDepth = Math.max(0, openCell.nestedTableDepth - 1);
-				});
-			}
-		});
-
-		rewriter.on('center > table > tbody > tr > td table tr, center > table > tr > td table tr', {
-			element(element) {
-				const openCell = activeMainCell;
-				if (!insideMainTable || !openCell) return;
-
-				const targetDepth = openCell.targetNestedTableDepth;
-				const nestedRow: OpenNestedRow = {
-					capture: targetDepth !== null && openCell.nestedTableDepth === targetDepth,
-					cellIndex: 0,
-					firstCellBuffer: null
-				};
-				openCell.nestedRows.push(nestedRow);
-
-				element.onEndTag(() => {
-					const idx = openCell.nestedRows.lastIndexOf(nestedRow);
-					if (idx >= 0) openCell.nestedRows.splice(idx, 1);
-				});
-			}
-		});
-
-		rewriter.on(
-			'center > table > tbody > tr > td table tr > td, center > table > tr > td table tr > td',
-			{
-				element(element) {
-					const openCell = activeMainCell;
-					if (!insideMainTable || !openCell) return;
-
-					const nestedRow = openCell.nestedRows[openCell.nestedRows.length - 1];
-					if (!nestedRow || !nestedRow.capture) return;
-
-					const currentCellIndex = nestedRow.cellIndex;
-					nestedRow.cellIndex += 1;
-					if (currentCellIndex !== 0) return;
-
-					nestedRow.firstCellBuffer = '';
-					element.onEndTag(() => {
-						const raw = nestedRow.firstCellBuffer;
-						nestedRow.firstCellBuffer = null;
-						if (typeof raw !== 'string') return;
-						const value = collapseSpaces(raw);
-						if (value) openCell.cell.nestedLines.push(value);
-					});
-				},
-				text(text) {
-					const openCell = activeMainCell;
-					if (!insideMainTable || !openCell) return;
-
-					const nestedRow = openCell.nestedRows[openCell.nestedRows.length - 1];
-					if (!nestedRow || !nestedRow.capture) return;
-					if (nestedRow.firstCellBuffer === null) return;
-
-					const targetDepth = openCell.targetNestedTableDepth;
-					if (targetDepth === null || openCell.nestedTableDepth !== targetDepth) return;
-					nestedRow.firstCellBuffer += text.text;
-				}
-			}
-		);
-	});
-
-	return { rows, foundMainTable };
+	return { rows, foundMainTable: true };
 }
 
 function detectTrack(subjectFullRaw: string): CohortTrack {
@@ -309,7 +302,7 @@ export async function parseTimetablePage(
 ): Promise<Pick<GroupWeekSchedule, 'events' | 'cohorts'>> {
 	if (!/<center\b/i.test(html)) throw new Error('Timetable center container not found');
 
-	const { rows, foundMainTable } = await collectMainTableRows(html);
+	const { rows, foundMainTable } = collectMainTableRows(html);
 	if (!foundMainTable) throw new Error('Main timetable table not found');
 	if (rows.length === 0) throw new Error('No rows in timetable table');
 
@@ -360,11 +353,11 @@ export async function parseTimetablePage(
 				const roomRaw = lines[2] ?? '';
 
 				// Skip empty cells, placeholder underscores, and holiday date-only cells
-				// (e.g. "23.3.2026" spanning the entire day column)
+				// (e.g. "23.3.2026" or "23.3.2026-23.3.2026" spanning the day column)
 				if (
 					subjectRaw &&
 					!subjectRaw.includes('________________') &&
-					!/^\d{1,2}\.\d{1,2}\.\d{4}$/.test(subjectRaw)
+					!isDateMarkerCell(subjectRaw)
 				) {
 					const dayIndex = Math.floor((col - 1) / 12);
 					if (dayIndex >= 0 && dayIndex < dayDates.length) {
@@ -387,13 +380,19 @@ export async function parseTimetablePage(
 	// Now that all rowTimes are known, create events and split
 	// multi-period cells into one event per time slot
 	const splitEvents: LessonEvent[] = [];
+	const seenEventSeeds = new Set<string>();
 
 	for (const d of deferred) {
-		const subjectFullRaw = subjectResolver(d.subjectRaw);
-		const noGerman = isMissingGermanName(subjectFullRaw);
+		const legendFullRaw = subjectResolver(d.subjectRaw);
+		if (isUnknownPlaceholderSubject(d.subjectRaw) && !legendFullRaw) continue;
+		const hasLegendFull = legendFullRaw.trim().length > 0;
+		const noGerman = isMissingGermanName(hasLegendFull ? legendFullRaw : d.subjectRaw);
 		const shortLabels = splitBilingualLabel(d.subjectRaw, noGerman);
-		const fullLabels = splitBilingualLabel(subjectFullRaw, noGerman);
-		const lessonType = noGerman ? '' : fullLabels.lessonType;
+		const fullLabels = hasLegendFull
+			? splitBilingualLabel(legendFullRaw, noGerman)
+			: { ...shortLabels, lessonType: '' };
+		const subjectFullRaw = hasLegendFull ? legendFullRaw : sanitizeLabel(shortLabels.ru);
+		const lessonType = hasLegendFull && !noGerman ? fullLabels.lessonType : '';
 		const cohort = extractCohortCode(d.subjectRaw);
 		const nameTrack = detectTrack(subjectFullRaw);
 		const track = nameTrack !== 'none' ? nameTrack : (cohort?.track ?? 'none');
@@ -417,9 +416,10 @@ export async function parseTimetablePage(
 		}
 
 		for (const period of periods) {
-			const id = stableEventId(
-				`${group.codeRaw}|${dateIso}|${period.start}|${period.end}|${d.subjectRaw}|${d.roomRaw}|${cohortCode ?? ''}`
-			);
+			const eventSeed = `${group.codeRaw}|${dateIso}|${period.start}|${period.end}|${d.subjectRaw}|${d.roomRaw}|${cohortCode ?? ''}`;
+			if (seenEventSeeds.has(eventSeed)) continue;
+			seenEventSeeds.add(eventSeed);
+			const id = stableEventId(eventSeed);
 
 			splitEvents.push({
 				id,

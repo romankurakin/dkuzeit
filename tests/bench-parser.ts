@@ -2,7 +2,6 @@ import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { parseNavHtml, parseTimetablePage } from '../src/lib/server/parser';
-import { ensureNodeHtmlRewriter } from '../scripts/html-rewriter-polyfill';
 
 interface Manifest {
 	weeks: string[];
@@ -16,8 +15,6 @@ const fixtureRoot = path.resolve(process.cwd(), 'tests/fixtures/live');
 const manifestPath = path.join(fixtureRoot, 'manifest.json');
 
 async function run() {
-	ensureNodeHtmlRewriter();
-
 	if (!existsSync(manifestPath)) {
 		console.error('Fixtures missing. Run: npm run fixtures:sync');
 		process.exit(1);
