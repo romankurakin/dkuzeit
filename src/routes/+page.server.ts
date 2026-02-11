@@ -60,7 +60,17 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
 	} catch {
 		// Upstream failure, dont cache empty schedule
 		cacheControl = 'private, no-store';
-		// Keep empty schedule
+		setHeaders({ 'cache-control': cacheControl });
+		return {
+			meta: { groups: meta.groups, weeks: meta.weeks, resolvedWeek: weekValue },
+			schedule: {
+				events: [],
+				cohorts: [],
+				resolvedGroup: groupCode,
+				resolvedWeek: weekValue,
+				error: true
+			}
+		};
 	}
 	setHeaders({ 'cache-control': cacheControl });
 	return {
@@ -69,7 +79,8 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
 			events,
 			cohorts,
 			resolvedGroup: groupCode,
-			resolvedWeek: weekValue
+			resolvedWeek: weekValue,
+			error: false
 		}
 	};
 };

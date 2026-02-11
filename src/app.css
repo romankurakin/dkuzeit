@@ -1,6 +1,18 @@
 @import 'tailwindcss';
 @import '@evilmartians/harmony/tailwind.css';
 
+@theme {
+	--color-foreground: var(--color-neutral-950);
+	--color-background: var(--color-neutral-50);
+	--color-muted: var(--color-neutral-100);
+	--color-muted-foreground: var(--color-neutral-500);
+	--color-border: oklch(from var(--color-foreground) l c h / 0.2);
+	--color-ring: var(--color-blue-600);
+
+	--spacing-control: 0.625rem;
+	--spacing-section: 1.5rem;
+}
+
 body {
 	font-family: system-ui, sans-serif;
 }
@@ -8,33 +20,46 @@ body {
 @utility brutal-border {
 	border-width: 3px;
 	border-style: solid;
-	border-color: var(--color-black);
+	border-color: var(--color-foreground);
 }
 
 @utility brutal-border-l {
-	border-left: 3px solid var(--color-black);
+	border-left: 3px solid var(--color-foreground);
 }
 
 @utility brutal-border-t {
-	border-top: 3px solid var(--color-black);
+	border-top: 3px solid var(--color-foreground);
 }
 
 @utility brutal-border-b {
-	border-bottom: 3px solid var(--color-black);
+	border-bottom: 3px solid var(--color-foreground);
 }
 
 @utility brutal-micro {
-	font-size: 10px;
-	font-weight: 700;
-	text-transform: uppercase;
-	letter-spacing: 0.2em;
-}
-
-@utility brutal-day {
-	font-size: 11px;
+	font-size: 0.75rem;
 	font-weight: 700;
 	text-transform: uppercase;
 	letter-spacing: 0.15em;
+}
+
+@utility brutal-control {
+	font-size: 0.75rem;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+}
+
+@utility brutal-heading {
+	font-size: 1.5rem;
+	line-height: 2rem;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.1em;
+
+	@media (width >= 40rem) {
+		font-size: 2.25rem;
+		line-height: 2.5rem;
+	}
 }
 
 @utility brutal-cell {
@@ -45,12 +70,48 @@ body {
 	min-height: 3.5rem;
 }
 
+/* sonner mobile bug: left + width:100% overflows viewport.
+   600px is sonner's internal mobile breakpoint — must match exactly. */
+@media (max-width: 600px) {
+	[data-sonner-toaster][data-x-position='center'] {
+		left: 0 !important;
+		right: 0 !important;
+		width: 100% !important;
+		transform: none !important;
+	}
+}
+
+@utility brutal-focus {
+	&:focus {
+		outline: 2px solid var(--color-ring);
+		outline-offset: 2px;
+	}
+}
+
+@utility brutal-focus-within {
+	&:focus-within {
+		outline: 2px solid var(--color-ring);
+		outline-offset: 2px;
+	}
+}
+
+@utility brutal-focus-fill {
+	&:focus {
+		outline: none;
+	}
+
+	&:focus:not([data-state='on']) {
+		background-color: var(--color-ring);
+		color: var(--color-background);
+	}
+}
+
 @utility brutal-hover {
 	transition-property: color, background-color;
 	transition-duration: 100ms;
 
 	&:hover {
-		background-color: var(--color-black);
-		color: var(--color-white);
+		background-color: var(--color-foreground);
+		color: var(--color-background);
 	}
 }

@@ -15,10 +15,14 @@
 	"api_error_meta": "Не удалось загрузить список групп",
 	"api_error_schedule": "Не удалось загрузить расписание",
 	"api_error_calendar": "Не удалось создать ссылку календаря",
-	"calendar_select_cohorts": "Выберите группы:",
+	"calendar_select_cohorts": "Выберите подгруппы",
 	"made_by": "Сделал",
 	"category_de": "Немецкий язык",
 	"category_en": "Английский язык",
 	"category_kz": "Казахский язык",
-	"category_pe": "Физкультура"
+	"category_pe": "Физкультура",
+	"upstream_down_title": "Расписание недоступно",
+	"upstream_down_body": "timetable.dku.kz не отвечает",
+	"not_found_title": "Страница не найдена",
+	"not_found_body": "Такой страницы не существует"
 }

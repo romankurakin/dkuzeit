@@ -15,10 +15,14 @@
 	"api_error_meta": "Gruppenliste konnte nicht geladen werden",
 	"api_error_schedule": "Stundenplan konnte nicht geladen werden",
 	"api_error_calendar": "Kalenderlink konnte nicht erstellt werden",
-	"calendar_select_cohorts": "Bitte wählen Sie:",
+	"calendar_select_cohorts": "Bitte Untergruppen auswählen",
 	"made_by": "Gemacht von",
 	"category_de": "Deutsch",
 	"category_en": "Englisch",
 	"category_kz": "Kasachisch",
-	"category_pe": "Sport"
+	"category_pe": "Sport",
+	"upstream_down_title": "Stundenplan nicht verfügbar",
+	"upstream_down_body": "timetable.dku.kz antwortet nicht",
+	"not_found_title": "Seite nicht gefunden",
+	"not_found_body": "Diese Seite existiert nicht"
 }

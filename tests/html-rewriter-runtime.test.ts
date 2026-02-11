@@ -73,12 +73,11 @@ describe('runHtmlRewriter', () => {
 		expect(new TextDecoder().decode(chunks[0])).toBe('<p>fallback</p>');
 	});
 
-	it('throws when HTMLRewriter is unavailable', async () => {
+	it('falls back to html-rewriter-wasm when global HTMLRewriter is missing', async () => {
 		delete globalScope.HTMLRewriter;
 
-		await expect(runHtmlRewriter('<p>x</p>', () => {})).rejects.toThrow(
-			'HTMLRewriter is unavailable in this runtime'
-		);
+		await runHtmlRewriter('<p>x</p>', (r) => r.on('p', {}));
+		expect(typeof globalScope.HTMLRewriter).toBe('function');
 	});
 
 	it('throws when runtime implementation has unsupported methods', async () => {

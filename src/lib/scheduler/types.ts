@@ -26,10 +26,9 @@ export interface SchedulerContext {
 
 	uiLocale: 'ru' | 'de';
 	todayIso: string;
-	error: string;
 	isGeneratingLinks: boolean;
+	cohortWarningActive: boolean;
 	copiedField: 'site' | 'calendar' | null;
-	calendarWarning: string;
 
 	onGroupChange: (value: string) => void;
 	onWeekChange: (value: string) => void;
