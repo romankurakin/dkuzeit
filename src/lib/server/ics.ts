@@ -84,5 +84,8 @@ export function buildIcsCalendar(
 		events: icsEvents
 	};
 
-	return generateIcsCalendar(calendar);
+	return generateIcsCalendar(calendar).replace(
+		'BEGIN:VCALENDAR',
+		'BEGIN:VCALENDAR\r\nX-PUBLISHED-TTL:PT1D'
+	);
 }
