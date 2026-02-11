@@ -57,10 +57,18 @@ suite('parseNavHtml', () => {
 		}
 	});
 
-	it('2-ТЛ/-TL German label is TL, not -TL', async () => {
+	it('2-ТЛ/-TL German label keeps year prefix and strips leading dash', async () => {
 		const meta = await loadMeta();
 		const tl = meta.groups.find((g) => g.codeRaw === '2-ТЛ/-TL');
-		expect(tl?.codeDe).toBe('TL');
+		expect(tl?.codeDe).toBe('2-TL');
+	});
+
+	it('German group labels keep year prefix when Russian label has it', async () => {
+		const meta = await loadMeta();
+		for (const group of meta.groups) {
+			if (!/^\d/.test(group.codeRu)) continue;
+			expect(group.codeDe, group.codeRaw).toMatch(/^\d/);
+		}
 	});
 
 	it('parenthesized suffixes are stripped from group labels', async () => {

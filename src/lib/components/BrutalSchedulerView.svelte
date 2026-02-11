@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import { tick } from 'svelte';
+	import { onDestroy, tick } from 'svelte';
 	import { toast } from 'svelte-sonner';
 	import { m } from '$lib/paraglide/messages';
 	import { getLocale, localizeHref } from '$lib/paraglide/runtime';
@@ -45,8 +45,13 @@
 	} = $props();
 
 	let isGeneratingLinks = $state(false);
+	let calendarCopyState = $state<'idle' | 'pending' | 'success'>('idle');
+	let calendarCopyCommit = $state(false);
 	let copiedField = $state<'site' | 'calendar' | null>(null);
 	let cohortWarningActive = $state(false);
+	let calendarClearTimer: ReturnType<typeof setTimeout> | null = null;
+
+	const CALENDAR_COPY_EXIT_DELAY_MS = 180;
 
 	const uiLocale = $derived((getLocale() === 'de' ? 'de' : 'ru') as 'ru' | 'de');
 	const categoryLabels = $derived<Record<string, string>>({
@@ -88,6 +93,20 @@
 		onCohortChange(trackLabel, code);
 	}
 
+	function resetCalendarCopyState(): void {
+		if (copiedField === 'calendar') copiedField = null;
+		calendarCopyCommit = false;
+		calendarCopyState = 'idle';
+	}
+
+	function clearCalendarCopyState(): void {
+		if (calendarClearTimer) clearTimeout(calendarClearTimer);
+		calendarClearTimer = setTimeout(() => {
+			calendarClearTimer = null;
+			resetCalendarCopyState();
+		}, CALENDAR_COPY_EXIT_DELAY_MS);
+	}
+
 	async function handleCopyCalendarLink(): Promise<void> {
 		if (!resolvedGroup || !resolvedWeek) return;
 		const unselected = cohortGroups.filter((cg) => !cg.value);
@@ -111,6 +130,12 @@
 			}
 			return;
 		}
+		calendarCopyCommit = true;
+		if (calendarClearTimer) {
+			clearTimeout(calendarClearTimer);
+			calendarClearTimer = null;
+		}
+		calendarCopyState = 'pending';
 		isGeneratingLinks = true;
 		try {
 			const textPromise = fetch('/api/token', {
@@ -132,16 +157,23 @@
 					'text/plain': textPromise.then((text) => new Blob([text], { type: 'text/plain' }))
 				})
 			]);
-			copiedField = 'calendar';
-			setTimeout(() => {
-				copiedField = null;
-			}, 1500);
+			if (calendarCopyCommit) {
+				copiedField = 'calendar';
+				calendarCopyState = 'success';
+			} else {
+				resetCalendarCopyState();
+			}
 		} catch (err) {
+			resetCalendarCopyState();
 			toast.error(err instanceof Error ? err.message : m.api_error_calendar());
 		} finally {
 			isGeneratingLinks = false;
 		}
 	}
+
+	onDestroy(() => {
+		if (calendarClearTimer) clearTimeout(calendarClearTimer);
+	});
 
 	// Auto-scroll to today on data load
 	$effect(() => {
@@ -169,6 +201,7 @@
 	uiLocale,
 	todayIso,
 	isGeneratingLinks,
+	calendarCopyState,
 	cohortWarningActive,
 	copiedField,
 	onGroupChange,
@@ -182,6 +215,7 @@
 		}, 1500);
 	},
 	onCopyCalendarLink: handleCopyCalendarLink,
+	onClearCalendarCopyState: clearCalendarCopyState,
 	formatDateLabel: (dateIso: string) => formatDateLabel(dateIso, uiLocale),
 	eventTitleLabel: (event: LessonEvent) => eventTitleLabel(event, uiLocale),
 	isToday,

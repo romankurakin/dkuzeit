@@ -31,8 +31,22 @@ function resolveWeek(weeks: WeekOption[], param: string): string {
 	return match?.value ?? resolveWeekByDate(weeks);
 }
 
+function getTodayIsoInAlmaty(): string {
+	const parts = new Intl.DateTimeFormat('en-CA', {
+		timeZone: ALMATY_TIME_ZONE,
+		year: 'numeric',
+		month: '2-digit',
+		day: '2-digit'
+	}).formatToParts(new Date());
+	const year = parts.find((p) => p.type === 'year')?.value;
+	const month = parts.find((p) => p.type === 'month')?.value;
+	const day = parts.find((p) => p.type === 'day')?.value;
+	return year && month && day ? `${year}-${month}-${day}` : '';
+}
+
 export const load: PageServerLoad = async ({ url, setHeaders }) => {
 	const meta = await getMeta();
+	const todayIso = getTodayIsoInAlmaty();
 	const groupCode = resolveGroup(meta.groups, url.searchParams.get('group') ?? '');
 	const weekValue = resolveWeek(meta.weeks, url.searchParams.get('week') ?? '');
 	let cacheControl = CLIENT_CACHE_HEADER;
@@ -41,6 +55,7 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
 		cacheControl = 'private, no-store';
 		setHeaders({ 'cache-control': cacheControl });
 		return {
+			todayIso,
 			meta: { groups: meta.groups, weeks: meta.weeks, resolvedWeek: weekValue },
 			schedule: {
 				events: [],
@@ -62,6 +77,7 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
 		cacheControl = 'private, no-store';
 		setHeaders({ 'cache-control': cacheControl });
 		return {
+			todayIso,
 			meta: { groups: meta.groups, weeks: meta.weeks, resolvedWeek: weekValue },
 			schedule: {
 				events: [],
@@ -74,6 +90,7 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
 	}
 	setHeaders({ 'cache-control': cacheControl });
 	return {
+		todayIso,
 		meta: { groups: meta.groups, weeks: meta.weeks, resolvedWeek: weekValue },
 		schedule: {
 			events,

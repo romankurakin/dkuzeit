@@ -33,7 +33,8 @@ describe('parseLegendEntries', () => {
 describe('makeLegendResolver', () => {
 	const entries = [
 		{ code: 'МАТ1.л/M1', value: 'Математика 1/Mathematik 1 лекция' },
-		{ code: 'ФИЗ', value: 'Физика/Physik' }
+		{ code: 'ФИЗ', value: 'Физика/Physik' },
+		{ code: 'АПЭК.л(D)/ApöK(D)', value: 'Анализ кризиса/ApöK лекция' }
 	];
 	const resolve = makeLegendResolver(entries);
 
@@ -47,6 +48,14 @@ describe('makeLegendResolver', () => {
 
 	it('resolves left-prefix fallback (before slash)', () => {
 		expect(resolve('МАТ1.л')).toBe('Математика 1/Mathematik 1 лекция');
+	});
+
+	it('resolves source marker variants like .*CODE/', () => {
+		expect(resolve('.*МАТ1.л/')).toBe('Математика 1/Mathematik 1 лекция');
+	});
+
+	it('resolves codes without (D)-suffix against legend entries with it', () => {
+		expect(resolve('.*АПЭК.л')).toBe('Анализ кризиса/ApöK лекция');
 	});
 
 	it('returns empty string on miss', () => {

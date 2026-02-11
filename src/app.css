@@ -4,17 +4,60 @@
 @theme {
 	--color-foreground: var(--color-neutral-950);
 	--color-background: var(--color-neutral-50);
-	--color-muted: var(--color-neutral-100);
-	--color-muted-foreground: var(--color-neutral-500);
+	--color-muted-surface: var(--color-neutral-200);
+	--color-muted-text: var(--color-neutral-500);
+	--color-subtle-text: var(--color-neutral-800);
 	--color-border: oklch(from var(--color-foreground) l c h / 0.2);
 	--color-ring: var(--color-blue-600);
+	/* Fallback for non-P3 displays */
+	--color-poison: #12e93a;
+	--color-hover: var(--color-neutral-900);
 
 	--spacing-control: 0.625rem;
 	--spacing-section: 1.5rem;
+	--size-time-column: 4.5rem;
+	--size-control-min: calc(var(--size-time-column) * 2 + var(--spacing-section));
+	--size-control-segment-min: 3ch;
+	--size-control-icon: 2.5rem;
+	--size-icon-main: calc(var(--size-control-icon) - var(--spacing-control));
+	--size-icon-select: calc(var(--spacing-control) * 1.4);
 }
 
 body {
 	font-family: system-ui, sans-serif;
+}
+
+@supports (color: color(display-p3 1 1 1)) {
+	:root {
+		/* Priority: P3 punch > Apple-like hue > Harmony-friendly character */
+		--color-poison: color(display-p3 0.24 0.92 0.31);
+	}
+}
+
+html {
+	scrollbar-width: auto;
+	scrollbar-color: var(--color-foreground) var(--color-background);
+}
+
+html::-webkit-scrollbar {
+	width: 14px;
+	height: 14px;
+}
+
+html::-webkit-scrollbar-track {
+	background: var(--color-background);
+	border-radius: 0;
+}
+
+html::-webkit-scrollbar-thumb {
+	background: var(--color-foreground);
+	border: 3px solid var(--color-background);
+	border-radius: 0;
+}
+
+html::-webkit-scrollbar-corner {
+	background: var(--color-background);
+	border-radius: 0;
 }
 
 @utility brutal-border {
@@ -47,6 +90,114 @@ body {
 	font-weight: 700;
 	text-transform: uppercase;
 	letter-spacing: 0.05em;
+	line-height: 1;
+}
+
+@utility brutal-control-segment {
+	min-width: var(--size-control-segment-min);
+	text-align: center;
+	line-height: 1;
+}
+
+@utility brutal-control-icon {
+	width: var(--size-control-icon);
+	height: var(--size-control-icon);
+	padding: 0;
+	justify-content: center;
+}
+
+@utility brutal-shell-inset {
+	@media (width >= 64rem) {
+		padding-inline: calc(var(--spacing-section) - var(--spacing-control) / 2);
+	}
+}
+
+@utility brutal-link {
+	border-width: 3px;
+	border-style: solid;
+	border-color: var(--color-foreground);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.5rem;
+	white-space: nowrap;
+	text-decoration: none;
+}
+
+@utility brutal-scrollbar {
+	scrollbar-width: auto;
+	scrollbar-color: var(--color-foreground) var(--color-background);
+
+	&::-webkit-scrollbar {
+		width: 14px;
+		height: 14px;
+	}
+
+	&::-webkit-scrollbar-track {
+		background: var(--color-background);
+		border-radius: 0;
+	}
+
+	&::-webkit-scrollbar-thumb {
+		background: var(--color-foreground);
+		border: 3px solid var(--color-background);
+		border-radius: 0;
+	}
+
+	&::-webkit-scrollbar-corner {
+		background: var(--color-background);
+		border-radius: 0;
+	}
+}
+
+@utility brutal-scrollbar-rail {
+	display: flex;
+	width: 14px;
+	padding: 0;
+	border-left: 3px solid var(--color-foreground);
+	background: var(--color-background);
+}
+
+@utility brutal-scrollbar-thumb {
+	flex: 1;
+	background: var(--color-foreground);
+	border: 3px solid var(--color-background);
+	border-radius: 0;
+}
+
+@utility pixel-icon {
+	width: var(--size-icon-main);
+	height: var(--size-icon-main);
+	display: inline-block;
+	flex-shrink: 0;
+	pointer-events: none;
+}
+
+@utility pixel-icon-control {
+	width: var(--size-icon-select);
+	height: var(--size-icon-select);
+	display: inline-block;
+	flex-shrink: 0;
+	pointer-events: none;
+	transition: transform 120ms ease-out;
+}
+
+@utility pixel-icon-mask {
+	background-color: currentColor;
+	-webkit-mask-image: var(--pixel-icon);
+	mask-image: var(--pixel-icon);
+	-webkit-mask-repeat: no-repeat;
+	mask-repeat: no-repeat;
+	-webkit-mask-position: center;
+	mask-position: center;
+	-webkit-mask-size: contain;
+	mask-size: contain;
+}
+
+@utility brutal-signature {
+	font-size: 0.75rem;
+	font-weight: 700;
+	line-height: 1;
 }
 
 @utility brutal-heading {
@@ -71,7 +222,9 @@ body {
 }
 
 /* sonner mobile bug: left + width:100% overflows viewport.
-   600px is sonner's internal mobile breakpoint — must match exactly. */
+   600px is sonner's internal mobile breakpoint, so this
+   must match exactly. 
+*/
 @media (max-width: 600px) {
 	[data-sonner-toaster][data-x-position='center'] {
 		left: 0 !important;
@@ -82,25 +235,25 @@ body {
 }
 
 @utility brutal-focus {
-	&:focus {
-		outline: 2px solid var(--color-ring);
-		outline-offset: 2px;
+	&:focus-visible {
+		outline: 3px solid var(--color-ring);
+		outline-offset: 3px;
 	}
 }
 
 @utility brutal-focus-within {
-	&:focus-within {
-		outline: 2px solid var(--color-ring);
-		outline-offset: 2px;
+	&:has(:focus-visible) {
+		outline: 3px solid var(--color-ring);
+		outline-offset: 3px;
 	}
 }
 
 @utility brutal-focus-fill {
-	&:focus {
+	&:focus-visible {
 		outline: none;
 	}
 
-	&:focus:not([data-state='on']) {
+	&:focus-visible:not([data-state='on']) {
 		background-color: var(--color-ring);
 		color: var(--color-background);
 	}
@@ -111,7 +264,7 @@ body {
 	transition-duration: 100ms;
 
 	&:hover {
-		background-color: var(--color-foreground);
+		background-color: var(--color-hover);
 		color: var(--color-background);
 	}
 }

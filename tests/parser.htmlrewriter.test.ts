@@ -169,6 +169,80 @@ describe('parseTimetablePage HTMLRewriter state machine', () => {
 		expect(parsed.events[0]!.endTime).toBe('09:40');
 	});
 
+	it('skips day-range marker cells like 09.03.2026-09.03.2026', async () => {
+		const html = wrapTimetable(
+			`
+				<tr>
+					<td rowspan="2">08:00 - 09:40</td>
+					<td colspan="12" rowspan="2">09.03.2026-09.03.2026</td>
+				</tr>
+				<tr></tr>
+			`,
+			``
+		);
+
+		const parsed = await parseTimetablePage(html, group, week);
+		expect(parsed.events).toHaveLength(0);
+	});
+
+	it('deduplicates identical event seeds emitted from split columns of one day', async () => {
+		const html = wrapTimetable(
+			`
+				<tr>
+					<td rowspan="2">08:00 - 09:40</td>
+					<td colspan="4" rowspan="2">DUP</td>
+					<td colspan="4" rowspan="2">DUP</td>
+				</tr>
+				<tr></tr>
+			`,
+			`<tr><td>DUP</td><td>Дублирование/Duplizierung лекция</td></tr>`
+		);
+
+		const parsed = await parseTimetablePage(html, group, week);
+		expect(parsed.events).toHaveLength(1);
+		expect(parsed.events[0]!.subjectShortRaw).toBe('DUP');
+		expect(parsed.events[0]!.startTime).toBe('08:00');
+		expect(parsed.events[0]!.endTime).toBe('09:40');
+		expect(parsed.events[0]!.dayIndex).toBe(0);
+	});
+
+	it('skips unknown placeholder subject "?" when legend has no mapping', async () => {
+		const html = wrapTimetable(
+			`
+				<tr>
+					<td rowspan="2">08:00 - 09:40</td>
+					<td colspan="12" rowspan="2">?</td>
+				</tr>
+				<tr></tr>
+			`,
+			``
+		);
+
+		const parsed = await parseTimetablePage(html, group, week);
+		expect(parsed.events).toHaveLength(0);
+	});
+
+	it('falls back to cleaned short label when full legend name is missing', async () => {
+		const html = wrapTimetable(
+			`
+				<tr>
+					<td rowspan="2">08:00 - 09:40</td>
+					<td colspan="12" rowspan="2">.*СПУРП2</td>
+				</tr>
+				<tr></tr>
+			`,
+			``
+		);
+
+		const parsed = await parseTimetablePage(html, group, week);
+		expect(parsed.events).toHaveLength(1);
+		const event = parsed.events[0]!;
+		expect(event.subjectShortRu).toBe('СПУРП2');
+		expect(event.subjectFullRu).toBe('СПУРП2');
+		expect(event.subjectFullDe).toBe('СПУРП2');
+		expect(event.subjectFullRaw).toBe('СПУРП2');
+	});
+
 	it('throws a clear error when center container is absent', async () => {
 		await expect(
 			parseTimetablePage('<html><body><table></table></body></html>', group, week)

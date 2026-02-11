@@ -1,13 +1,11 @@
 import { readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { parseNavHtml, parseTimetablePage } from '../src/lib/server/parser';
-import { ensureNodeHtmlRewriter } from './html-rewriter-polyfill';
 
 const root = 'tests/fixtures/live';
 const manifest = JSON.parse(readFileSync(path.join(root, 'manifest.json'), 'utf8'));
 const navbar = readFileSync(path.join(root, 'frames/navbar.htm'), 'utf8');
 const meta = parseNavHtml(navbar);
-ensureNodeHtmlRewriter();
 
 const groupArg = process.argv[2] ?? '';
 const weekArg = process.argv[3] ?? '';
