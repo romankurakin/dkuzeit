@@ -359,7 +359,13 @@ export async function parseTimetablePage(
 				const subjectRaw = lines[0] ?? '';
 				const roomRaw = lines[2] ?? '';
 
-				if (subjectRaw && !subjectRaw.includes('________________')) {
+				// Skip empty cells, placeholder underscores, and holiday date-only cells
+				// (e.g. "23.3.2026" spanning the entire day column)
+				if (
+					subjectRaw &&
+					!subjectRaw.includes('________________') &&
+					!/^\d{1,2}\.\d{1,2}\.\d{4}$/.test(subjectRaw)
+				) {
 					const dayIndex = Math.floor((col - 1) / 12);
 					if (dayIndex >= 0 && dayIndex < dayDates.length) {
 						deferred.push({ dayIndex, subjectRaw, roomRaw, rowIndex, rowSpan });
