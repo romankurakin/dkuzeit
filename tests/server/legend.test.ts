@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { makeLegendResolver, parseLegendEntries } from '../src/lib/server/legend';
+import { makeLegendResolver, parseLegendEntries } from '../../src/lib/server/legend';
 
-describe('parseLegendEntries', () => {
-	it('extracts code-value pairs from legend table', () => {
+describe('legend parse legend entries', () => {
+	it('extract code value pairs from legend table', () => {
 		const html = `
 			<B>Дисциплины</B>
 			<TABLE><TR><TD>МАТ1</TD><TD>Математика 1</TD></TR></TABLE>
@@ -12,7 +12,7 @@ describe('parseLegendEntries', () => {
 		]);
 	});
 
-	it('skips header rows and nbsp entries', () => {
+	it('skip header rows and nbsp entries', () => {
 		const html = `
 			<B>Дисциплины</B>
 			<TABLE>
@@ -25,12 +25,12 @@ describe('parseLegendEntries', () => {
 		expect(entries).toEqual([{ code: 'ФИЗ', value: 'Физика' }]);
 	});
 
-	it('returns empty for missing heading', () => {
+	it('return empty for missing heading', () => {
 		expect(parseLegendEntries('<B>Other</B>', 'Дисциплины')).toEqual([]);
 	});
 });
 
-describe('makeLegendResolver', () => {
+describe('legend make legend resolver', () => {
 	const entries = [
 		{ code: 'МАТ1.л/M1', value: 'Математика 1/Mathematik 1 лекция' },
 		{ code: 'ФИЗ', value: 'Физика/Physik' },
@@ -38,27 +38,27 @@ describe('makeLegendResolver', () => {
 	];
 	const resolve = makeLegendResolver(entries);
 
-	it('resolves exact match', () => {
+	it('resolve exact match', () => {
 		expect(resolve('ФИЗ')).toBe('Физика/Physik');
 	});
 
-	it('resolves case-insensitively', () => {
+	it('resolve case insensitively', () => {
 		expect(resolve('физ')).toBe('Физика/Physik');
 	});
 
-	it('resolves left-prefix fallback (before slash)', () => {
+	it('resolve left prefix fallback before slash', () => {
 		expect(resolve('МАТ1.л')).toBe('Математика 1/Mathematik 1 лекция');
 	});
 
-	it('resolves source marker variants like .*CODE/', () => {
+	it('resolve source marker variants like code', () => {
 		expect(resolve('.*МАТ1.л/')).toBe('Математика 1/Mathematik 1 лекция');
 	});
 
-	it('resolves codes without (D)-suffix against legend entries with it', () => {
+	it('resolve codes without d suffix against legend entries with it', () => {
 		expect(resolve('.*АПЭК.л')).toBe('Анализ кризиса/ApöK лекция');
 	});
 
-	it('returns empty string on miss', () => {
+	it('return empty string on miss', () => {
 		expect(resolve('UNKNOWN')).toBe('');
 	});
 });

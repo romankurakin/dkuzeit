@@ -4,8 +4,8 @@ import {
 	extractTimeSlots,
 	eventTitleLabel,
 	buildCohortGroups
-} from '../src/lib/scheduler/event-filter';
-import type { Cohort, LessonEvent } from '../src/lib/server/types';
+} from '../../src/lib/scheduler/event-filter';
+import type { Cohort, LessonEvent } from '../../src/lib/server/types';
 
 function makeEvent(overrides: Partial<LessonEvent> = {}): LessonEvent {
 	return {
@@ -38,14 +38,14 @@ const categoryLabels: Record<string, string> = {
 	pe: 'PE'
 };
 
-describe('filterDisplayEvents', () => {
-	it('always passes core_fixed events', () => {
+describe('event filter filter display events', () => {
+	it('always pass core fixed events', () => {
 		const events = [makeEvent({ scope: 'core_fixed' })];
 		const result = filterDisplayEvents(events, [], [], categoryLabels);
 		expect(result).toHaveLength(1);
 	});
 
-	it('filters by cohort selection', () => {
+	it('filter by cohort selection', () => {
 		const cohorts: Cohort[] = [
 			{ code: 'DE1', track: 'de', label: 'German 1', sourceGroups: ['GRP1'] },
 			{ code: 'DE2', track: 'de', label: 'German 2', sourceGroups: ['GRP1'] }
@@ -59,7 +59,7 @@ describe('filterDisplayEvents', () => {
 		expect(result.find((e) => e.id === 'e1')).toBeDefined();
 	});
 
-	it('collapses unselected categories into merged events', () => {
+	it('collapse unselected categories into merged events', () => {
 		const cohorts: Cohort[] = [
 			{ code: 'EN1', track: 'en', label: 'English 1', sourceGroups: ['GRP1'] },
 			{ code: 'EN2', track: 'en', label: 'English 2', sourceGroups: ['GRP1'] }
@@ -74,7 +74,7 @@ describe('filterDisplayEvents', () => {
 		expect(merged[0]!.subjectFullRu).toBe('English');
 	});
 
-	it('returns all events when urlCohorts is empty (core + merged)', () => {
+	it('return all events when url cohorts is empty core merged', () => {
 		const cohorts: Cohort[] = [
 			{ code: 'DE1', track: 'de', label: 'German 1', sourceGroups: ['GRP1'] }
 		];
@@ -87,8 +87,8 @@ describe('filterDisplayEvents', () => {
 	});
 });
 
-describe('extractTimeSlots', () => {
-	it('deduplicates and sorts time slots', () => {
+describe('event filter extract time slots', () => {
+	it('deduplicate and sort time slots', () => {
 		const events = [
 			makeEvent({ startTime: '11:00', endTime: '12:30' }),
 			makeEvent({ startTime: '09:00', endTime: '10:30' }),
@@ -101,25 +101,25 @@ describe('extractTimeSlots', () => {
 	});
 });
 
-describe('eventTitleLabel', () => {
-	it('prefers subjectFullRu for ru locale', () => {
+describe('event filter event title label', () => {
+	it('prefer subject full ru for ru locale', () => {
 		const event = makeEvent({ subjectFullRu: 'Математика', subjectFullDe: 'Mathematik' });
 		expect(eventTitleLabel(event, 'ru')).toBe('Математика');
 	});
 
-	it('prefers subjectFullDe for de locale', () => {
+	it('prefer subject full de for de locale', () => {
 		const event = makeEvent({ subjectFullRu: 'Математика', subjectFullDe: 'Mathematik' });
 		expect(eventTitleLabel(event, 'de')).toBe('Mathematik');
 	});
 
-	it('appends cohortCode when present', () => {
+	it('append cohort code when present', () => {
 		const event = makeEvent({ subjectFullRu: 'Немецкий', cohortCode: 'DE1' });
 		expect(eventTitleLabel(event, 'ru')).toBe('Немецкий DE1');
 	});
 });
 
-describe('buildCohortGroups', () => {
-	it('groups cohorts by track', () => {
+describe('event filter build cohort groups', () => {
+	it('group cohorts by track', () => {
 		const cohorts: Cohort[] = [
 			{ code: 'DE1', track: 'de', label: 'German 1', sourceGroups: ['GRP1'] },
 			{ code: 'DE2', track: 'de', label: 'German 2', sourceGroups: ['GRP1'] },
@@ -131,7 +131,7 @@ describe('buildCohortGroups', () => {
 		expect(deGroup?.items).toHaveLength(2);
 	});
 
-	it('tracks selected value', () => {
+	it('track selected value', () => {
 		const cohorts: Cohort[] = [
 			{ code: 'DE1', track: 'de', label: 'German 1', sourceGroups: ['GRP1'] },
 			{ code: 'DE2', track: 'de', label: 'German 2', sourceGroups: ['GRP1'] }

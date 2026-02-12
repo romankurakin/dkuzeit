@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { parseNavHtml, parseTimetablePage } from '../src/lib/server/parser';
+import { parseNavHtml, parseTimetablePage } from '../../src/lib/server/parser';
 
 interface Manifest {
 	weeks: string[];
@@ -18,8 +18,8 @@ const fixtureReady = existsSync(manifestPath);
 
 const suite = fixtureReady ? describe : describe.skip;
 
-suite('DKU parser (fixtures)', () => {
-	it('parses navbar fixture and validates shape', async () => {
+suite('parser fixtures', () => {
+	it('parse navbar fixture and validate shape', async () => {
 		const navbarHtml = await readFile(path.join(fixtureRoot, 'frames/navbar.htm'), 'utf8');
 		const meta = parseNavHtml(navbarHtml);
 
@@ -28,7 +28,7 @@ suite('DKU parser (fixtures)', () => {
 		expect(meta.groups[0]?.id).toBe(1);
 	});
 
-	it('parses all downloaded class-week pages with zero hard failures', async () => {
+	it('parse all downloaded class week pages with zero hard failures', async () => {
 		const manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as Manifest;
 		const navbarHtml = await readFile(path.join(fixtureRoot, 'frames/navbar.htm'), 'utf8');
 		const meta = parseNavHtml(navbarHtml);
@@ -83,8 +83,8 @@ suite('DKU parser (fixtures)', () => {
 });
 
 if (!fixtureReady) {
-	describe('DKU parser fixture prerequisites', () => {
-		it('requires fixture snapshot', () => {
+	describe('parser prerequisites', () => {
+		it('require fixture snapshot for parser fixtures', () => {
 			expect(`Fixture snapshot missing at ${manifestPath}. Run: npm run fixtures:sync`).toBeTypeOf(
 				'string'
 			);

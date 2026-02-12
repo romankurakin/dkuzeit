@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { buildSubjectColorMap, subjectColorKey, cv } from '../src/lib/scheduler/subject-colors';
-import type { LessonEvent } from '../src/lib/server/types';
+import { buildSubjectColorMap, subjectColorKey, cv } from '../../src/lib/scheduler/subject-colors';
+import type { LessonEvent } from '../../src/lib/server/types';
 
 function fakeEvent(overrides: Partial<LessonEvent>): LessonEvent {
 	return {
@@ -26,20 +26,20 @@ function fakeEvent(overrides: Partial<LessonEvent>): LessonEvent {
 	};
 }
 
-describe('subjectColorKey', () => {
-	it('prefers subjectFullRu', () => {
+describe('subject colors subject color key', () => {
+	it('prefer subject full ru', () => {
 		expect(subjectColorKey(fakeEvent({ subjectFullRu: 'Математика', subjectShortRu: 'Мат' }))).toBe(
 			'Математика'
 		);
 	});
 
-	it('falls back to subjectShortRu', () => {
+	it('fall back to subject short ru', () => {
 		expect(subjectColorKey(fakeEvent({ subjectFullRu: '', subjectShortRu: 'Мат' }))).toBe('Мат');
 	});
 });
 
-describe('buildSubjectColorMap', () => {
-	it('is deterministic — same input always produces same mapping', () => {
+describe('subject colors build subject color map', () => {
+	it('keep deterministic mapping for same input', () => {
 		const events = [
 			fakeEvent({ id: '1', subjectFullRu: 'Математика' }),
 			fakeEvent({ id: '2', subjectFullRu: 'Физика' }),
@@ -50,7 +50,7 @@ describe('buildSubjectColorMap', () => {
 		expect([...map1.entries()]).toEqual([...map2.entries()]);
 	});
 
-	it('assigns unique colors when fewer subjects than palette size', () => {
+	it('assign unique colors when fewer subjects than palette size', () => {
 		const events = [
 			fakeEvent({ id: '1', subjectFullRu: 'А' }),
 			fakeEvent({ id: '2', subjectFullRu: 'Б' }),
@@ -61,7 +61,7 @@ describe('buildSubjectColorMap', () => {
 		expect(new Set(colors).size).toBe(3);
 	});
 
-	it('deduplicates events with the same subject', () => {
+	it('deduplicate events with the same subject', () => {
 		const events = [
 			fakeEvent({ id: '1', subjectFullRu: 'Математика' }),
 			fakeEvent({ id: '2', subjectFullRu: 'Математика' })
@@ -70,15 +70,15 @@ describe('buildSubjectColorMap', () => {
 		expect(map.size).toBe(1);
 	});
 
-	it('skips events with empty color key', () => {
+	it('skip events with empty color key', () => {
 		const events = [fakeEvent({ subjectFullRu: '', subjectShortRu: '' })];
 		const map = buildSubjectColorMap(events);
 		expect(map.size).toBe(0);
 	});
 });
 
-describe('cv', () => {
-	it('returns a CSS variable reference', () => {
+describe('subject colors cv', () => {
+	it('return a css variable reference', () => {
 		expect(cv({ name: 'blue', shade: 300 })).toBe('var(--color-blue-300)');
 		expect(cv({ name: 'pink', shade: 300 })).toBe('var(--color-pink-300)');
 	});

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { parseTimetablePage } from '../src/lib/server/parser';
-import type { GroupOption, WeekOption } from '../src/lib/server/types';
+import { parseTimetablePage } from '../../src/lib/server/parser';
+import type { GroupOption, WeekOption } from '../../src/lib/server/types';
 
 const group: GroupOption = {
 	id: 1,
@@ -41,8 +41,8 @@ function wrapTimetable(innerTableRows: string, legendRows: string): string {
 	`;
 }
 
-describe('parseTimetablePage HTMLRewriter state machine', () => {
-	it('extracts only first-level nested table lines from a schedule cell', async () => {
+describe('parser parse timetable page html rewriter state machine', () => {
+	it('extract only first level nested table lines from a schedule cell', async () => {
 		const html = wrapTimetable(
 			`
 				<tr>
@@ -76,7 +76,7 @@ describe('parseTimetablePage HTMLRewriter state machine', () => {
 		expect(event.dayIndex).toBe(0);
 	});
 
-	it('supports rowspan timing and fallback text extraction without nested table', async () => {
+	it('support rowspan timing and fallback text extraction without nested table', async () => {
 		const html = wrapTimetable(
 			`
 				<tr>
@@ -101,7 +101,7 @@ describe('parseTimetablePage HTMLRewriter state machine', () => {
 		expect(event.dayIndex).toBe(0);
 	});
 
-	it('splits a double-period cell (rowspan=4) into two separate events', async () => {
+	it('split a double period cell rowspan 4 into two separate events', async () => {
 		// Each period occupies 2 table rows (time cell rowspan=2),
 		// so a double-period event has rowspan=4 on the content cell
 		const html = wrapTimetable(
@@ -145,7 +145,7 @@ describe('parseTimetablePage HTMLRewriter state machine', () => {
 		expect(first!.id).not.toBe(second!.id);
 	});
 
-	it('single-period cell (rowspan=2) still produces one event', async () => {
+	it('produce one event for single period cell rowspan 2', async () => {
 		const html = wrapTimetable(
 			`
 				<tr>
@@ -169,7 +169,7 @@ describe('parseTimetablePage HTMLRewriter state machine', () => {
 		expect(parsed.events[0]!.endTime).toBe('09:40');
 	});
 
-	it('skips day-range marker cells like 09.03.2026-09.03.2026', async () => {
+	it('skip day range marker cells', async () => {
 		const html = wrapTimetable(
 			`
 				<tr>
@@ -185,7 +185,7 @@ describe('parseTimetablePage HTMLRewriter state machine', () => {
 		expect(parsed.events).toHaveLength(0);
 	});
 
-	it('deduplicates identical event seeds emitted from split columns of one day', async () => {
+	it('deduplicate identical event seeds emitted from split columns of one day', async () => {
 		const html = wrapTimetable(
 			`
 				<tr>
@@ -206,7 +206,7 @@ describe('parseTimetablePage HTMLRewriter state machine', () => {
 		expect(parsed.events[0]!.dayIndex).toBe(0);
 	});
 
-	it('skips unknown placeholder subject "?" when legend has no mapping', async () => {
+	it('skip unknown placeholder subject when legend has no mapping', async () => {
 		const html = wrapTimetable(
 			`
 				<tr>
@@ -222,7 +222,7 @@ describe('parseTimetablePage HTMLRewriter state machine', () => {
 		expect(parsed.events).toHaveLength(0);
 	});
 
-	it('falls back to cleaned short label when full legend name is missing', async () => {
+	it('fall back to cleaned short label when full legend name is missing', async () => {
 		const html = wrapTimetable(
 			`
 				<tr>
@@ -243,7 +243,7 @@ describe('parseTimetablePage HTMLRewriter state machine', () => {
 		expect(event.subjectFullRaw).toBe('СПУРП2');
 	});
 
-	it('throws a clear error when center container is absent', async () => {
+	it('throw a clear error when center container is absent', async () => {
 		await expect(
 			parseTimetablePage('<html><body><table></table></body></html>', group, week)
 		).rejects.toThrow('Timetable center container not found');
