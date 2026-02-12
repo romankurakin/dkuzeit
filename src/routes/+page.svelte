@@ -3,9 +3,11 @@
 	import BrutalSelect from '$lib/components/BrutalSelect.svelte';
 	import type { PageProps } from './$types';
 	import { cv, subjectColorKey } from '$lib/scheduler/subject-colors';
+	import { BUTTON_ACTIVATION_DURATION_MS } from '$lib/ui-timing';
 	import { m } from '$lib/paraglide/messages';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
+	import { onDestroy } from 'svelte';
 
 	let { data }: PageProps = $props();
 	const meta = $derived(data.meta);
@@ -81,7 +83,7 @@
 			githubArmTimer = setTimeout(() => {
 				githubArmed = false;
 				githubArmTimer = null;
-			}, 1240);
+			}, BUTTON_ACTIVATION_DURATION_MS);
 			return;
 		}
 
@@ -91,6 +93,10 @@
 		}
 		githubArmed = false;
 	}
+
+	onDestroy(() => {
+		if (githubArmTimer) clearTimeout(githubArmTimer);
+	});
 </script>
 
 <svelte:head>
@@ -298,7 +304,7 @@
 								rel="noopener noreferrer"
 								title={githubArmed ? m.source_code() : `${m.source_code()} ×2`}
 								class="brutal-link brutal-control brutal-control-icon brutal-focus relative overflow-hidden"
-								class:brutal-hover={!githubArmed}
+								class:github-hover={!githubArmed}
 								class:brutal-arm-shell={githubArmed}
 								onclick={handleGithubClick}
 							>
@@ -322,13 +328,12 @@
 								class:calendar-copy-shell-pending={ctx.calendarCopyState === 'pending'}
 								disabled={ctx.isGeneratingLinks || ctx.cohortWarningActive}
 								onclick={ctx.onCopyCalendarLink}
-								onpointerleave={ctx.onClearCalendarCopyState}
 							>
 								<span class="sr-only">{m.copy_calendar_link()}</span>
 								<span
 									aria-hidden="true"
 									class="pixel-icon pixel-icon-mask"
-									class:text-poison={ctx.calendarCopyState === 'success'}
+									class:text-poison={ctx.calendarCopyState !== 'idle'}
 									class:calendar-copy-icon-pending={ctx.calendarCopyState === 'pending'}
 									class:calendar-copy-icon-rock={ctx.calendarCopyState === 'success'}
 									style="--pixel-icon: url('/icons/pixel-apple.svg')"
@@ -632,9 +637,30 @@
 			color 120ms ease-out;
 	}
 
-	.calendar-copy-hover:hover {
-		background-color: var(--color-muted-surface);
-		color: var(--color-foreground);
+	.github-hover {
+		transition:
+			background-color 120ms ease-out,
+			color 120ms ease-out;
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.github-hover:hover {
+			background-color: var(--color-muted-surface);
+			color: var(--color-foreground);
+		}
+
+		.calendar-copy-hover:hover {
+			background-color: var(--color-muted-surface);
+			color: var(--color-foreground);
+		}
+	}
+
+	@media (hover: none) {
+		.github-hover:active,
+		.calendar-copy-hover:active {
+			background-color: var(--color-muted-surface);
+			color: var(--color-foreground);
+		}
 	}
 
 	.calendar-copy-icon-pending {
@@ -655,6 +681,9 @@
 	}
 
 	@media (prefers-reduced-motion: reduce) {
+		.brutal-arm-shell,
+		.brutal-arm-icon,
+		.brutal-arm-scan,
 		.calendar-copy-shell-pending,
 		.calendar-copy-icon-pending,
 		.calendar-copy-icon-rock,

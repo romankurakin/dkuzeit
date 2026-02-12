@@ -8,6 +8,7 @@
 	import { buildSubjectColorMap } from '$lib/scheduler/subject-colors';
 	import { formatDateLabel } from '$lib/scheduler/date-format';
 	import type { SchedulerContext } from '$lib/scheduler/types';
+	import { BUTTON_ACTIVATION_DURATION_MS } from '$lib/ui-timing';
 	import {
 		filterDisplayEvents,
 		groupEventsByDate,
@@ -46,12 +47,9 @@
 
 	let isGeneratingLinks = $state(false);
 	let calendarCopyState = $state<'idle' | 'pending' | 'success'>('idle');
-	let calendarCopyCommit = $state(false);
 	let copiedField = $state<'site' | 'calendar' | null>(null);
 	let cohortWarningActive = $state(false);
 	let calendarClearTimer: ReturnType<typeof setTimeout> | null = null;
-
-	const CALENDAR_COPY_EXIT_DELAY_MS = 180;
 
 	const uiLocale = $derived((getLocale() === 'de' ? 'de' : 'ru') as 'ru' | 'de');
 	const categoryLabels = $derived<Record<string, string>>({
@@ -95,16 +93,58 @@
 
 	function resetCalendarCopyState(): void {
 		if (copiedField === 'calendar') copiedField = null;
-		calendarCopyCommit = false;
 		calendarCopyState = 'idle';
 	}
 
-	function clearCalendarCopyState(): void {
+	function scheduleCalendarCopyStateReset(delayMs: number): void {
 		if (calendarClearTimer) clearTimeout(calendarClearTimer);
 		calendarClearTimer = setTimeout(() => {
 			calendarClearTimer = null;
 			resetCalendarCopyState();
-		}, CALENDAR_COPY_EXIT_DELAY_MS);
+		}, delayMs);
+	}
+
+	async function buildCalendarLink(): Promise<string> {
+		const response = await fetch('/api/token', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				group: resolvedGroup,
+				week: resolvedWeek,
+				cohorts: urlCohorts,
+				lang: uiLocale
+			})
+		});
+		if (!response.ok) throw new Error(m.api_error_calendar());
+		const payload = (await response.json()) as { token: string };
+		return `${location.origin}${localizeHref('/api/calendar', { locale: uiLocale })}?token=${encodeURIComponent(payload.token)}`;
+	}
+
+	async function copyCalendarLink(textPromise: Promise<string>): Promise<void> {
+		if (typeof navigator.clipboard === 'undefined') {
+			throw new Error(m.api_error_calendar());
+		}
+
+		if (typeof navigator.clipboard.write === 'function' && typeof ClipboardItem !== 'undefined') {
+			try {
+				await navigator.clipboard.write([
+					new ClipboardItem({
+						'text/plain': textPromise.then((text) => new Blob([text], { type: 'text/plain' }))
+					})
+				]);
+				return;
+			} catch {
+				// Fallback to writeText for browsers where ClipboardItem/write is partial
+			}
+		}
+
+		if (typeof navigator.clipboard.writeText === 'function') {
+			const text = await textPromise;
+			await navigator.clipboard.writeText(text);
+			return;
+		}
+
+		throw new Error(m.api_error_calendar());
 	}
 
 	async function handleCopyCalendarLink(): Promise<void> {
@@ -130,39 +170,19 @@
 			}
 			return;
 		}
-		calendarCopyCommit = true;
 		if (calendarClearTimer) {
 			clearTimeout(calendarClearTimer);
 			calendarClearTimer = null;
 		}
 		calendarCopyState = 'pending';
 		isGeneratingLinks = true;
+		await tick();
 		try {
-			const textPromise = fetch('/api/token', {
-				method: 'POST',
-				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({
-					group: resolvedGroup,
-					week: resolvedWeek,
-					cohorts: urlCohorts,
-					lang: uiLocale
-				})
-			}).then(async (response) => {
-				if (!response.ok) throw new Error(m.api_error_calendar());
-				const payload = (await response.json()) as { token: string };
-				return `${location.origin}${localizeHref('/api/calendar', { locale: uiLocale })}?token=${encodeURIComponent(payload.token)}`;
-			});
-			await navigator.clipboard.write([
-				new ClipboardItem({
-					'text/plain': textPromise.then((text) => new Blob([text], { type: 'text/plain' }))
-				})
-			]);
-			if (calendarCopyCommit) {
-				copiedField = 'calendar';
-				calendarCopyState = 'success';
-			} else {
-				resetCalendarCopyState();
-			}
+			const textPromise = buildCalendarLink();
+			await copyCalendarLink(textPromise);
+			copiedField = 'calendar';
+			calendarCopyState = 'success';
+			scheduleCalendarCopyStateReset(BUTTON_ACTIVATION_DURATION_MS);
 		} catch (err) {
 			resetCalendarCopyState();
 			toast.error(err instanceof Error ? err.message : m.api_error_calendar());
@@ -215,7 +235,6 @@
 		}, 1500);
 	},
 	onCopyCalendarLink: handleCopyCalendarLink,
-	onClearCalendarCopyState: clearCalendarCopyState,
 	formatDateLabel: (dateIso: string) => formatDateLabel(dateIso, uiLocale),
 	eventTitleLabel: (event: LessonEvent) => eventTitleLabel(event, uiLocale),
 	isToday,

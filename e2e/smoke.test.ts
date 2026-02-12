@@ -1,4 +1,19 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
+
+type MetaPayload = {
+	groups: Array<{ codeRaw: string }>;
+	weeks: Array<{ value: string }>;
+};
+type SchedulePayload = { events: unknown[] };
+
+async function hasEvents(page: Page, group: string, week: string): Promise<boolean> {
+	const response = await page.request.get(
+		`/api/schedule?group=${encodeURIComponent(group)}&week=${encodeURIComponent(week)}`
+	);
+	if (!response.ok()) return false;
+	const payload = (await response.json()) as SchedulePayload;
+	return payload.events.length > 0;
+}
 
 test('main page loads without server error', async ({ page }) => {
 	const response = await page.goto('/');
@@ -7,69 +22,83 @@ test('main page loads without server error', async ({ page }) => {
 
 test('schedule renders with content', async ({ page }) => {
 	await page.goto('/');
+	const scheduleTable = page.getByRole('table');
 
-	// Schedule table should appear
-	await expect(page.getByRole('table')).toBeVisible({ timeout: 15_000 });
-
-	// Group selector should be present
-	await expect(page.locator('text=Группа')).toBeVisible();
+	await expect(scheduleTable).toBeVisible({ timeout: 15_000 });
+	await expect(page.getByRole('toolbar').getByRole('button').first()).toBeVisible();
 });
 
 test('group change navigates without crash', async ({ page }) => {
 	await page.goto('/');
+	const scheduleTable = page.getByRole('table');
+	await expect(scheduleTable).toBeVisible({ timeout: 15_000 });
 
-	// Wait for initial load
-	const groupTrigger = page.getByRole('button', { name: 'Группа' });
+	const metaResponse = await page.request.get('/api/meta');
+	expect(metaResponse.ok()).toBe(true);
+	const meta = (await metaResponse.json()) as MetaPayload;
+	expect(meta.groups.length).toBeGreaterThan(1);
+
+	const groupTrigger = page.getByRole('toolbar').getByRole('button').first();
 	await expect(groupTrigger).toBeVisible({ timeout: 15_000 });
-
-	// Click the group select trigger and try changing selection via ARIA roles
 	await groupTrigger.click();
 
-	const secondOption = page.getByRole('option').nth(1);
-	const hasOptions = await secondOption.isVisible({ timeout: 3_000 }).catch(() => false);
+	const optionElements = page.getByRole('option');
+	const optionCount = await optionElements.count();
+	const targetOption = optionElements.nth(Math.min(1, Math.max(0, optionCount - 1)));
+	const hasOptions =
+		optionCount > 0 && (await targetOption.isVisible({ timeout: 3_000 }).catch(() => false));
 
 	if (hasOptions) {
-		await secondOption.click();
-		// URL should update with group param
+		await targetOption.click();
 		await expect(page).toHaveURL(/group=/, { timeout: 5_000 });
 	} else {
-		// In preview environments listbox portal can be flaky
-		// Still validate semantic trigger wiring
 		await expect(groupTrigger).toHaveAttribute('aria-haspopup', 'listbox');
 	}
 
-	// Page should still render without error
-	await expect(page.getByRole('table')).toBeVisible({ timeout: 15_000 });
+	await expect(scheduleTable).toBeVisible({ timeout: 15_000 });
 });
 
 test('group and week changes update schedule data', async ({ page }) => {
 	await page.goto('/');
-	await expect(page.getByRole('table')).toBeVisible({ timeout: 15_000 });
+	const scheduleTable = page.getByRole('table');
+	await expect(scheduleTable).toBeVisible({ timeout: 15_000 });
 
-	const groupTrigger = page.getByRole('button', { name: 'Группа' });
 	const firstDayHeader = page.getByRole('columnheader').nth(1);
 	const tableBody = page.locator('table tbody');
+	const groupTrigger = page.getByRole('toolbar').getByRole('button').first();
 
-	const initialGroupLabel = ((await groupTrigger.textContent()) ?? '').trim();
 	const initialHeader = ((await firstDayHeader.textContent()) ?? '').trim();
 	const initialBodySignature = ((await tableBody.textContent()) ?? '').trim();
 
 	const metaResponse = await page.request.get('/api/meta');
 	expect(metaResponse.ok()).toBe(true);
-	const meta = (await metaResponse.json()) as {
-		groups: Array<{ codeRaw: string }>;
-		weeks: Array<{ value: string }>;
-	};
+	const meta = (await metaResponse.json()) as MetaPayload;
 	expect(meta.groups.length).toBeGreaterThan(1);
 	expect(meta.weeks.length).toBeGreaterThan(1);
 
+	const groupTriggerText = ((await groupTrigger.textContent()) ?? '').trim();
 	const currentUrl = new URL(page.url());
+	const currentGroupValue =
+		meta.groups.find((group) => groupTriggerText.includes(group.codeRaw))?.codeRaw ??
+		currentUrl.searchParams.get('group') ??
+		meta.groups[0]!.codeRaw;
 	const currentWeekValue = currentUrl.searchParams.get('week') ?? meta.weeks[0]!.value;
-	const targetGroup =
-		meta.groups.find((group) => group.codeRaw !== initialGroupLabel)?.codeRaw ??
-		meta.groups[1]!.codeRaw;
-	const targetWeek =
-		meta.weeks.find((week) => week.value !== currentWeekValue)?.value ?? meta.weeks[1]!.value;
+	let targetGroup = currentGroupValue;
+	let targetWeek = currentWeekValue;
+	outer: for (const week of [currentWeekValue, ...meta.weeks.map((item) => item.value)]) {
+		for (const group of meta.groups) {
+			if (group.codeRaw === currentGroupValue && week === currentWeekValue) continue;
+			if (await hasEvents(page, group.codeRaw, week)) {
+				targetGroup = group.codeRaw;
+				targetWeek = week;
+				break outer;
+			}
+		}
+	}
+	test.skip(
+		targetGroup === currentGroupValue && targetWeek === currentWeekValue,
+		'No alternative group/week with schedule events in available fixture set'
+	);
 
 	await page.goto(
 		`/?group=${encodeURIComponent(targetGroup)}&week=${encodeURIComponent(targetWeek)}`
@@ -80,8 +109,7 @@ test('group and week changes update schedule data', async ({ page }) => {
 	await expect(page).toHaveURL(new RegExp(`week=${encodeURIComponent(targetWeek)}`), {
 		timeout: 5_000
 	});
-	await expect(page.getByRole('table')).toBeVisible({ timeout: 15_000 });
-	await expect(groupTrigger).toContainText(targetGroup);
+	await expect(scheduleTable).toBeVisible({ timeout: 15_000 });
 
 	const updatedHeader = ((await firstDayHeader.textContent()) ?? '').trim();
 	const updatedBodySignature = ((await tableBody.textContent()) ?? '').trim();

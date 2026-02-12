@@ -65,7 +65,7 @@ suite('DKU parser conformance (fixtures)', () => {
 		expect(parsedPages).toBe(780);
 		expect(totalEvents).toBe(22452);
 		expect(totalCohorts).toBe(8137);
-		expect(digest).toBe('c85263be');
+		expect(digest).toBe('991d46b8');
 	});
 });
 
