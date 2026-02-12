@@ -16,6 +16,23 @@
 	let githubArmed = $state(false);
 	let githubArmTimer: ReturnType<typeof setTimeout> | null = null;
 
+	function clearGithubArmTimer(): void {
+		if (!githubArmTimer) return;
+		clearTimeout(githubArmTimer);
+		githubArmTimer = null;
+	}
+
+	function navigateWithSearchParams(params: URLSearchParams): void {
+		// eslint-disable-next-line svelte/no-navigation-without-resolve -- same-page query param change
+		goto(`/?${params.toString()}`, { replaceState: true, noScroll: true, keepFocus: true });
+	}
+
+	function updateSingleSearchParam(name: string, value: string): void {
+		const params = new URLSearchParams(page.url.searchParams);
+		params.set(name, value);
+		navigateWithSearchParams(params);
+	}
+
 	const urlCohorts = $derived(
 		(page.url.searchParams.get('cohorts') ?? '')
 			.split(',')
@@ -24,17 +41,11 @@
 	);
 
 	function handleGroupChange(value: string): void {
-		const params = new URLSearchParams(page.url.searchParams);
-		params.set('group', value);
-		// eslint-disable-next-line svelte/no-navigation-without-resolve -- same-page query param change
-		goto(`/?${params.toString()}`, { replaceState: true, noScroll: true, keepFocus: true });
+		updateSingleSearchParam('group', value);
 	}
 
 	function handleWeekChange(value: string): void {
-		const params = new URLSearchParams(page.url.searchParams);
-		params.set('week', value);
-		// eslint-disable-next-line svelte/no-navigation-without-resolve -- same-page query param change
-		goto(`/?${params.toString()}`, { replaceState: true, noScroll: true, keepFocus: true });
+		updateSingleSearchParam('week', value);
 	}
 
 	function handleCohortChange(_trackLabel: string, code: string): void {
@@ -51,8 +62,7 @@
 		} else {
 			params.delete('cohorts');
 		}
-		// eslint-disable-next-line svelte/no-navigation-without-resolve -- same-page query param change
-		goto(`/?${params.toString()}`, { replaceState: true, noScroll: true, keepFocus: true });
+		navigateWithSearchParams(params);
 	}
 
 	function handleToolbarKeydown(e: KeyboardEvent): void {
@@ -79,7 +89,7 @@
 		if (!githubArmed) {
 			e.preventDefault();
 			githubArmed = true;
-			if (githubArmTimer) clearTimeout(githubArmTimer);
+			clearGithubArmTimer();
 			githubArmTimer = setTimeout(() => {
 				githubArmed = false;
 				githubArmTimer = null;
@@ -87,15 +97,12 @@
 			return;
 		}
 
-		if (githubArmTimer) {
-			clearTimeout(githubArmTimer);
-			githubArmTimer = null;
-		}
+		clearGithubArmTimer();
 		githubArmed = false;
 	}
 
 	onDestroy(() => {
-		if (githubArmTimer) clearTimeout(githubArmTimer);
+		clearGithubArmTimer();
 	});
 </script>
 
@@ -304,7 +311,6 @@
 								rel="noopener noreferrer"
 								title={githubArmed ? m.source_code() : `${m.source_code()} ×2`}
 								class="brutal-link brutal-control brutal-control-icon brutal-focus relative overflow-hidden"
-								class:github-hover={!githubArmed}
 								class:brutal-arm-shell={githubArmed}
 								onclick={handleGithubClick}
 							>
@@ -324,7 +330,6 @@
 							<button
 								type="button"
 								class="brutal-link brutal-control brutal-control-icon brutal-focus relative overflow-hidden"
-								class:calendar-copy-hover={ctx.calendarCopyState === 'idle'}
 								class:calendar-copy-shell-pending={ctx.calendarCopyState === 'pending'}
 								disabled={ctx.isGeneratingLinks || ctx.cohortWarningActive}
 								onclick={ctx.onCopyCalendarLink}
@@ -629,38 +634,6 @@
 
 	.calendar-copy-shell-pending {
 		animation: calendar-copy-shell-pending-kf 820ms ease-in-out infinite;
-	}
-
-	.calendar-copy-hover {
-		transition:
-			background-color 120ms ease-out,
-			color 120ms ease-out;
-	}
-
-	.github-hover {
-		transition:
-			background-color 120ms ease-out,
-			color 120ms ease-out;
-	}
-
-	@media (hover: hover) and (pointer: fine) {
-		.github-hover:hover {
-			background-color: var(--color-muted-surface);
-			color: var(--color-foreground);
-		}
-
-		.calendar-copy-hover:hover {
-			background-color: var(--color-muted-surface);
-			color: var(--color-foreground);
-		}
-	}
-
-	@media (hover: none) {
-		.github-hover:active,
-		.calendar-copy-hover:active {
-			background-color: var(--color-muted-surface);
-			color: var(--color-foreground);
-		}
 	}
 
 	.calendar-copy-icon-pending {
