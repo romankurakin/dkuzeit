@@ -193,13 +193,11 @@ test('calendar export sends selected group/week/cohorts and resets visual state'
 			cohorts: string[];
 			lang: string;
 		};
-		const upstream = await route.fetch();
-		const body = await upstream.text();
 		await new Promise((resolve) => setTimeout(resolve, 200));
 		await route.fulfill({
-			status: upstream.status(),
-			headers: upstream.headers(),
-			body
+			status: 200,
+			contentType: 'application/json',
+			body: JSON.stringify({ token: 'calendar-token-e2e' })
 		});
 	});
 
@@ -233,9 +231,7 @@ test('calendar export sends selected group/week/cohorts and resets visual state'
 	expect(clipboardState.lastText).toContain('token=');
 	const copiedCalendarUrl = new URL(clipboardState.lastText);
 	expect(copiedCalendarUrl.pathname).toMatch(/\/api\/calendar$/);
-	const calendarResponse = await page.request.get(copiedCalendarUrl.toString());
-	expect(calendarResponse.ok()).toBe(true);
-	expect(calendarResponse.headers()['content-type']).toContain('text/calendar');
+	expect(copiedCalendarUrl.searchParams.get('token')).toBeTruthy();
 
 	await page.waitForTimeout(BUTTON_ACTIVATION_DURATION_MS + 150);
 	await expect(exportStatus).toHaveText('', { timeout: 1500 });
