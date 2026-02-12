@@ -27,6 +27,12 @@ body {
 	font-family: system-ui, sans-serif;
 }
 
+button,
+a {
+	touch-action: manipulation;
+	-webkit-tap-highlight-color: transparent;
+}
+
 @supports (color: color(display-p3 1 1 1)) {
 	:root {
 		/* Priority: P3 punch > Apple-like hue > Harmony-friendly character */
@@ -117,6 +123,7 @@ html::-webkit-scrollbar-corner {
 	border-style: solid;
 	border-color: var(--color-foreground);
 	display: inline-flex;
+	cursor: pointer;
 	align-items: center;
 	justify-content: center;
 	gap: 0.5rem;
@@ -263,8 +270,10 @@ html::-webkit-scrollbar-corner {
 	transition-property: color, background-color;
 	transition-duration: 100ms;
 
-	&:hover {
-		background-color: var(--color-hover);
-		color: var(--color-background);
+	@media (hover: hover) and (pointer: fine) {
+		&:hover {
+			background-color: var(--color-hover);
+			color: var(--color-background);
+		}
 	}
 }
