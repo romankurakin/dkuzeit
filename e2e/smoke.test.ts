@@ -65,10 +65,10 @@ test('group and week changes update schedule data', async ({ page }) => {
 
 	const firstDayHeader = page.getByRole('columnheader').nth(1);
 	const tableBody = page.locator('table tbody');
+	const groupTrigger = page.getByRole('toolbar').getByRole('button').first();
 
 	const initialHeader = ((await firstDayHeader.textContent()) ?? '').trim();
 	const initialBodySignature = ((await tableBody.textContent()) ?? '').trim();
-	const currentGroupValue = new URL(page.url()).searchParams.get('group') ?? '';
 
 	const metaResponse = await page.request.get('/api/meta');
 	expect(metaResponse.ok()).toBe(true);
@@ -76,7 +76,12 @@ test('group and week changes update schedule data', async ({ page }) => {
 	expect(meta.groups.length).toBeGreaterThan(1);
 	expect(meta.weeks.length).toBeGreaterThan(1);
 
+	const groupTriggerText = ((await groupTrigger.textContent()) ?? '').trim();
 	const currentUrl = new URL(page.url());
+	const currentGroupValue =
+		meta.groups.find((group) => groupTriggerText.includes(group.codeRaw))?.codeRaw ??
+		currentUrl.searchParams.get('group') ??
+		meta.groups[0]!.codeRaw;
 	const currentWeekValue = currentUrl.searchParams.get('week') ?? meta.weeks[0]!.value;
 	let targetGroup = currentGroupValue;
 	let targetWeek = currentWeekValue;
