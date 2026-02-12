@@ -135,160 +135,158 @@ function buildScheduleUrl(group: string, week: string, cohorts: string[] = []): 
 	return `/?${params.toString()}`;
 }
 
-test('cohort filtering changes rendered schedule and persists in URL', async ({ page }) => {
-	const meta = await fetchMeta(page);
-	const scenario = await findScenarioWithRequiredCohorts(page, meta);
-	test.skip(!scenario, 'No group/week with required cohorts in available fixture set');
-	const { group, week, cohorts } = scenario!;
+test.describe('calendar export', () => {
+	test('change rendered schedule and persist cohorts in url', async ({ page }) => {
+		const meta = await fetchMeta(page);
+		const scenario = await findScenarioWithRequiredCohorts(page, meta);
+		test.skip(!scenario, 'No group/week with required cohorts in available fixture set');
+		const { group, week, cohorts } = scenario!;
 
-	await page.goto(buildScheduleUrl(group, week));
-	const initialSignature = await readRenderedScheduleSignature(page);
+		await page.goto(buildScheduleUrl(group, week));
+		const initialSignature = await readRenderedScheduleSignature(page);
 
-	await page.goto(buildScheduleUrl(group, week, cohorts));
-	await expect(page).toHaveURL(/cohorts=/, { timeout: 5000 });
+		await page.goto(buildScheduleUrl(group, week, cohorts));
+		await expect(page).toHaveURL(/cohorts=/, { timeout: 5000 });
 
-	const filteredSignature = await readRenderedScheduleSignature(page);
-	expect(filteredSignature).not.toBe(initialSignature);
-	expect(splitCohortsFromUrl(page.url())).toEqual(cohorts);
-});
-
-test('calendar export does not run when required cohorts are not selected', async ({ page }) => {
-	let tokenRequestCount = 0;
-	await page.route('**/api/token', async (route) => {
-		tokenRequestCount += 1;
-		await route.fulfill({ status: 500, body: 'should not be called' });
+		const filteredSignature = await readRenderedScheduleSignature(page);
+		expect(filteredSignature).not.toBe(initialSignature);
+		expect(splitCohortsFromUrl(page.url())).toEqual(cohorts);
 	});
 
-	await page.goto('/');
-	const firstEmptyCohort = page.getByRole('toolbar').locator('button[data-cohort-empty]').first();
-	test.skip(
-		(await firstEmptyCohort.count()) === 0,
-		'No required cohort filters on this fixture set'
-	);
-
-	const exportButton = page
-		.getByRole('contentinfo')
-		.getByRole('button', { name: exportButtonNameRe });
-	await exportButton.click();
-
-	await expect(firstEmptyCohort).toBeFocused({ timeout: 2500 });
-	await expect.poll(() => tokenRequestCount).toBe(0);
-});
-
-test('calendar export sends selected group/week/cohorts and resets visual state', async ({
-	page
-}) => {
-	await installClipboardMock(page, 'normal');
-
-	const meta = await fetchMeta(page);
-	const scenario = await findScenarioWithRequiredCohorts(page, meta);
-	test.skip(!scenario, 'No group/week with required cohorts in available fixture set');
-	const { group: targetGroup, week: targetWeek, cohorts: selectedCohorts } = scenario!;
-
-	let payload: { group: string; week: string; cohorts: string[]; lang: string } | undefined;
-	await page.route('**/api/token', async (route) => {
-		payload = route.request().postDataJSON() as {
-			group: string;
-			week: string;
-			cohorts: string[];
-			lang: string;
-		};
-		await new Promise((resolve) => setTimeout(resolve, 200));
-		await route.fulfill({
-			status: 200,
-			contentType: 'application/json',
-			body: JSON.stringify({ token: 'calendar-token-e2e' })
+	test('not run when required cohorts are not selected', async ({ page }) => {
+		let tokenRequestCount = 0;
+		await page.route('**/api/token', async (route) => {
+			tokenRequestCount += 1;
+			await route.fulfill({ status: 500, body: 'should not be called' });
 		});
+
+		await page.goto('/');
+		const firstEmptyCohort = page.getByRole('toolbar').locator('button[data-cohort-empty]').first();
+		test.skip(
+			(await firstEmptyCohort.count()) === 0,
+			'No required cohort filters on this fixture set'
+		);
+
+		const exportButton = page
+			.getByRole('contentinfo')
+			.getByRole('button', { name: exportButtonNameRe });
+		await exportButton.click();
+
+		await expect(firstEmptyCohort).toBeFocused({ timeout: 2500 });
+		await expect.poll(() => tokenRequestCount).toBe(0);
 	});
 
-	await page.goto(buildScheduleUrl(targetGroup, targetWeek, selectedCohorts));
-	expect(splitCohortsFromUrl(page.url())).toEqual(selectedCohorts);
+	test('send selected group week and cohorts and reset visual state', async ({ page }) => {
+		await installClipboardMock(page, 'normal');
 
-	const exportButton = page
-		.getByRole('contentinfo')
-		.getByRole('button', { name: exportButtonNameRe });
-	const exportStatus = page.getByRole('status');
+		const meta = await fetchMeta(page);
+		const scenario = await findScenarioWithRequiredCohorts(page, meta);
+		test.skip(!scenario, 'No group/week with required cohorts in available fixture set');
+		const { group: targetGroup, week: targetWeek, cohorts: selectedCohorts } = scenario!;
 
-	await exportButton.click();
-	await expect(exportButton).toBeDisabled({ timeout: 500 });
-	await expect(exportButton).toHaveClass(/calendar-copy-shell-pending/, { timeout: 500 });
-
-	await expect(exportButton).toBeEnabled({ timeout: 5000 });
-	await expect(exportStatus).toContainText(copiedStatusRe, { timeout: 5000 });
-	await expect(payload).toBeDefined();
-	expect(payload?.group).toBe(targetGroup);
-	expect(payload?.week).toBe(targetWeek);
-	expect(payload?.cohorts).toEqual(selectedCohorts);
-	expect(payload?.lang).toBeTruthy();
-	const clipboardState = await page.evaluate(
-		() =>
-			(
-				window as unknown as {
-					__clipboardState: { writeCalls: number; writeTextCalls: number; lastText: string };
-				}
-			).__clipboardState
-	);
-	expect(clipboardState.lastText).toContain('token=');
-	const copiedCalendarUrl = new URL(clipboardState.lastText);
-	expect(copiedCalendarUrl.pathname).toMatch(/\/api\/calendar$/);
-	expect(copiedCalendarUrl.searchParams.get('token')).toBeTruthy();
-
-	await page.waitForTimeout(BUTTON_ACTIVATION_DURATION_MS + 150);
-	await expect(exportStatus).toHaveText('', { timeout: 1500 });
-});
-
-test('calendar export falls back to clipboard.writeText when clipboard.write fails', async ({
-	page
-}) => {
-	await installClipboardMock(page, 'write-fails');
-	const meta = await fetchMeta(page);
-	const scenario = await findScenarioWithRequiredCohorts(page, meta);
-	test.skip(!scenario, 'No group/week with required cohorts in available fixture set');
-	const { group, week, cohorts } = scenario!;
-
-	let tokenRequestCount = 0;
-	await page.route('**/api/token', async (route) => {
-		tokenRequestCount += 1;
-		await new Promise((resolve) => setTimeout(resolve, 220));
-		await route.fulfill({
-			status: 200,
-			contentType: 'application/json',
-			body: JSON.stringify({ token: 'calendar-token-fallback' })
+		let payload: { group: string; week: string; cohorts: string[]; lang: string } | undefined;
+		await page.route('**/api/token', async (route) => {
+			payload = route.request().postDataJSON() as {
+				group: string;
+				week: string;
+				cohorts: string[];
+				lang: string;
+			};
+			await new Promise((resolve) => setTimeout(resolve, 200));
+			await route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({ token: 'calendar-token-e2e' })
+			});
 		});
+
+		await page.goto(buildScheduleUrl(targetGroup, targetWeek, selectedCohorts));
+		expect(splitCohortsFromUrl(page.url())).toEqual(selectedCohorts);
+
+		const exportButton = page
+			.getByRole('contentinfo')
+			.getByRole('button', { name: exportButtonNameRe });
+		const exportStatus = page.getByRole('status');
+
+		await exportButton.click();
+		await expect(exportButton).toBeDisabled({ timeout: 500 });
+		await expect(exportButton).toHaveClass(/calendar-copy-shell-pending/, { timeout: 500 });
+
+		await expect(exportButton).toBeEnabled({ timeout: 5000 });
+		await expect(exportStatus).toContainText(copiedStatusRe, { timeout: 5000 });
+		await expect(payload).toBeDefined();
+		expect(payload?.group).toBe(targetGroup);
+		expect(payload?.week).toBe(targetWeek);
+		expect(payload?.cohorts).toEqual(selectedCohorts);
+		expect(payload?.lang).toBeTruthy();
+		const clipboardState = await page.evaluate(
+			() =>
+				(
+					window as unknown as {
+						__clipboardState: { writeCalls: number; writeTextCalls: number; lastText: string };
+					}
+				).__clipboardState
+		);
+		expect(clipboardState.lastText).toContain('token=');
+		const copiedCalendarUrl = new URL(clipboardState.lastText);
+		expect(copiedCalendarUrl.pathname).toMatch(/\/api\/calendar$/);
+		expect(copiedCalendarUrl.searchParams.get('token')).toBeTruthy();
+
+		await page.waitForTimeout(BUTTON_ACTIVATION_DURATION_MS + 150);
+		await expect(exportStatus).toHaveText('', { timeout: 1500 });
 	});
 
-	await page.goto(buildScheduleUrl(group, week, cohorts));
+	test('fall back to clipboard write text when clipboard write fails', async ({ page }) => {
+		await installClipboardMock(page, 'write-fails');
+		const meta = await fetchMeta(page);
+		const scenario = await findScenarioWithRequiredCohorts(page, meta);
+		test.skip(!scenario, 'No group/week with required cohorts in available fixture set');
+		const { group, week, cohorts } = scenario!;
 
-	const exportButton = page
-		.getByRole('contentinfo')
-		.getByRole('button', { name: exportButtonNameRe });
-	await exportButton.click();
+		let tokenRequestCount = 0;
+		await page.route('**/api/token', async (route) => {
+			tokenRequestCount += 1;
+			await new Promise((resolve) => setTimeout(resolve, 220));
+			await route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({ token: 'calendar-token-fallback' })
+			});
+		});
 
-	await expect.poll(() => tokenRequestCount).toBe(1);
-	await expect(exportButton).toBeEnabled({ timeout: 5000 });
-	await expect
-		.poll(async () =>
-			page.evaluate(
-				() =>
-					(
-						window as unknown as {
-							__clipboardState: {
-								writeCalls: number;
-								writeTextCalls: number;
-								lastText: string;
-							};
-						}
-					).__clipboardState
+		await page.goto(buildScheduleUrl(group, week, cohorts));
+
+		const exportButton = page
+			.getByRole('contentinfo')
+			.getByRole('button', { name: exportButtonNameRe });
+		await exportButton.click();
+
+		await expect.poll(() => tokenRequestCount).toBe(1);
+		await expect(exportButton).toBeEnabled({ timeout: 5000 });
+		await expect
+			.poll(async () =>
+				page.evaluate(
+					() =>
+						(
+							window as unknown as {
+								__clipboardState: {
+									writeCalls: number;
+									writeTextCalls: number;
+									lastText: string;
+								};
+							}
+						).__clipboardState
+				)
 			)
-		)
-		.toMatchObject({ writeCalls: 1, writeTextCalls: 1 });
-	const fallbackState = await page.evaluate(
-		() =>
-			(
-				window as unknown as {
-					__clipboardState: { writeCalls: number; writeTextCalls: number; lastText: string };
-				}
-			).__clipboardState
-	);
-	expect(fallbackState.lastText).toContain('token=calendar-token-fallback');
+			.toMatchObject({ writeCalls: 1, writeTextCalls: 1 });
+		const fallbackState = await page.evaluate(
+			() =>
+				(
+					window as unknown as {
+						__clipboardState: { writeCalls: number; writeTextCalls: number; lastText: string };
+					}
+				).__clipboardState
+		);
+		expect(fallbackState.lastText).toContain('token=calendar-token-fallback');
+	});
 });

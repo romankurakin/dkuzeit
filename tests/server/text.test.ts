@@ -4,68 +4,68 @@ import {
 	russianOnlyLabel,
 	germanOnlyLabel,
 	stripParenSuffix
-} from '../src/lib/server/text';
+} from '../../src/lib/server/text';
 
-describe('cleanText', () => {
-	it('strips HTML tags and decodes entities', () => {
+describe('text clean text', () => {
+	it('strip html tags and decode entities', () => {
 		expect(cleanText('<b>Hello&nbsp;world</b>')).toBe('Hello world');
 	});
 
-	it('collapses whitespace', () => {
+	it('collapse whitespace', () => {
 		expect(cleanText('  foo   bar  ')).toBe('foo bar');
 	});
 });
 
-describe('russianOnlyLabel', () => {
-	it('returns text before the first slash', () => {
+describe('text russian only label', () => {
+	it('return text before the first slash', () => {
 		expect(russianOnlyLabel('Социология/Soziologie лекция/семинар')).toBe('Социология');
 	});
 
-	it('returns full text when no slash', () => {
+	it('return full text when no slash', () => {
 		expect(russianOnlyLabel('IT Grundlagen')).toBe('IT Grundlagen');
 	});
 
-	it('strips leading dots', () => {
+	it('strip leading dots', () => {
 		expect(russianOnlyLabel('.ЭкТ.л/')).toBe('ЭкТ.л');
 	});
 
-	it('handles empty right side', () => {
+	it('handle empty right side', () => {
 		expect(russianOnlyLabel('ВМ2.л/')).toBe('ВМ2.л');
 	});
 });
 
-describe('germanOnlyLabel', () => {
-	it('returns German part of a bilingual name', () => {
+describe('text german only label', () => {
+	it('return german part of a bilingual name', () => {
 		expect(germanOnlyLabel('Социология/Soziologie лекция/семинар')).toBe('Soziologie');
 	});
 
-	it('strips Cyrillic lesson type suffix', () => {
+	it('strip cyrillic lesson type suffix', () => {
 		expect(germanOnlyLabel('Немецкий язык/Deutsch пр.')).toBe('Deutsch');
 	});
 
-	it('returns full text when no slash', () => {
+	it('return full text when no slash', () => {
 		expect(germanOnlyLabel('IT Grundlagen')).toBe('IT Grundlagen');
 	});
 
-	it('handles empty right side (trailing slash)', () => {
+	it('handle empty right side trailing slash', () => {
 		expect(germanOnlyLabel('ВМ2.л/')).toBe('ВМ2.л/');
 	});
 
-	it('handles single letter German abbreviation', () => {
+	it('handle single letter german abbreviation', () => {
 		expect(germanOnlyLabel('КП.л/K')).toBe('K');
 	});
 
-	it('handles Kazakh after slash (all Cyrillic)', () => {
+	it('handle kazakh after slash all cyrillic', () => {
 		expect(germanOnlyLabel('Казахский язык/Бизнес қазақ тілі')).toBe('Бизнес');
 	});
 });
 
-describe('stripParenSuffix', () => {
-	it('removes parenthesized suffix', () => {
+describe('text strip paren suffix', () => {
+	it('remove parenthesized suffix', () => {
 		expect(stripParenSuffix('1-IM-IBE/IBE гр.1(MA)')).toBe('1-IM-IBE/IBE гр.1');
 	});
 
-	it('leaves text without parens unchanged', () => {
+	it('leave text without parens unchanged', () => {
 		expect(stripParenSuffix('3А-ТЛ')).toBe('3А-ТЛ');
 	});
 });

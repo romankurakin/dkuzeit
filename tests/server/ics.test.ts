@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { buildIcsCalendar } from '../src/lib/server/ics';
-import type { LessonEvent } from '../src/lib/server/types';
+import { buildIcsCalendar } from '../../src/lib/server/ics';
+import type { LessonEvent } from '../../src/lib/server/types';
 
 const event: LessonEvent = {
 	id: 'e-test',
@@ -23,8 +23,8 @@ const event: LessonEvent = {
 	scope: 'cohort_shared'
 };
 
-describe('ics generation', () => {
-	it('builds valid calendar envelope and event fields', () => {
+describe('ics build ics calendar', () => {
+	it('build valid calendar envelope and event fields', () => {
 		const ics = buildIcsCalendar('DKU 3-ТМ (E3)', [event]);
 
 		expect(ics).toContain('BEGIN:VCALENDAR');
@@ -39,7 +39,7 @@ describe('ics generation', () => {
 		expect(ics).not.toContain('DESCRIPTION');
 	});
 
-	it('uses DE prodId for German calendar', () => {
+	it('use de prod id for german calendar', () => {
 		const ics = buildIcsCalendar('DKU 3-TM (E3)', [event], 'de');
 		expect(ics).toContain('PRODID:-//DKUZeit//DKU Timetable//DE');
 	});

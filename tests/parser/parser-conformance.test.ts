@@ -1,8 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { fnv1aHex } from '../src/lib/server/hash';
-import { parseNavHtml, parseTimetablePage } from '../src/lib/server/parser';
+import { fnv1aHex } from '../../src/lib/server/hash';
+import { parseNavHtml, parseTimetablePage } from '../../src/lib/server/parser';
 
 interface Manifest {
 	weeks: string[];
@@ -14,8 +14,8 @@ const fixtureReady = existsSync(manifestPath);
 
 const suite = fixtureReady ? describe : describe.skip;
 
-suite('DKU parser conformance (fixtures)', () => {
-	it('matches known fixture signature and totals', async () => {
+suite('parser conformance fixtures', () => {
+	it('match known fixture signature and totals', async () => {
 		const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as Manifest;
 		const navbarHtml = readFileSync(path.join(fixtureRoot, 'frames/navbar.htm'), 'utf8');
 		const meta = parseNavHtml(navbarHtml);
@@ -70,8 +70,8 @@ suite('DKU parser conformance (fixtures)', () => {
 });
 
 if (!fixtureReady) {
-	describe('DKU parser conformance prerequisites', () => {
-		it('requires fixture snapshot', () => {
+	describe('parser prerequisites', () => {
+		it('require fixture snapshot for parser conformance', () => {
 			expect(`Fixture snapshot missing at ${manifestPath}. Run: npm run fixtures:sync`).toBeTypeOf(
 				'string'
 			);
