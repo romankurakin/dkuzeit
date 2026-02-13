@@ -4,6 +4,7 @@
 </script>
 
 <main
+	id="main-content"
 	class="bg-foreground text-background flex min-h-[calc(100dvh-8rem)] flex-col items-center justify-center p-8 text-center"
 >
 	{#if page.status === 404}

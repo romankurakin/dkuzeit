@@ -1,6 +1,6 @@
 {
 	"$schema": "https://inlang.com/schema/inlang-message-format",
-	"app_title": "DKU Stundenplan",
+	"app_title": "Stundenplan DKU",
 	"meta_description": "Stundenplan der DKU — nach Gruppen, nach Wochen, mit Apple Kalender.",
 	"language_switch_label": "Sprache",
 	"language_ru": "Русский",
@@ -13,6 +13,7 @@
 	"copied": "Kopiert!",
 	"loading": "Laden...",
 	"no_events": "Keine Termine gefunden.",
+	"empty_slot": "Kein Unterricht",
 	"api_error_meta": "Gruppenliste konnte nicht geladen werden",
 	"api_error_schedule": "Stundenplan konnte nicht geladen werden",
 	"api_error_calendar": "Kalenderlink konnte nicht erstellt werden",

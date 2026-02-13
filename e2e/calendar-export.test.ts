@@ -1,10 +1,11 @@
 import { expect, test, type Page } from '@playwright/test';
 import { BUTTON_ACTIVATION_DURATION_MS } from '../src/lib/ui-timing';
+import { toSlug } from '../src/lib/url-slug';
 import { localizedMessageRegex } from './i18n';
 
 type ClipboardMode = 'normal' | 'write-fails';
 type MetaPayload = {
-	groups: Array<{ codeRaw: string }>;
+	groups: Array<{ codeRaw: string; codeRu: string }>;
 	weeks: Array<{ value: string }>;
 };
 type SchedulePayload = {
@@ -13,6 +14,11 @@ type SchedulePayload = {
 };
 const exportButtonNameRe = localizedMessageRegex('copy_calendar_link');
 const copiedStatusRe = localizedMessageRegex('copied');
+
+function groupSlug(meta: MetaPayload, codeRaw: string): string {
+	const group = meta.groups.find((g) => g.codeRaw === codeRaw);
+	return group ? toSlug(group.codeRu) : toSlug(codeRaw);
+}
 
 function splitCohortsFromUrl(url: string): string[] {
 	const value = new URL(url).searchParams.get('cohorts') ?? '';
@@ -124,15 +130,17 @@ async function findScenarioWithRequiredCohorts(
 	return null;
 }
 
-function buildScheduleUrl(group: string, week: string, cohorts: string[] = []): string {
-	const params = new URLSearchParams({
-		group,
-		week
-	});
-	if (cohorts.length > 0) {
-		params.set('cohorts', cohorts.join(','));
-	}
-	return `/?${params.toString()}`;
+function buildScheduleUrl(
+	meta: MetaPayload,
+	group: string,
+	week: string,
+	cohorts: string[] = []
+): string {
+	const slug = groupSlug(meta, group);
+	const qs = new URLSearchParams();
+	qs.set('week', week);
+	if (cohorts.length > 0) qs.set('cohorts', cohorts.join(','));
+	return `/${slug}?${qs.toString()}`;
 }
 
 test.describe('calendar export', () => {
@@ -142,10 +150,10 @@ test.describe('calendar export', () => {
 		test.skip(!scenario, 'No group/week with required cohorts in available fixture set');
 		const { group, week, cohorts } = scenario!;
 
-		await page.goto(buildScheduleUrl(group, week));
+		await page.goto(buildScheduleUrl(meta, group, week));
 		const initialSignature = await readRenderedScheduleSignature(page);
 
-		await page.goto(buildScheduleUrl(group, week, cohorts));
+		await page.goto(buildScheduleUrl(meta, group, week, cohorts));
 		await expect(page).toHaveURL(/cohorts=/, { timeout: 5000 });
 
 		const filteredSignature = await readRenderedScheduleSignature(page);
@@ -200,7 +208,7 @@ test.describe('calendar export', () => {
 			});
 		});
 
-		await page.goto(buildScheduleUrl(targetGroup, targetWeek, selectedCohorts));
+		await page.goto(buildScheduleUrl(meta, targetGroup, targetWeek, selectedCohorts));
 		expect(splitCohortsFromUrl(page.url())).toEqual(selectedCohorts);
 
 		const exportButton = page
@@ -254,7 +262,7 @@ test.describe('calendar export', () => {
 			});
 		});
 
-		await page.goto(buildScheduleUrl(group, week, cohorts));
+		await page.goto(buildScheduleUrl(meta, group, week, cohorts));
 
 		const exportButton = page
 			.getByRole('contentinfo')

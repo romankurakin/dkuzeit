@@ -5,11 +5,22 @@
 	import { m } from '$lib/paraglide/messages';
 	import { getLocale, setLocale } from '$lib/paraglide/runtime';
 	import { ToggleGroup } from 'bits-ui';
-	import { pwaInfo } from 'virtual:pwa-info';
-
 	let { children } = $props();
 
 	let selectedLocale: string = $derived(getLocale());
+
+	const jsonLdTag = $derived(
+		'<script type="application/ld+json">' +
+			JSON.stringify({
+				'@context': 'https://schema.org',
+				'@type': 'WebApplication',
+				name: m.app_title(),
+				description: m.meta_description(),
+				url: 'https://dkuzeit.net',
+				inLanguage: ['ru', 'de']
+			}) +
+			'<\u002Fscript>'
+	);
 
 	function handleLocaleChange(value: string | undefined) {
 		if (value && value !== getLocale()) {
@@ -26,17 +37,13 @@
 </script>
 
 <svelte:head>
-	{#if pwaInfo}
-		<link
-			rel="manifest"
-			href={pwaInfo.webManifest.href}
-			crossorigin={pwaInfo.webManifest.useCredentials ? 'use-credentials' : undefined}
-		/>
-	{/if}
-	<meta name="theme-color" content="#141414" />
+	<link rel="manifest" href="/manifest.webmanifest" />
+	<meta name="theme-color" content="#fafafa" />
 	<link rel="icon" href="/favicon.ico" sizes="any" />
 	<link rel="icon" href="/icon.svg" type="image/svg+xml" />
 	<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+	<!-- eslint-disable-next-line svelte/no-at-html-tags -- static JSON-LD from app code -->
+	{@html jsonLdTag}
 </svelte:head>
 
 <div class="mx-auto max-w-screen-2xl space-y-0 p-4">
