@@ -43,7 +43,7 @@
 				sideOffset={0}
 				class="brutal-border bg-background z-50 w-(--bits-select-anchor-width) data-[side=bottom]:border-t-0 data-[side=top]:border-b-0"
 			>
-				<ScrollArea.Root type="always" class="relative max-h-64">
+				<ScrollArea.Root type="auto" class="relative max-h-64">
 					<ScrollArea.Viewport class="max-h-64">
 						{#each items as item (item.value)}
 							<Select.Item

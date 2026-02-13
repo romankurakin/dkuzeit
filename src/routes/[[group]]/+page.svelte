@@ -5,6 +5,8 @@
 	import { cv, subjectColorKey } from '$lib/scheduler/subject-colors';
 	import { BUTTON_ACTIVATION_DURATION_MS } from '$lib/ui-timing';
 	import { m } from '$lib/paraglide/messages';
+	import { getLocale, localizeHref } from '$lib/paraglide/runtime';
+	import { toSlug } from '$lib/url-slug';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { onDestroy } from 'svelte';
@@ -22,15 +24,23 @@
 		githubArmTimer = null;
 	}
 
-	function navigateWithSearchParams(params: URLSearchParams): void {
-		// eslint-disable-next-line svelte/no-navigation-without-resolve -- same-page query param change
-		goto(`/?${params.toString()}`, { replaceState: true, noScroll: true, keepFocus: true });
+	function groupToSlug(codeRaw: string): string {
+		const group = meta.groups.find((g) => g.codeRaw === codeRaw);
+		return group ? toSlug(group.codeRu) : toSlug(codeRaw);
 	}
 
-	function updateSingleSearchParam(name: string, value: string): void {
-		const params = new URLSearchParams(page.url.searchParams);
-		params.set(name, value);
-		navigateWithSearchParams(params);
+	function schedulePath(group: string, week: string, cohorts?: string): string {
+		const path = localizeHref(`/${groupToSlug(group)}`);
+		const qs = new URLSearchParams();
+		if (week) qs.set('week', week);
+		if (cohorts) qs.set('cohorts', cohorts);
+		const str = qs.toString();
+		return str ? `${path}?${str}` : path;
+	}
+
+	function navigateSchedule(path: string): void {
+		// eslint-disable-next-line svelte/no-navigation-without-resolve -- resolved via localizeHref in schedulePath
+		goto(path, { replaceState: true, noScroll: true, keepFocus: true });
 	}
 
 	const urlCohorts = $derived(
@@ -41,11 +51,15 @@
 	);
 
 	function handleGroupChange(value: string): void {
-		updateSingleSearchParam('group', value);
+		navigateSchedule(
+			schedulePath(value, schedule.resolvedWeek, page.url.searchParams.get('cohorts') ?? undefined)
+		);
 	}
 
 	function handleWeekChange(value: string): void {
-		updateSingleSearchParam('week', value);
+		navigateSchedule(
+			schedulePath(schedule.resolvedGroup, value, page.url.searchParams.get('cohorts') ?? undefined)
+		);
 	}
 
 	function handleCohortChange(_trackLabel: string, code: string): void {
@@ -56,13 +70,9 @@
 		);
 		const filtered = urlCohorts.filter((c) => !sameCategory.has(c));
 		const newCohorts = [...filtered, code].join(',');
-		const params = new URLSearchParams(page.url.searchParams);
-		if (newCohorts) {
-			params.set('cohorts', newCohorts);
-		} else {
-			params.delete('cohorts');
-		}
-		navigateWithSearchParams(params);
+		navigateSchedule(
+			schedulePath(schedule.resolvedGroup, schedule.resolvedWeek, newCohorts || undefined)
+		);
 	}
 
 	function handleToolbarKeydown(e: KeyboardEvent): void {
@@ -101,6 +111,11 @@
 		githubArmed = false;
 	}
 
+	const canonicalPath = $derived(localizeHref(`/${page.params.group ?? ''}`));
+	const canonicalUrl = $derived(`${page.url.origin}${canonicalPath}`);
+	const ruUrl = $derived(`${page.url.origin}/${page.params.group ?? ''}`);
+	const deUrl = $derived(`${page.url.origin}/de/${page.params.group ?? ''}`);
+
 	onDestroy(() => {
 		clearGithubArmTimer();
 	});
@@ -109,10 +124,24 @@
 <svelte:head>
 	<title>{m.app_title()}</title>
 	<meta name="description" content={m.meta_description()} />
+	<link rel="canonical" href={canonicalUrl} />
+	<link rel="alternate" hreflang="ru" href={ruUrl} />
+	<link rel="alternate" hreflang="de" href={deUrl} />
+	<link rel="alternate" hreflang="x-default" href={ruUrl} />
+	<meta property="og:title" content={m.app_title()} />
+	<meta property="og:description" content={m.meta_description()} />
+	<meta property="og:type" content="website" />
+	<meta property="og:url" content={canonicalUrl} />
+	<meta property="og:locale" content={getLocale() === 'de' ? 'de_DE' : 'ru_RU'} />
+	<meta property="og:site_name" content="DKU Zeit" />
+	<meta name="twitter:card" content="summary" />
+	<meta name="twitter:title" content={m.app_title()} />
+	<meta name="twitter:description" content={m.meta_description()} />
 </svelte:head>
 
 {#if schedule.error}
 	<main
+		id="main-content"
 		class="bg-foreground text-background flex min-h-[calc(100dvh-8rem)] flex-col items-center justify-center p-8 text-center"
 	>
 		<h2 class="brutal-heading">
@@ -138,7 +167,7 @@
 			onCohortChange={handleCohortChange}
 		>
 			{#snippet children(ctx)}
-				<main>
+				<main id="main-content">
 					<div
 						role="toolbar"
 						tabindex={-1}
@@ -153,7 +182,7 @@
 							value={ctx.selectedGroup}
 							items={ctx.groupSelectItems}
 							onValueChange={ctx.onGroupChange}
-							autofocus={!page.url.searchParams.has('group')}
+							autofocus={!page.params.group}
 						/>
 						<BrutalSelect
 							label={m.week_label()}
@@ -220,6 +249,9 @@
 														: ''}"
 													style={firstColor ? `background: ${cv(firstColor)};` : ''}
 												>
+													{#if slotEvents.length === 0}
+														<span class="sr-only">{m.empty_slot()}</span>
+													{/if}
 													{#each slotEvents as event, ei (event.id)}
 														{@const color = ctx.subjectColorMap.get(subjectColorKey(event))}
 														<div
@@ -311,20 +343,20 @@
 								rel="noopener noreferrer"
 								title={githubArmed ? m.source_code() : `${m.source_code()} ×2`}
 								class="brutal-link brutal-control brutal-control-icon brutal-focus relative overflow-hidden"
-								class:brutal-arm-shell={githubArmed}
+								class:github-arm-shell={githubArmed}
 								onclick={handleGithubClick}
 							>
 								<span class="sr-only">{m.source_code()}</span>
 								<span
 									aria-hidden="true"
 									class="pixel-icon pixel-icon-mask"
-									class:brutal-arm-icon={githubArmed}
+									class:github-arm-icon={githubArmed}
 									style="--pixel-icon: url('/icons/pixel-github.svg')"
 								></span>
 								<span
 									aria-hidden="true"
 									class="pointer-events-none absolute inset-0 block"
-									class:brutal-arm-scan={githubArmed}
+									class:github-arm-scan={githubArmed}
 								></span>
 							</a>
 							<button
@@ -340,13 +372,13 @@
 									class="pixel-icon pixel-icon-mask"
 									class:text-poison={ctx.calendarCopyState !== 'idle'}
 									class:calendar-copy-icon-pending={ctx.calendarCopyState === 'pending'}
-									class:calendar-copy-icon-rock={ctx.calendarCopyState === 'success'}
+									class:calendar-copy-icon-success={ctx.calendarCopyState === 'success'}
 									style="--pixel-icon: url('/icons/pixel-apple.svg')"
 								></span>
 								<span
 									aria-hidden="true"
-									class="calendar-copy-sync pointer-events-none absolute inset-0 block"
-									class:calendar-copy-sync-flash={ctx.calendarCopyState === 'success'}
+									class="calendar-copy-flash pointer-events-none absolute inset-0 block"
+									class:calendar-copy-flash-active={ctx.calendarCopyState === 'success'}
 								></span>
 							</button>
 							<span class="sr-only" role="status" aria-live="polite">
@@ -379,64 +411,55 @@
 		align-items: flex-end;
 	}
 
-	@keyframes brutal-arm-shell-kf {
+	@keyframes github-arm-shell-kf {
 		0% {
 			transform: scale(1);
-			background-color: var(--color-background);
 			color: var(--color-foreground);
 			box-shadow: 0 0 0 0 oklch(from var(--color-poison) l c h / 0);
 		}
 		8% {
 			transform: scale(0.9);
-			background-color: var(--color-background);
 			color: var(--color-foreground);
 			box-shadow: 0 0 0 1px oklch(from var(--color-poison) l c h / 0.24);
 		}
 		18% {
 			transform: scale(1.72);
-			background-color: var(--color-muted-surface);
 			color: var(--color-foreground);
 			box-shadow: 0 0 0 3px oklch(from var(--color-poison) l c h / 0.5);
 		}
 		30% {
 			transform: scale(1.6);
-			background-color: var(--color-muted-surface);
 			color: var(--color-foreground);
 			box-shadow: 0 0 0 3px oklch(from var(--color-poison) l c h / 0.68);
 		}
 		44% {
 			transform: scale(0.76);
-			background-color: var(--color-background);
 			color: var(--color-foreground);
 			box-shadow: 0 0 0 1px oklch(from var(--color-poison) l c h / 0.36);
 		}
 		58% {
 			transform: scale(1.38);
-			background-color: var(--color-muted-surface);
 			color: var(--color-foreground);
 			box-shadow: 0 0 0 2px oklch(from var(--color-poison) l c h / 0.44);
 		}
 		74% {
 			transform: scale(0.92);
-			background-color: var(--color-background);
 			color: var(--color-foreground);
 			box-shadow: 0 0 0 1px oklch(from var(--color-poison) l c h / 0.3);
 		}
 		88% {
 			transform: scale(1.08);
-			background-color: var(--color-muted-surface);
 			color: var(--color-foreground);
 			box-shadow: 0 0 0 2px oklch(from var(--color-poison) l c h / 0.36);
 		}
 		100% {
 			transform: scale(1);
-			background-color: var(--color-background);
 			color: var(--color-foreground);
 			box-shadow: 0 0 0 0 oklch(from var(--color-poison) l c h / 0);
 		}
 	}
 
-	@keyframes brutal-arm-icon-kf {
+	@keyframes github-arm-icon-kf {
 		0% {
 			transform: translate(0, 0) scale(1);
 			filter: brightness(1) contrast(1) drop-shadow(0 0 0 oklch(from var(--color-poison) l c h / 0));
@@ -487,7 +510,7 @@
 		}
 	}
 
-	@keyframes brutal-arm-scan-kf {
+	@keyframes github-arm-scan-kf {
 		0% {
 			transform: translateX(-260%);
 			opacity: 0;
@@ -521,19 +544,19 @@
 		}
 	}
 
-	.brutal-arm-shell {
+	.github-arm-shell {
 		transform-origin: center;
 		will-change: transform, background-color, box-shadow;
-		animation: brutal-arm-shell-kf 1240ms steps(14, end) 1;
+		animation: github-arm-shell-kf 1240ms steps(14, end) 1;
 	}
 
-	.brutal-arm-icon {
+	.github-arm-icon {
 		transform-origin: center;
 		will-change: transform, filter;
-		animation: brutal-arm-icon-kf 1180ms steps(13, end) 1;
+		animation: github-arm-icon-kf 1180ms steps(13, end) 1;
 	}
 
-	.brutal-arm-scan {
+	.github-arm-scan {
 		position: absolute;
 		inset: 0;
 		pointer-events: none;
@@ -547,7 +570,7 @@
 		mask-size: auto 88%;
 		-webkit-mask-position: center;
 		mask-position: center;
-		animation: brutal-arm-scan-kf 1180ms steps(13, end) 1;
+		animation: github-arm-scan-kf 1180ms steps(13, end) 1;
 	}
 
 	@keyframes calendar-copy-shell-pending-kf {
@@ -586,7 +609,7 @@
 		}
 	}
 
-	@keyframes calendar-copy-icon-rock-kf {
+	@keyframes calendar-copy-icon-success-kf {
 		0% {
 			transform: translate(0, 0) rotate(0deg) scale(1);
 			filter: brightness(1) contrast(1) drop-shadow(0 0 0 oklch(from var(--color-poison) l c h / 0));
@@ -607,7 +630,7 @@
 		}
 	}
 
-	@keyframes calendar-copy-sync-kf {
+	@keyframes calendar-copy-flash-kf {
 		0% {
 			opacity: 0;
 			transform: scale(0.8) rotate(-6deg);
@@ -640,27 +663,27 @@
 		animation: calendar-copy-icon-pending-kf 820ms ease-in-out infinite;
 	}
 
-	.calendar-copy-icon-rock {
-		animation: calendar-copy-icon-rock-kf 300ms cubic-bezier(0.2, 0.9, 0.24, 1.08) 1;
+	.calendar-copy-icon-success {
+		animation: calendar-copy-icon-success-kf 300ms cubic-bezier(0.2, 0.9, 0.24, 1.08) 1;
 	}
 
-	.calendar-copy-sync {
+	.calendar-copy-flash {
 		opacity: 0;
 		transform-origin: center;
 	}
 
-	.calendar-copy-sync-flash {
-		animation: calendar-copy-sync-kf 260ms steps(7, end) 1;
+	.calendar-copy-flash-active {
+		animation: calendar-copy-flash-kf 260ms steps(7, end) 1;
 	}
 
 	@media (prefers-reduced-motion: reduce) {
-		.brutal-arm-shell,
-		.brutal-arm-icon,
-		.brutal-arm-scan,
+		.github-arm-shell,
+		.github-arm-icon,
+		.github-arm-scan,
 		.calendar-copy-shell-pending,
 		.calendar-copy-icon-pending,
-		.calendar-copy-icon-rock,
-		.calendar-copy-sync-flash {
+		.calendar-copy-icon-success,
+		.calendar-copy-flash-active {
 			animation: none;
 		}
 	}

@@ -1,6 +1,6 @@
 {
 	"$schema": "https://inlang.com/schema/inlang-message-format",
-	"app_title": "DKU Расписание",
+	"app_title": "Расписание КНУ",
 	"meta_description": "Расписание занятий DKU — по группам, по неделям, с Apple Календарём.",
 	"language_switch_label": "Язык",
 	"language_ru": "Русский",
@@ -13,6 +13,7 @@
 	"copied": "Скопировано!",
 	"loading": "Загрузка...",
 	"no_events": "Событий не найдено.",
+	"empty_slot": "Нет занятий",
 	"api_error_meta": "Не удалось загрузить список групп",
 	"api_error_schedule": "Не удалось загрузить расписание",
 	"api_error_calendar": "Не удалось создать ссылку календаря",

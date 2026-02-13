@@ -25,6 +25,7 @@
 		"bits-ui": "^2.15.5",
 		"htmlparser2": "^10.1.0",
 		"runed": "^0.37.1",
+		"slugify": "^1.6.6",
 		"svelte-sonner": "^1.0.7",
 		"ts-ics": "^2.4.0"
 	},
