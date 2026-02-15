@@ -10,11 +10,15 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { onDestroy } from 'svelte';
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
+	import { useSearchParams } from 'runed/kit';
+	import { scheduleSearchSchema } from './search-params';
 
 	let { data }: PageProps = $props();
 	const meta = $derived(data.meta);
 	const schedule = $derived(data.schedule);
 	const todayIso = $derived(data.todayIso);
+	const searchParams = useSearchParams(scheduleSearchSchema);
 	let githubArmed = $state(false);
 	let githubArmTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -29,11 +33,13 @@
 		return group ? toSlug(group.codeRu) : toSlug(codeRaw);
 	}
 
-	function schedulePath(group: string, week: string, cohorts?: string): string {
+	function schedulePath(group: string, week: string, cohorts = ''): string {
 		const path = localizeHref(`/${groupToSlug(group)}`);
-		const qs = new URLSearchParams();
+		const qs = new SvelteURLSearchParams(searchParams.toURLSearchParams().toString());
 		if (week) qs.set('week', week);
+		else qs.delete('week');
 		if (cohorts) qs.set('cohorts', cohorts);
+		else qs.delete('cohorts');
 		const str = qs.toString();
 		return str ? `${path}?${str}` : path;
 	}
@@ -43,23 +49,21 @@
 		goto(path, { replaceState: true, noScroll: true, keepFocus: true });
 	}
 
+	const cohortsCsv = $derived(searchParams.cohorts || (page.url.searchParams.get('cohorts') ?? ''));
+
 	const urlCohorts = $derived(
-		(page.url.searchParams.get('cohorts') ?? '')
+		cohortsCsv
 			.split(',')
 			.map((s) => s.trim())
 			.filter(Boolean)
 	);
 
 	function handleGroupChange(value: string): void {
-		navigateSchedule(
-			schedulePath(value, schedule.resolvedWeek, page.url.searchParams.get('cohorts') ?? undefined)
-		);
+		navigateSchedule(schedulePath(value, schedule.resolvedWeek, cohortsCsv));
 	}
 
 	function handleWeekChange(value: string): void {
-		navigateSchedule(
-			schedulePath(schedule.resolvedGroup, value, page.url.searchParams.get('cohorts') ?? undefined)
-		);
+		navigateSchedule(schedulePath(schedule.resolvedGroup, value, cohortsCsv));
 	}
 
 	function handleCohortChange(_trackLabel: string, code: string): void {
@@ -70,9 +74,7 @@
 		);
 		const filtered = urlCohorts.filter((c) => !sameCategory.has(c));
 		const newCohorts = [...filtered, code].join(',');
-		navigateSchedule(
-			schedulePath(schedule.resolvedGroup, schedule.resolvedWeek, newCohorts || undefined)
-		);
+		navigateSchedule(schedulePath(schedule.resolvedGroup, schedule.resolvedWeek, newCohorts));
 	}
 
 	function handleToolbarKeydown(e: KeyboardEvent): void {
