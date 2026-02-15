@@ -15,6 +15,8 @@ import { isMissingGermanName, sanitizeLabel, splitBilingualLabel } from './bilin
 import { parseDocument } from 'htmlparser2';
 import type { ChildNode, Element } from 'domhandler';
 
+type TimeRange = { start: string; end: string };
+
 function parseWeekLabelDate(label: string): string {
 	const match = label.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
 	if (!match) return new Date().toISOString().slice(0, 10);
@@ -122,6 +124,10 @@ function isUnknownPlaceholderSubject(value: string): boolean {
 	return /^\?+$/.test(value.trim());
 }
 
+function isRenderableSubject(value: string): boolean {
+	return value.length > 0 && !value.includes('________________') && !isDateMarkerCell(value);
+}
+
 interface ParsedCell {
 	colSpan: number;
 	rowSpan: number;
@@ -211,21 +217,64 @@ function collectNestedLines(cellElement: Element): string[] {
 	return lines;
 }
 
+function parsePositiveSpan(value: string | undefined): number {
+	const parsed = Number(value ?? '1');
+	return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+}
+
 function collectRowCells(row: Element): ParsedCell[] {
 	const cells: ParsedCell[] = [];
 	for (const child of row.children) {
 		if (!isElementNode(child) || child.name !== 'td') continue;
-
-		const colSpanRaw = Number(child.attribs.colspan ?? '1');
-		const rowSpanRaw = Number(child.attribs.rowspan ?? '1');
 		cells.push({
-			colSpan: Number.isFinite(colSpanRaw) && colSpanRaw > 0 ? colSpanRaw : 1,
-			rowSpan: Number.isFinite(rowSpanRaw) && rowSpanRaw > 0 ? rowSpanRaw : 1,
+			colSpan: parsePositiveSpan(child.attribs.colspan),
+			rowSpan: parsePositiveSpan(child.attribs.rowspan),
 			fallbackText: collectText(child),
 			nestedLines: collectNestedLines(child)
 		});
 	}
 	return cells;
+}
+
+function collectDistinctPeriods(
+	rowTimes: Array<TimeRange | null>,
+	startRow: number,
+	rowSpan: number,
+	rowCount: number
+): TimeRange[] {
+	const periods: TimeRange[] = [];
+	const seen = new Set<string>();
+	for (let row = startRow; row < Math.min(rowCount, startRow + rowSpan); row += 1) {
+		const range = rowTimes[row];
+		if (!range) continue;
+		const key = `${range.start}-${range.end}`;
+		if (seen.has(key)) continue;
+		seen.add(key);
+		periods.push(range);
+	}
+	return periods;
+}
+
+function collectCohortsFromEvents(events: LessonEvent[], groupCodeRaw: string): Cohort[] {
+	const cohortMap = new Map<string, Cohort>();
+	for (const event of events) {
+		if (!event.cohortCode || event.track === 'none') continue;
+
+		const current = cohortMap.get(event.cohortCode);
+		if (current) {
+			if (!current.sourceGroups.includes(groupCodeRaw)) current.sourceGroups.push(groupCodeRaw);
+			continue;
+		}
+
+		cohortMap.set(event.cohortCode, {
+			code: event.cohortCode,
+			track: event.track,
+			label: event.subjectFullRu || event.subjectShortRu,
+			sourceGroups: [groupCodeRaw]
+		});
+	}
+
+	return Array.from(cohortMap.values());
 }
 
 function findFirstMainTable(node: ChildNode): Element | null {
@@ -312,7 +361,7 @@ export async function parseTimetablePage(
 	}, 0);
 
 	const occupancy = new Array<number>(Math.max(colCount, 1)).fill(0);
-	const rowTimes: Array<{ start: string; end: string } | null> = new Array(rows.length).fill(null);
+	const rowTimes: Array<TimeRange | null> = new Array(rows.length).fill(null);
 	const dayDates = parseDayDates(html, week.startDateIso);
 
 	const subjectResolver = makeLegendResolver(parseLegendEntries(html, 'Дисциплины'));
@@ -354,11 +403,7 @@ export async function parseTimetablePage(
 
 				// Skip empty cells, placeholder underscores, and holiday date-only cells
 				// (e.g. "23.3.2026" or "23.3.2026-23.3.2026" spanning the day column)
-				if (
-					subjectRaw &&
-					!subjectRaw.includes('________________') &&
-					!isDateMarkerCell(subjectRaw)
-				) {
+				if (isRenderableSubject(subjectRaw)) {
 					const dayIndex = Math.floor((col - 1) / 12);
 					if (dayIndex >= 0 && dayIndex < dayDates.length) {
 						deferred.push({ dayIndex, subjectRaw, roomRaw, rowIndex, rowSpan });
@@ -400,20 +445,7 @@ export async function parseTimetablePage(
 		const scope = cohortCode ? 'cohort_shared' : 'core_fixed';
 		const dateIso = dayDates[d.dayIndex]!;
 
-		// Collect distinct time periods covered by this cell
-		const periods: Array<{ start: string; end: string }> = [];
-		{
-			const seen = new Set<string>();
-			for (let r = d.rowIndex; r < Math.min(rows.length, d.rowIndex + d.rowSpan); r += 1) {
-				const range = rowTimes[r];
-				if (!range) continue;
-				const pk = `${range.start}-${range.end}`;
-				if (!seen.has(pk)) {
-					seen.add(pk);
-					periods.push(range);
-				}
-			}
-		}
+		const periods = collectDistinctPeriods(rowTimes, d.rowIndex, d.rowSpan, rows.length);
 
 		for (const period of periods) {
 			const eventSeed = `${group.codeRaw}|${dateIso}|${period.start}|${period.end}|${d.subjectRaw}|${d.roomRaw}|${cohortCode ?? ''}`;
@@ -444,24 +476,6 @@ export async function parseTimetablePage(
 		}
 	}
 
-	const cohortMap = new Map<string, Cohort>();
-	for (const event of splitEvents) {
-		if (!event.cohortCode || event.track === 'none') {
-			continue;
-		}
-		const current = cohortMap.get(event.cohortCode);
-		if (!current) {
-			cohortMap.set(event.cohortCode, {
-				code: event.cohortCode,
-				track: event.track,
-				label: event.subjectFullRu || event.subjectShortRu,
-				sourceGroups: [group.codeRaw]
-			});
-		} else if (!current.sourceGroups.includes(group.codeRaw)) {
-			current.sourceGroups.push(group.codeRaw);
-		}
-	}
-
 	splitEvents.sort(
 		(a, b) =>
 			a.dateIso.localeCompare(b.dateIso) ||
@@ -469,5 +483,5 @@ export async function parseTimetablePage(
 			a.subjectShortRaw.localeCompare(b.subjectShortRaw)
 	);
 
-	return { events: splitEvents, cohorts: Array.from(cohortMap.values()) };
+	return { events: splitEvents, cohorts: collectCohortsFromEvents(splitEvents, group.codeRaw) };
 }

@@ -44,16 +44,16 @@ suite('parser parse nav html', () => {
 	it('keep group labels without leading dashes', async () => {
 		const meta = await loadMeta();
 		for (const group of meta.groups) {
-			expect(group.codeRu, group.codeRaw).not.toMatch(/^-/);
-			expect(group.codeDe, group.codeRaw).not.toMatch(/^-/);
+			expect(group.codeRu).not.toMatch(/^-/);
+			expect(group.codeDe).not.toMatch(/^-/);
 		}
 	});
 
 	it('keep group labels without trailing slashes', async () => {
 		const meta = await loadMeta();
 		for (const group of meta.groups) {
-			expect(group.codeRu, group.codeRaw).not.toMatch(/\/$/);
-			expect(group.codeDe, group.codeRaw).not.toMatch(/\/$/);
+			expect(group.codeRu).not.toMatch(/\/$/);
+			expect(group.codeDe).not.toMatch(/\/$/);
 		}
 	});
 
@@ -67,7 +67,7 @@ suite('parser parse nav html', () => {
 		const meta = await loadMeta();
 		for (const group of meta.groups) {
 			if (!/^\d/.test(group.codeRu)) continue;
-			expect(group.codeDe, group.codeRaw).toMatch(/^\d/);
+			expect(group.codeDe).toMatch(/^\d/);
 		}
 	});
 
@@ -99,11 +99,10 @@ suite('parser parse timetable page label quality', () => {
 				const { events } = await parseTimetablePage(html, group, week);
 
 				for (const e of events) {
-					const ctx = `${group.codeRaw} w${week.value} ${e.subjectShortRaw}`;
-					expect(e.subjectShortRu, ctx).not.toMatch(/\/$/);
-					expect(e.subjectShortDe, ctx).not.toMatch(/\/$/);
-					expect(e.subjectFullRu, ctx).not.toMatch(/\/$/);
-					expect(e.subjectFullDe, ctx).not.toMatch(/\/$/);
+					expect(e.subjectShortRu).not.toMatch(/\/$/);
+					expect(e.subjectShortDe).not.toMatch(/\/$/);
+					expect(e.subjectFullRu).not.toMatch(/\/$/);
+					expect(e.subjectFullDe).not.toMatch(/\/$/);
 				}
 			}
 		}
@@ -127,11 +126,10 @@ suite('parser parse timetable page label quality', () => {
 				const { events } = await parseTimetablePage(html, group, week);
 
 				for (const e of events) {
-					const ctx = `${group.codeRaw} w${week.value} ${e.subjectShortRaw}`;
-					expect(e.subjectShortRu, ctx).not.toMatch(/^-/);
-					expect(e.subjectShortDe, ctx).not.toMatch(/^-/);
-					expect(e.subjectFullRu, ctx).not.toMatch(/^-/);
-					expect(e.subjectFullDe, ctx).not.toMatch(/^-/);
+					expect(e.subjectShortRu).not.toMatch(/^-/);
+					expect(e.subjectShortDe).not.toMatch(/^-/);
+					expect(e.subjectFullRu).not.toMatch(/^-/);
+					expect(e.subjectFullDe).not.toMatch(/^-/);
 				}
 			}
 		}
@@ -155,9 +153,7 @@ suite('parser parse timetable page label quality', () => {
 				const { events } = await parseTimetablePage(html, group, week);
 
 				for (const e of events) {
-					expect(e.lessonType, `${group.codeRaw} ${e.subjectFullRaw}`).not.toMatch(
-						/[ҚқӘәҒғҢңӨөҰұҮүІіҺһ]/
-					);
+					expect(e.lessonType).not.toMatch(/[ҚқӘәҒғҢңӨөҰұҮүІіҺһ]/);
 				}
 			}
 		}
@@ -215,11 +211,10 @@ suite('parser parse timetable page label quality', () => {
 				const { events } = await parseTimetablePage(html, group, week);
 
 				for (const e of events) {
-					if (e.subjectFullDe !== e.subjectFullRu) {
-						expect(e.subjectFullDe, `${group.codeRaw} ${e.subjectFullRaw}`).not.toMatch(
-							/^[А-Яа-яЁёҚқӘәҒғҢңӨөҰұҮүІіҺһ]/
-						);
-					}
+					expect(
+						e.subjectFullDe === e.subjectFullRu ||
+							!/^[А-Яа-яЁёҚқӘәҒғҢңӨөҰұҮүІіҺһ]/.test(e.subjectFullDe)
+					).toBe(true);
 				}
 			}
 		}
