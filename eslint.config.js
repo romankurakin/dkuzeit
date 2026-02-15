@@ -1,6 +1,7 @@
 import { defineConfig } from 'eslint/config';
 import js from '@eslint/js';
 import svelte from 'eslint-plugin-svelte';
+import vitest from '@vitest/eslint-plugin';
 import globals from 'globals';
 import ts from 'typescript-eslint';
 import svelteConfig from './svelte.config.js';
@@ -29,6 +30,20 @@ export default defineConfig(
 		}
 	},
 	{
+		files: ['tests/**/*.test.ts'],
+		plugins: {
+			vitest
+		},
+		languageOptions: {
+			globals: {
+				...vitest.environments.env.globals
+			}
+		},
+		rules: {
+			...vitest.configs.recommended.rules
+		}
+	},
+	{
 		rules: {
 			'svelte/prefer-svelte-reactivity': 'off'
 		}
@@ -37,6 +52,7 @@ export default defineConfig(
 		ignores: [
 			'.svelte-kit/',
 			'.wrangler/',
+			'coverage/',
 			'build/',
 			'src/lib/paraglide/',
 			'src/paraglide/',

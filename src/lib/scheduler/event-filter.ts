@@ -7,19 +7,16 @@ export function filterDisplayEvents(
 	urlCohorts: string[],
 	categoryLabels: Record<string, string>
 ): LessonEvent[] {
-	const codeToCategory = new Map<string, string>();
-	for (const c of cohorts) {
-		codeToCategory.set(c.code, c.track);
-	}
+	const codeToCategory = new Map(cohorts.map((c) => [c.code, c.track] as const));
 	const selectedCodes = new Set(urlCohorts);
-	const selectedCategories = new Set<string>();
+	const selectedCategories = new Set<Cohort['track']>();
 	for (const code of urlCohorts) {
-		const cat = codeToCategory.get(code);
-		if (cat) selectedCategories.add(cat);
+		const category = codeToCategory.get(code);
+		if (category) selectedCategories.add(category);
 	}
 
 	const result: LessonEvent[] = [];
-	const toCollapse = new Map<string, LessonEvent[]>();
+	const toCollapse = new Map<string, { category: string; events: LessonEvent[] }>();
 
 	for (const event of events) {
 		if (event.scope === 'core_fixed' || !event.cohortCode) {
@@ -37,15 +34,15 @@ export function filterDisplayEvents(
 			}
 		} else {
 			const key = `${event.dateIso}|${event.startTime}|${event.endTime}|${cat}`;
-			if (!toCollapse.has(key)) toCollapse.set(key, []);
-			toCollapse.get(key)!.push(event);
+			const bucket = toCollapse.get(key) ?? { category: cat, events: [] };
+			bucket.events.push(event);
+			toCollapse.set(key, bucket);
 		}
 	}
 
-	for (const [key, group] of toCollapse) {
-		const first = group[0]!;
-		const cat = key.split('|')[3]!;
-		const label = categoryLabels[cat] ?? cat;
+	for (const { category, events: groupedEvents } of toCollapse.values()) {
+		const first = groupedEvents[0]!;
+		const label = categoryLabels[category] ?? category;
 		result.push({
 			...first,
 			id: first.id + '_merged',
@@ -92,6 +89,7 @@ export function buildCohortGroups(
 	categoryLabels: Record<string, string>,
 	urlCohorts: string[]
 ): CohortGroup[] {
+	const selectedCodes = new Set(urlCohorts);
 	const map = new Map<string, CohortGroup>();
 	for (const c of cohorts) {
 		const cat = c.track;
@@ -100,7 +98,7 @@ export function buildCohortGroups(
 		}
 		const group = map.get(cat)!;
 		group.items.push({ value: c.code, label: c.code });
-		if (urlCohorts.includes(c.code)) {
+		if (selectedCodes.has(c.code)) {
 			group.value = c.code;
 		}
 	}

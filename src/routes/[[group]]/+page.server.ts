@@ -31,53 +31,47 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
 	}
 
 	const todayIso = todayInAlmaty();
-	let cacheControl = CLIENT_CACHE_HEADER;
+	const metaPayload = { groups: meta.groups, weeks: meta.weeks, resolvedWeek: weekValue };
+	const emptySchedule: {
+		events: LessonEvent[];
+		cohorts: Cohort[];
+		resolvedGroup: string;
+		resolvedWeek: string;
+		error?: boolean;
+	} = { events: [], cohorts: [], resolvedGroup: groupCode, resolvedWeek: weekValue };
+
 	if (!groupCode || !weekValue) {
-		cacheControl = 'private, no-store';
-		setHeaders({ 'cache-control': cacheControl });
+		setHeaders({ 'cache-control': 'private, no-store' });
 		return {
 			todayIso,
-			meta: { groups: meta.groups, weeks: meta.weeks, resolvedWeek: weekValue },
-			schedule: {
-				events: [],
-				cohorts: [],
-				resolvedGroup: groupCode,
-				resolvedWeek: weekValue
-			}
+			meta: metaPayload,
+			schedule: emptySchedule
 		};
 	}
 
-	let events: LessonEvent[] = [];
-	let cohorts: Cohort[] = [];
 	try {
 		const merged = await buildMergedSchedule(groupCode, weekValue, [], meta);
-		events = merged.events;
-		cohorts = merged.cohorts;
-	} catch {
-		cacheControl = 'private, no-store';
-		setHeaders({ 'cache-control': cacheControl });
+		setHeaders({ 'cache-control': CLIENT_CACHE_HEADER });
 		return {
 			todayIso,
-			meta: { groups: meta.groups, weeks: meta.weeks, resolvedWeek: weekValue },
+			meta: metaPayload,
 			schedule: {
-				events: [],
-				cohorts: [],
+				events: merged.events,
+				cohorts: merged.cohorts,
 				resolvedGroup: groupCode,
 				resolvedWeek: weekValue,
+				error: false
+			}
+		};
+	} catch {
+		setHeaders({ 'cache-control': 'private, no-store' });
+		return {
+			todayIso,
+			meta: metaPayload,
+			schedule: {
+				...emptySchedule,
 				error: true
 			}
 		};
 	}
-	setHeaders({ 'cache-control': cacheControl });
-	return {
-		todayIso,
-		meta: { groups: meta.groups, weeks: meta.weeks, resolvedWeek: weekValue },
-		schedule: {
-			events,
-			cohorts,
-			resolvedGroup: groupCode,
-			resolvedWeek: weekValue,
-			error: false
-		}
-	};
 };
