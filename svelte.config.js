@@ -4,6 +4,9 @@ import adapter from '@sveltejs/adapter-cloudflare';
 const config = {
 	kit: {
 		adapter: adapter(),
+		serviceWorker: {
+			register: false
+		},
 		experimental: {
 			instrumentation: {
 				server: true
