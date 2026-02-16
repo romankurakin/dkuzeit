@@ -1,6 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 import { BUTTON_ACTIVATION_DURATION_MS } from '../src/lib/ui-timing';
 import { toSlug } from '../src/lib/url-slug';
+import { filterDisplayEvents } from '../src/lib/scheduler/event-filter';
+import type { Cohort, LessonEvent } from '../src/lib/server/types';
 import { localizedMessageRegex } from './i18n';
 
 type ClipboardMode = 'normal' | 'write-fails';
@@ -9,8 +11,8 @@ type MetaPayload = {
 	weeks: Array<{ value: string }>;
 };
 type SchedulePayload = {
-	cohorts: Array<{ code: string; track: string }>;
-	events: unknown[];
+	cohorts: Cohort[];
+	events: LessonEvent[];
 };
 const exportButtonNameRe = localizedMessageRegex('copy_calendar_link');
 const copiedStatusRe = localizedMessageRegex('copied');
@@ -75,15 +77,9 @@ function unique(values: string[]): string[] {
 	return [...new Set(values.filter(Boolean))];
 }
 
-async function fetchRequiredCohorts(page: Page, group: string, week: string): Promise<string[]> {
-	const scheduleResponse = await page.request.get(
-		`/api/schedule?group=${encodeURIComponent(group)}&week=${encodeURIComponent(week)}`
-	);
-	expect(scheduleResponse.ok()).toBe(true);
-	const schedule = (await scheduleResponse.json()) as SchedulePayload;
-	if (schedule.events.length === 0) return [];
-
-	const sorted = [...schedule.cohorts].sort(
+function pickOnePerTrack(cohorts: Cohort[]): string[] {
+	if (cohorts.length === 0) return [];
+	const sorted = [...cohorts].sort(
 		(a, b) => a.track.localeCompare(b.track) || a.code.localeCompare(b.code)
 	);
 	const onePerTrack = new Map<string, string>();
@@ -92,6 +88,19 @@ async function fetchRequiredCohorts(page: Page, group: string, week: string): Pr
 	}
 
 	return [...onePerTrack.values()];
+}
+
+function signatureForEvents(events: LessonEvent[]): string {
+	return JSON.stringify(
+		events.map((event) => [
+			event.dateIso,
+			event.startTime,
+			event.endTime,
+			event.subjectFullRu,
+			event.subjectFullDe,
+			event.cohortCode
+		])
+	);
 }
 
 async function readRenderedScheduleSignature(page: Page): Promise<string> {
@@ -120,8 +129,23 @@ async function findScenarioWithRequiredCohorts(
 
 	for (const group of candidateGroups) {
 		for (const week of candidateWeeks) {
-			const cohorts = await fetchRequiredCohorts(page, group, week);
-			if (cohorts.length > 0) {
+			const scheduleResponse = await page.request.get(
+				`/api/schedule?group=${encodeURIComponent(group)}&week=${encodeURIComponent(week)}`
+			);
+			if (!scheduleResponse.ok()) continue;
+			const schedule = (await scheduleResponse.json()) as SchedulePayload;
+			const cohorts = pickOnePerTrack(schedule.cohorts);
+			if (cohorts.length === 0) continue;
+
+			const categoryLabels = { de: 'de', en: 'en', kz: 'kz', pe: 'pe' };
+			const base = filterDisplayEvents(schedule.events, schedule.cohorts, [], categoryLabels);
+			const filtered = filterDisplayEvents(
+				schedule.events,
+				schedule.cohorts,
+				cohorts,
+				categoryLabels
+			);
+			if (signatureForEvents(base) !== signatureForEvents(filtered)) {
 				return { group, week, cohorts };
 			}
 		}

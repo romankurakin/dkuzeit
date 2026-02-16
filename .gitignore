@@ -1,4 +1,5 @@
-node_modules
+# Dependencies
+/node_modules
 
 # Output
 .wrangler
@@ -11,10 +12,6 @@ node_modules
 
 # Secrets
 .dev.vars
-
-# Vite
-vite.config.js.timestamp-*
-vite.config.ts.timestamp-*
 
 # Playwright
 test-results/
