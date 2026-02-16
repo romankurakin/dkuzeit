@@ -63,9 +63,9 @@ suite('parser conformance fixtures', () => {
 
 		expect(parseFailures).toEqual([]);
 		expect(parsedPages).toBe(780);
-		expect(totalEvents).toBe(22452);
+		expect(totalEvents).toBe(22490);
 		expect(totalCohorts).toBe(8137);
-		expect(digest).toBe('991d46b8');
+		expect(digest).toBe('73e8a7b7');
 	});
 });
 
