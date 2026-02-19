@@ -57,7 +57,7 @@ export async function cached<T>(key: string, compute: () => Promise<T>): Promise
 export async function fetchText(path: string): Promise<string> {
 	const url = `${BASE_URL}/${path}`;
 	const controller = new AbortController();
-	const timeout = setTimeout(() => controller.abort(), 15_000);
+	const timeout = setTimeout(() => controller.abort(), 30_000);
 	try {
 		const res = await fetch(url, {
 			signal: controller.signal,
@@ -65,6 +65,11 @@ export async function fetchText(path: string): Promise<string> {
 		});
 		if (!res.ok) throw new Error(`Failed to fetch ${url} (${res.status})`);
 		return await res.text();
+	} catch (err) {
+		if (err instanceof Error && err.name === 'AbortError') {
+			throw new Error(`Request timeout after 30s: ${url}`);
+		}
+		throw err;
 	} finally {
 		clearTimeout(timeout);
 	}

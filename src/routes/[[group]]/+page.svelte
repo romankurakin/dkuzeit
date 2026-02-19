@@ -21,6 +21,8 @@
 	const searchParams = useSearchParams(scheduleSearchSchema);
 	let githubArmed = $state(false);
 	let githubArmTimer: ReturnType<typeof setTimeout> | null = null;
+	let navigationDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+	let navigationAbortController: AbortController | null = null;
 
 	function clearGithubArmTimer(): void {
 		if (!githubArmTimer) return;
@@ -45,8 +47,31 @@
 	}
 
 	function navigateSchedule(path: string): void {
-		// eslint-disable-next-line svelte/no-navigation-without-resolve -- resolved via localizeHref in schedulePath
-		goto(path, { replaceState: true, noScroll: true, keepFocus: true });
+		// Cancel any pending navigation
+		if (navigationDebounceTimer) {
+			clearTimeout(navigationDebounceTimer);
+			navigationDebounceTimer = null;
+		}
+		
+		// Abort any ongoing navigation request
+		if (navigationAbortController) {
+			navigationAbortController.abort();
+			navigationAbortController = null;
+		}
+		
+		// Debounce the navigation to prevent rapid-fire requests
+		navigationDebounceTimer = setTimeout(() => {
+			navigationAbortController = new AbortController();
+			// eslint-disable-next-line svelte/no-navigation-without-resolve -- resolved via localizeHref in schedulePath
+			goto(path, { 
+				replaceState: true, 
+				noScroll: true, 
+				keepFocus: true
+			}).finally(() => {
+				navigationAbortController = null;
+			});
+			navigationDebounceTimer = null;
+		}, 150);
 	}
 
 	const cohortsCsv = $derived(searchParams.cohorts || (page.url.searchParams.get('cohorts') ?? ''));
@@ -120,6 +145,14 @@
 
 	onDestroy(() => {
 		clearGithubArmTimer();
+		if (navigationDebounceTimer) {
+			clearTimeout(navigationDebounceTimer);
+			navigationDebounceTimer = null;
+		}
+		if (navigationAbortController) {
+			navigationAbortController.abort();
+			navigationAbortController = null;
+		}
 	});
 </script>
 
