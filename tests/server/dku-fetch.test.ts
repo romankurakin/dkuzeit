@@ -62,6 +62,33 @@ describe('dku fetch cache helpers', () => {
 		expect(put).toHaveBeenCalledTimes(2);
 	});
 
+	it('wrap AbortError with descriptive message on timeout', async () => {
+		vi.useFakeTimers();
+		const fetchMock = vi.fn().mockImplementation((_url: string, init?: RequestInit) => {
+			return new Promise<Response>((_resolve, reject) => {
+				init?.signal?.addEventListener('abort', () => {
+					reject(new DOMException('The operation was aborted.', 'AbortError'));
+				});
+			});
+		});
+		(globalThis as unknown as { fetch?: typeof fetch }).fetch =
+			fetchMock as unknown as typeof fetch;
+
+		const promise = fetchText('slow/endpoint.htm');
+		promise.catch(() => {});
+		await vi.advanceTimersByTimeAsync(15_000);
+		await expect(promise).rejects.toThrow(`Request to ${BASE_URL}/slow/endpoint.htm was aborted`);
+		vi.useRealTimers();
+	});
+
+	it('re-throw non-AbortError network failures unchanged', async () => {
+		const fetchMock = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'));
+		(globalThis as unknown as { fetch?: typeof fetch }).fetch =
+			fetchMock as unknown as typeof fetch;
+
+		await expect(fetchText('broken/path.htm')).rejects.toThrow('Failed to fetch');
+	});
+
 	it('fetch text with no-cache header and fail on non-ok response', async () => {
 		const fetchMock = vi
 			.fn()

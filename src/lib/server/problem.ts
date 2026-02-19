@@ -36,6 +36,29 @@ export function badRequestProblem(detail = 'Bad request', instance?: string): Re
 	});
 }
 
+export function forbiddenProblem(detail = 'Forbidden', instance?: string): Response {
+	return problemJson({
+		type: 'about:blank',
+		title: 'Forbidden',
+		status: 403,
+		detail,
+		instance
+	});
+}
+
+export function internalErrorProblem(
+	detail = 'Internal server error',
+	instance?: string
+): Response {
+	return problemJson({
+		type: 'about:blank',
+		title: 'Internal Server Error',
+		status: 500,
+		detail,
+		instance
+	});
+}
+
 export function serviceUnavailableProblem(
 	detail = 'Service unavailable',
 	instance?: string

@@ -7,7 +7,7 @@
 	import { m } from '$lib/paraglide/messages';
 	import { getLocale, localizeHref } from '$lib/paraglide/runtime';
 	import { toSlug } from '$lib/url-slug';
-	import { page } from '$app/state';
+	import { navigating, page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { onDestroy } from 'svelte';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
@@ -21,11 +21,18 @@
 	const searchParams = useSearchParams(scheduleSearchSchema);
 	let githubArmed = $state(false);
 	let githubArmTimer: ReturnType<typeof setTimeout> | null = null;
+	let navigateTimer: ReturnType<typeof setTimeout> | null = null;
 
 	function clearGithubArmTimer(): void {
 		if (!githubArmTimer) return;
 		clearTimeout(githubArmTimer);
 		githubArmTimer = null;
+	}
+
+	function clearNavigateTimer(): void {
+		if (!navigateTimer) return;
+		clearTimeout(navigateTimer);
+		navigateTimer = null;
 	}
 
 	function groupToSlug(codeRaw: string): string {
@@ -45,8 +52,12 @@
 	}
 
 	function navigateSchedule(path: string): void {
-		// eslint-disable-next-line svelte/no-navigation-without-resolve -- resolved via localizeHref in schedulePath
-		goto(path, { replaceState: true, noScroll: true, keepFocus: true });
+		clearNavigateTimer();
+		navigateTimer = setTimeout(() => {
+			navigateTimer = null;
+			// eslint-disable-next-line svelte/no-navigation-without-resolve -- resolved via localizeHref in schedulePath
+			goto(path, { replaceState: true, noScroll: true, keepFocus: true });
+		}, 150);
 	}
 
 	const cohortsCsv = $derived(searchParams.cohorts || (page.url.searchParams.get('cohorts') ?? ''));
@@ -120,6 +131,7 @@
 
 	onDestroy(() => {
 		clearGithubArmTimer();
+		clearNavigateTimer();
 	});
 </script>
 
@@ -185,12 +197,14 @@
 							items={ctx.groupSelectItems}
 							onValueChange={ctx.onGroupChange}
 							autofocus={!page.params.group}
+							disabled={!!navigating.to}
 						/>
 						<BrutalSelect
 							label={m.week_label()}
 							value={ctx.selectedWeek}
 							items={ctx.weekSelectItems}
 							onValueChange={ctx.onWeekChange}
+							disabled={!!navigating.to}
 						/>
 						{#each ctx.cohortGroups as cg (cg.label)}
 							<BrutalSelect
@@ -199,6 +213,7 @@
 								empty={!cg.value}
 								items={cg.items}
 								onValueChange={(v) => ctx.onCohortChange(cg.label, v)}
+								disabled={!!navigating.to}
 							/>
 						{/each}
 					</div>

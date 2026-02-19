@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
 	badRequestProblem,
+	forbiddenProblem,
+	internalErrorProblem,
 	notFoundProblem,
 	serviceUnavailableProblem
 } from '../../src/lib/server/problem';
@@ -37,6 +39,32 @@ describe('problem responses', () => {
 			title: 'Bad Request',
 			status: 400,
 			detail: 'Bad request'
+		});
+	});
+
+	it('build forbidden problem response', async () => {
+		const response = forbiddenProblem('Invalid token', '/api/calendar');
+		expect(response.status).toBe(403);
+		expect(response.headers.get('content-type')).toContain('application/problem+json');
+		expect(await readProblem(response)).toEqual({
+			type: 'about:blank',
+			title: 'Forbidden',
+			status: 403,
+			detail: 'Invalid token',
+			instance: '/api/calendar'
+		});
+	});
+
+	it('build internal-error problem response', async () => {
+		const response = internalErrorProblem('Server misconfigured', '/api/token');
+		expect(response.status).toBe(500);
+		expect(response.headers.get('content-type')).toContain('application/problem+json');
+		expect(await readProblem(response)).toEqual({
+			type: 'about:blank',
+			title: 'Internal Server Error',
+			status: 500,
+			detail: 'Server misconfigured',
+			instance: '/api/token'
 		});
 	});
 

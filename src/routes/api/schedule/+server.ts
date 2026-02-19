@@ -6,19 +6,19 @@ import {
 	CLIENT_CACHE_HEADER
 } from '$lib/server/dku';
 import { parseCohortsCsv } from '$lib/server/cohorts';
-import { notFoundProblem, serviceUnavailableProblem } from '$lib/server/problem';
+import { badRequestProblem, notFoundProblem, serviceUnavailableProblem } from '$lib/server/problem';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ url }) => {
 	const group = url.searchParams.get('group');
 	if (!group) {
-		return json({ error: 'group query parameter is required' }, { status: 400 });
+		return badRequestProblem('group query parameter is required', '/api/schedule');
 	}
 
 	const meta = await getMeta();
 	const week = url.searchParams.get('week') ?? meta.weeks[0]?.value;
 	if (!week) {
-		return json({ error: 'No weeks available in source timetable' }, { status: 503 });
+		return serviceUnavailableProblem('No weeks available in source timetable', '/api/schedule');
 	}
 
 	const cohorts = parseCohortsCsv(url.searchParams.get('cohorts'));

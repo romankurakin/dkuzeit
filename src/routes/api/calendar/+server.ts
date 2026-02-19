@@ -6,7 +6,13 @@ import {
 	pickRollingWeeksForCalendar
 } from '$lib/server/dku';
 import { buildIcsCalendar } from '$lib/server/ics';
-import { notFoundProblem, serviceUnavailableProblem } from '$lib/server/problem';
+import {
+	badRequestProblem,
+	forbiddenProblem,
+	internalErrorProblem,
+	notFoundProblem,
+	serviceUnavailableProblem
+} from '$lib/server/problem';
 import { traceSerialize } from '$lib/server/tracing';
 import { verifyToken } from '$lib/server/token';
 import type { RequestHandler } from './$types';
@@ -16,16 +22,16 @@ const CALENDAR_ROLLING_WEEKS = 4;
 export const GET: RequestHandler = async ({ url, platform }) => {
 	const token = url.searchParams.get('token');
 	if (!token) {
-		return new Response('Missing token', { status: 400 });
+		return badRequestProblem('Missing token', '/api/calendar');
 	}
 
 	const secret = platform?.env?.TOKEN_SECRET;
 	if (!secret) {
-		return new Response('Server misconfigured', { status: 500 });
+		return internalErrorProblem('Server misconfigured', '/api/calendar');
 	}
 	const payload = await verifyToken(token, secret);
 	if (!payload) {
-		return new Response('Invalid or expired token', { status: 403 });
+		return forbiddenProblem('Invalid or expired token', '/api/calendar');
 	}
 
 	const lang = payload.l === 'de' ? 'de' : 'ru';
