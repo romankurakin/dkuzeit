@@ -28,8 +28,9 @@
 		<Select.Trigger
 			data-nav-select
 			data-cohort-empty={empty || undefined}
+			data-loading={disabled || undefined}
 			autofocus={autofocus || undefined}
-			class="brutal-border brutal-hover brutal-focus brutal-control p-control flex w-full items-center justify-between disabled:opacity-30"
+			class="brutal-border brutal-hover brutal-focus brutal-control p-control flex w-full items-center justify-between"
 		>
 			<span class="truncate">{items.find((i) => i.value === value)?.label ?? '—'}</span>
 			<span
@@ -69,6 +70,39 @@
 		flex: 1 1 max(var(--size-control-min), calc(var(--size-time-column) * 2));
 		min-width: min(100%, var(--size-control-min));
 		max-width: 100%;
+	}
+
+	@keyframes nav-scan-kf {
+		0% {
+			top: -3px;
+		}
+		100% {
+			top: calc(100% + 3px);
+		}
+	}
+
+	:global([data-loading]) {
+		background-color: var(--color-muted-surface);
+		position: relative;
+		overflow: hidden;
+	}
+
+	:global([data-loading])::after {
+		content: '';
+		position: absolute;
+		left: 0;
+		right: 0;
+		top: -3px;
+		height: 3px;
+		pointer-events: none;
+		background-color: var(--color-poison);
+		animation: nav-scan-kf 0.8s steps(10, end) infinite;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		:global([data-loading])::after {
+			animation: none;
+		}
 	}
 
 	:global([data-nav-select][data-state='open'] .pixel-icon-control),

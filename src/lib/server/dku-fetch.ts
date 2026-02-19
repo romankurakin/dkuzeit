@@ -65,6 +65,11 @@ export async function fetchText(path: string): Promise<string> {
 		});
 		if (!res.ok) throw new Error(`Failed to fetch ${url} (${res.status})`);
 		return await res.text();
+	} catch (err) {
+		if (err instanceof Error && err.name === 'AbortError') {
+			throw new Error(`Request to ${url} was aborted`);
+		}
+		throw err;
 	} finally {
 		clearTimeout(timeout);
 	}

@@ -7,8 +7,9 @@
 	import { m } from '$lib/paraglide/messages';
 	import { getLocale, localizeHref } from '$lib/paraglide/runtime';
 	import { toSlug } from '$lib/url-slug';
-	import { page } from '$app/state';
+	import { navigating, page } from '$app/state';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { onDestroy } from 'svelte';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import { useSearchParams } from 'runed/kit';
@@ -21,11 +22,21 @@
 	const searchParams = useSearchParams(scheduleSearchSchema);
 	let githubArmed = $state(false);
 	let githubArmTimer: ReturnType<typeof setTimeout> | null = null;
+	let navigateTimer: ReturnType<typeof setTimeout> | null = null;
+	let pendingGroup: string | null = null;
+	let pendingWeek: string | null = null;
+	let pendingCohorts: string | null = null;
 
 	function clearGithubArmTimer(): void {
 		if (!githubArmTimer) return;
 		clearTimeout(githubArmTimer);
 		githubArmTimer = null;
+	}
+
+	function clearNavigateTimer(): void {
+		if (!navigateTimer) return;
+		clearTimeout(navigateTimer);
+		navigateTimer = null;
 	}
 
 	function groupToSlug(codeRaw: string): string {
@@ -44,9 +55,22 @@
 		return str ? `${path}?${str}` : path;
 	}
 
-	function navigateSchedule(path: string): void {
-		// eslint-disable-next-line svelte/no-navigation-without-resolve -- resolved via localizeHref in schedulePath
-		goto(path, { replaceState: true, noScroll: true, keepFocus: true });
+	function flushNavigate(): void {
+		clearNavigateTimer();
+		navigateTimer = setTimeout(() => {
+			navigateTimer = null;
+			const group = pendingGroup ?? schedule.resolvedGroup;
+			const week = pendingWeek ?? schedule.resolvedWeek;
+			const cohorts = pendingCohorts ?? cohortsCsv;
+			pendingGroup = null;
+			pendingWeek = null;
+			pendingCohorts = null;
+			goto(resolve(schedulePath(group, week, cohorts)), {
+				replaceState: true,
+				noScroll: true,
+				keepFocus: true
+			});
+		}, 150);
 	}
 
 	const cohortsCsv = $derived(searchParams.cohorts || (page.url.searchParams.get('cohorts') ?? ''));
@@ -59,11 +83,13 @@
 	);
 
 	function handleGroupChange(value: string): void {
-		navigateSchedule(schedulePath(value, schedule.resolvedWeek, cohortsCsv));
+		pendingGroup = value;
+		flushNavigate();
 	}
 
 	function handleWeekChange(value: string): void {
-		navigateSchedule(schedulePath(schedule.resolvedGroup, value, cohortsCsv));
+		pendingWeek = value;
+		flushNavigate();
 	}
 
 	function handleCohortChange(_trackLabel: string, code: string): void {
@@ -72,9 +98,13 @@
 		const sameCategory = new Set(
 			schedule.cohorts.filter((c) => c.track === cohort.track).map((c) => c.code)
 		);
-		const filtered = urlCohorts.filter((c) => !sameCategory.has(c));
-		const newCohorts = [...filtered, code].join(',');
-		navigateSchedule(schedulePath(schedule.resolvedGroup, schedule.resolvedWeek, newCohorts));
+		const current = (pendingCohorts ?? cohortsCsv)
+			.split(',')
+			.map((s) => s.trim())
+			.filter(Boolean);
+		const filtered = current.filter((c) => !sameCategory.has(c));
+		pendingCohorts = [...filtered, code].join(',');
+		flushNavigate();
 	}
 
 	function handleToolbarKeydown(e: KeyboardEvent): void {
@@ -120,6 +150,7 @@
 
 	onDestroy(() => {
 		clearGithubArmTimer();
+		clearNavigateTimer();
 	});
 </script>
 
@@ -185,12 +216,14 @@
 							items={ctx.groupSelectItems}
 							onValueChange={ctx.onGroupChange}
 							autofocus={!page.params.group}
+							disabled={!!navigating.to}
 						/>
 						<BrutalSelect
 							label={m.week_label()}
 							value={ctx.selectedWeek}
 							items={ctx.weekSelectItems}
 							onValueChange={ctx.onWeekChange}
+							disabled={!!navigating.to}
 						/>
 						{#each ctx.cohortGroups as cg (cg.label)}
 							<BrutalSelect
@@ -199,6 +232,7 @@
 								empty={!cg.value}
 								items={cg.items}
 								onValueChange={(v) => ctx.onCohortChange(cg.label, v)}
+								disabled={!!navigating.to}
 							/>
 						{/each}
 					</div>
