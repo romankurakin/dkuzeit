@@ -1,4 +1,4 @@
-import { redirect } from '@sveltejs/kit';
+import { error, redirect } from '@sveltejs/kit';
 import { localizeHref } from '$lib/paraglide/runtime';
 import { buildMergedSchedule, getMeta, CLIENT_CACHE_HEADER } from '$lib/server/dku';
 import { todayInAlmaty } from '$lib/server/time';
@@ -13,6 +13,9 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
 	const qGroup = url.searchParams.get('group');
 	if (qGroup) {
 		const g = resolveGroup(meta.groups, qGroup);
+		if (!g) {
+			throw error(404, 'Requested group was not found');
+		}
 		const slug = groupSlug(meta.groups, g);
 		const rest = new URLSearchParams(url.searchParams);
 		rest.delete('group');
@@ -21,8 +24,13 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
 	}
 
 	// Resolve group from path, week from query param
+	// Unknown group slugs must return 404 to avoid expensive schedule work
 	const groupCode = resolveGroup(meta.groups, params.group ?? '');
 	const weekValue = resolveWeek(meta.weeks, url.searchParams.get('week') ?? '');
+
+	if (params.group && !groupCode) {
+		throw error(404, 'Requested group was not found');
+	}
 
 	// Canonical redirect if group slug mismatch
 	const slug = groupSlug(meta.groups, groupCode);
