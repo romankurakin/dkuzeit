@@ -27,11 +27,11 @@ describe('resolve helpers', () => {
 		vi.useRealTimers();
 	});
 
-	it('resolve group by different forms and fallback to first', () => {
+	it('resolve group by different forms and reject unknown values', () => {
 		expect(resolveGroup(groups, '')).toBe('1-CS');
 		expect(resolveGroup(groups, '2-ИС')).toBe('2-IS');
 		expect(resolveGroup(groups, '2-IS')).toBe('2-IS');
-		expect(resolveGroup(groups, 'unknown')).toBe('1-CS');
+		expect(resolveGroup(groups, 'unknown')).toBe('');
 	});
 
 	it('resolve week by explicit value or by date', () => {

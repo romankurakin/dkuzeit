@@ -316,5 +316,19 @@ describe('routes integration via msw', () => {
 			setHeaders: vi.fn()
 		} as never);
 		await expect(redirectResult).rejects.toMatchObject({ status: 301 });
+
+		const unknownLegacyGroupResult = loadPage({
+			params: {},
+			url: new URL('http://localhost/?group=unknown-group&week=05'),
+			setHeaders: vi.fn()
+		} as never);
+		await expect(unknownLegacyGroupResult).rejects.toMatchObject({ status: 404 });
+
+		const unknownGroupResult = loadPage({
+			params: { group: 'unknown-group' },
+			url: new URL('http://localhost/unknown-group?week=05'),
+			setHeaders: vi.fn()
+		} as never);
+		await expect(unknownGroupResult).rejects.toMatchObject({ status: 404 });
 	});
 });

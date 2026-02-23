@@ -8,7 +8,7 @@ export function resolveGroup(groups: GroupOption[], param: string): string {
 		(g) =>
 			g.codeRaw === param || g.codeRu === param || g.codeDe === param || toSlug(g.codeRu) === param
 	);
-	return match?.codeRaw ?? groups[0]?.codeRaw ?? '';
+	return match?.codeRaw ?? '';
 }
 
 export function resolveWeekByDate(weeks: WeekOption[]): string {
