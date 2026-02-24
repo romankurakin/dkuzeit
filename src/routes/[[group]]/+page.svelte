@@ -46,7 +46,7 @@
 
 	function schedulePath(group: string, week: string, cohorts = ''): string {
 		const path = localizeHref(`/${groupToSlug(group)}`);
-		const qs = new SvelteURLSearchParams(searchParams.toURLSearchParams().toString());
+		const qs = new SvelteURLSearchParams();
 		if (week) qs.set('week', week);
 		else qs.delete('week');
 		if (cohorts) qs.set('cohorts', cohorts);
