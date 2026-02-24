@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { toSlug } from '../src/lib/url-slug';
+import { localizedMessageRegex } from './i18n';
 
 type MetaPayload = {
 	groups: Array<{ codeRaw: string; codeRu: string }>;
@@ -145,5 +146,22 @@ test.describe('schedule navigation', () => {
 			timeout: 5_000
 		});
 		await expect(page).toHaveURL(/cohorts=WPM1/, { timeout: 1_000 });
+	});
+
+	test('return 404 for unknown legacy group query param', async ({ page }) => {
+		const metaResponse = await page.request.get('/api/meta');
+		expect(metaResponse.ok()).toBe(true);
+		const meta = (await metaResponse.json()) as MetaPayload;
+		const week = meta.weeks[0]?.value;
+		test.skip(!week, 'No weeks available in upstream meta');
+
+		const response = await page.goto(
+			`/?group=unknown-group&week=${encodeURIComponent(week ?? '')}`
+		);
+		expect(response).not.toBeNull();
+		expect(response!.status()).toBe(404);
+		await expect(page.getByRole('heading', { level: 2 })).toContainText(
+			localizedMessageRegex('not_found_title')
+		);
 	});
 });
