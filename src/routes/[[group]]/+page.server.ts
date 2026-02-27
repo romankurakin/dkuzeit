@@ -1,4 +1,4 @@
-import { error, redirect } from '@sveltejs/kit';
+import { error, redirect, type Cookies } from '@sveltejs/kit';
 import { localizeHref } from '$lib/paraglide/runtime';
 import { buildMergedSchedule, getMeta, CLIENT_CACHE_HEADER } from '$lib/server/dku';
 import { todayInAlmaty } from '$lib/server/time';
@@ -6,7 +6,25 @@ import { resolveGroup, resolveWeek, groupSlug } from '$lib/server/resolve';
 import type { Cohort, LessonEvent } from '$lib/server/types';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
+const GROUP_COOKIE_NAME = 'dku_group';
+const GROUP_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
+
+function setGroupCookieIfChanged(
+	cookies: Pick<Cookies, 'get' | 'set'> | undefined,
+	url: URL,
+	groupCode: string
+): void {
+	if (!groupCode) return;
+	if (cookies?.get(GROUP_COOKIE_NAME) === groupCode) return;
+	cookies?.set(GROUP_COOKIE_NAME, groupCode, {
+		path: '/',
+		sameSite: 'lax',
+		maxAge: GROUP_COOKIE_MAX_AGE,
+		secure: url.protocol === 'https:'
+	});
+}
+
+export const load: PageServerLoad = async ({ params, url, setHeaders, cookies }) => {
 	const meta = await getMeta();
 
 	// 301 redirect old ?group= query param to path
@@ -16,11 +34,22 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
 		if (!g) {
 			throw error(404, 'Requested group was not found');
 		}
+		setGroupCookieIfChanged(cookies, url, g);
 		const slug = groupSlug(meta.groups, g);
 		const rest = new URLSearchParams(url.searchParams);
 		rest.delete('group');
 		const qs = rest.toString();
 		redirect(301, localizeHref(`/${slug}${qs ? `?${qs}` : ''}`));
+	}
+
+	// Restore last selected group when opening root path (e.g. PWA start_url)
+	const rememberedGroupRaw = cookies?.get(GROUP_COOKIE_NAME) ?? '';
+	if (!params.group && rememberedGroupRaw) {
+		const rememberedGroup = resolveGroup(meta.groups, rememberedGroupRaw);
+		if (rememberedGroup) {
+			const slug = groupSlug(meta.groups, rememberedGroup);
+			redirect(302, localizeHref(`/${slug}${url.search}`));
+		}
 	}
 
 	// Resolve group from path, week from query param
@@ -30,6 +59,10 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
 
 	if (params.group && !groupCode) {
 		throw error(404, 'Requested group was not found');
+	}
+
+	if (params.group && groupCode) {
+		setGroupCookieIfChanged(cookies, url, groupCode);
 	}
 
 	// Canonical redirect if group slug mismatch
