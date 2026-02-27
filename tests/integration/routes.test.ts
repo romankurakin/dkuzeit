@@ -245,14 +245,27 @@ describe('routes integration via msw', () => {
 		await expect(calendarResponse.text()).resolves.toContain('BEGIN:VCALENDAR');
 
 		const setHeaders = vi.fn();
+		const cookies = {
+			get: vi.fn(() => undefined),
+			set: vi.fn()
+		};
 		const pageData = (await loadPage({
 			params: { group: '1-cs' },
 			url: new URL('http://localhost/1-cs?week=05'),
-			setHeaders
+			setHeaders,
+			cookies
 		} as never)) as { schedule: { events: unknown[]; error?: boolean } };
 		expect(setHeaders).toHaveBeenCalled();
 		expect(pageData.schedule.events).toHaveLength(1);
 		expect(pageData.schedule.error).toBe(false);
+		expect(cookies.set).toHaveBeenCalledWith(
+			'dku_group',
+			'1-CS',
+			expect.objectContaining({
+				path: '/',
+				sameSite: 'lax'
+			})
+		);
 	});
 
 	it('handle calendar and page redirect branches in integration mode', async () => {
@@ -330,5 +343,19 @@ describe('routes integration via msw', () => {
 			setHeaders: vi.fn()
 		} as never);
 		await expect(unknownGroupResult).rejects.toMatchObject({ status: 404 });
+
+		const rememberedGroupResult = loadPage({
+			params: {},
+			url: new URL('http://localhost/?week=05'),
+			setHeaders: vi.fn(),
+			cookies: {
+				get: vi.fn((name: string) => (name === 'dku_group' ? '1-CS' : undefined)),
+				set: vi.fn()
+			}
+		} as never);
+		await expect(rememberedGroupResult).rejects.toMatchObject({
+			status: 302,
+			location: '/1-cs?week=05'
+		});
 	});
 });

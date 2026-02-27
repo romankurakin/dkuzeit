@@ -22,6 +22,11 @@ async function hasEvents(page: Page, group: string, week: string): Promise<boole
 	return payload.events.length > 0;
 }
 
+async function cookieHeader(page: Page): Promise<string> {
+	const cookies = await page.context().cookies();
+	return cookies.map((c) => `${c.name}=${c.value}`).join('; ');
+}
+
 test.describe('schedule navigation', () => {
 	test('navigate on group change without crash', async ({ page }) => {
 		await page.goto('/');
@@ -162,6 +167,65 @@ test.describe('schedule navigation', () => {
 		expect(response!.status()).toBe(404);
 		await expect(page.getByRole('heading', { level: 2 })).toContainText(
 			localizedMessageRegex('not_found_title')
+		);
+	});
+
+	test('keep selected group for next root request', async ({ page }) => {
+		const metaResponse = await page.request.get('/api/meta');
+		expect(metaResponse.ok()).toBe(true);
+		const meta = (await metaResponse.json()) as MetaPayload;
+		const group = meta.groups[1] ?? meta.groups[0];
+		test.skip(!group, 'No groups available in upstream meta');
+
+		const slug = toSlug(group!.codeRu);
+		await page.context().addCookies([
+			{
+				name: 'dku_group',
+				value: group!.codeRaw,
+				domain: 'localhost',
+				path: '/',
+				sameSite: 'Lax'
+			}
+		]);
+
+		const probe = Date.now();
+		const rootResponse = await page.request.get(`/?persist_probe=${probe}`, {
+			maxRedirects: 0,
+			headers: { cookie: await cookieHeader(page) }
+		});
+		expect(rootResponse.status()).toBe(302);
+		expect(rootResponse.headers()['location']).toMatch(
+			new RegExp(`/${slug}\\?.*persist_probe=${probe}`)
+		);
+	});
+
+	test('restore selected group from legacy query flow on next root request', async ({ page }) => {
+		const metaResponse = await page.request.get('/api/meta');
+		expect(metaResponse.ok()).toBe(true);
+		const meta = (await metaResponse.json()) as MetaPayload;
+		const group = meta.groups[0];
+		const week = meta.weeks[0];
+		test.skip(!group || !week, 'No groups or weeks available in upstream meta');
+
+		const slug = toSlug(group!.codeRu);
+		await page.goto(
+			`/?group=${encodeURIComponent(group!.codeRaw)}&week=${encodeURIComponent(week!.value)}`
+		);
+		await expect(page).toHaveURL(new RegExp(`/${slug}\\?.*week=${week!.value}`), {
+			timeout: 5_000
+		});
+
+		const cookies = await page.context().cookies();
+		expect(cookies.some((c) => c.name === 'dku_group' && c.value === group!.codeRaw)).toBe(true);
+
+		const probe = Date.now();
+		const rootResponse = await page.request.get(`/?persist_probe=${probe}`, {
+			maxRedirects: 0,
+			headers: { cookie: await cookieHeader(page) }
+		});
+		expect(rootResponse.status()).toBe(302);
+		expect(rootResponse.headers()['location']).toMatch(
+			new RegExp(`/${slug}\\?.*persist_probe=${probe}`)
 		);
 	});
 });
