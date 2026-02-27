@@ -117,7 +117,12 @@
 		});
 		if (!response.ok) throw new Error(m.api_error_calendar());
 		const payload = (await response.json()) as { token: string };
-		return `${location.origin}${localizeHref('/api/calendar', { locale: uiLocale })}?token=${encodeURIComponent(payload.token)}`;
+		const calendarUrl = new URL(
+			localizeHref('/api/calendar', { locale: uiLocale }),
+			location.origin
+		);
+		calendarUrl.searchParams.set('token', payload.token);
+		return calendarUrl.toString();
 	}
 
 	async function copyCalendarLink(textPromise: Promise<string>): Promise<void> {
