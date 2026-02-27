@@ -8,7 +8,7 @@ import { GET as getCalendar } from '../../src/routes/api/calendar/+server';
 import { load as loadPage } from '../../src/routes/[[group]]/+page.server';
 import { signToken, verifyToken } from '../../src/lib/server/token';
 
-const SECRET = 'integration-secret';
+const SECRET = 'routes-test-secret';
 
 const NAVBAR_HTML_WITH_WEEK = `
 <html>
@@ -87,7 +87,7 @@ function useUpstreamStubs(
 	);
 }
 
-describe('routes integration via msw', () => {
+describe('routes via msw', () => {
 	it('serve meta and schedule from real parsing pipeline', async () => {
 		useUpstreamStubs();
 
@@ -111,7 +111,7 @@ describe('routes integration via msw', () => {
 		expect(schedule.events[0]).toMatchObject({ subjectShortRaw: 'MATH', room: 'A101' });
 	});
 
-	it('handle schedule endpoint error branches in integration mode', async () => {
+	it('handle schedule endpoint error branches', async () => {
 		useUpstreamStubs();
 
 		const missingGroup = await getSchedule({
@@ -167,7 +167,7 @@ describe('routes integration via msw', () => {
 		});
 	});
 
-	it('handle token endpoint error branches in integration mode', async () => {
+	it('handle token endpoint error branches', async () => {
 		useUpstreamStubs();
 
 		const invalidJson = await postToken({
@@ -268,7 +268,67 @@ describe('routes integration via msw', () => {
 		);
 	});
 
-	it('handle calendar and page redirect branches in integration mode', async () => {
+	it('avoid rewriting group cookie when already up to date', async () => {
+		useUpstreamStubs();
+
+		const setHeaders = vi.fn();
+		const cookies = {
+			get: vi.fn((name: string) => (name === 'dku_group' ? '1-CS' : undefined)),
+			set: vi.fn()
+		};
+		const pageData = (await loadPage({
+			params: { group: '1-cs' },
+			url: new URL('http://localhost/1-cs?week=05'),
+			setHeaders,
+			cookies
+		} as never)) as { schedule: { events: unknown[]; error?: boolean; resolvedGroup: string } };
+
+		expect(pageData.schedule.error).toBe(false);
+		expect(pageData.schedule.resolvedGroup).toBe('1-CS');
+		expect(cookies.set).not.toHaveBeenCalled();
+	});
+
+	it('avoid rewriting group cookie in legacy redirect when already up to date', async () => {
+		useUpstreamStubs();
+
+		const cookies = {
+			get: vi.fn((name: string) => (name === 'dku_group' ? '1-CS' : undefined)),
+			set: vi.fn()
+		};
+
+		const redirectResult = loadPage({
+			params: {},
+			url: new URL('http://localhost/?group=1-CS&week=05'),
+			setHeaders: vi.fn(),
+			cookies
+		} as never);
+		await expect(redirectResult).rejects.toMatchObject({ status: 301, location: '/1-cs?week=05' });
+		expect(cookies.set).not.toHaveBeenCalled();
+	});
+
+	it('ignore invalid remembered cookie and continue with default group', async () => {
+		useUpstreamStubs();
+
+		const setHeaders = vi.fn();
+		const cookies = {
+			get: vi.fn((name: string) => (name === 'dku_group' ? 'unknown-group' : undefined)),
+			set: vi.fn()
+		};
+
+		const pageData = (await loadPage({
+			params: {},
+			url: new URL('http://localhost/?week=05'),
+			setHeaders,
+			cookies
+		} as never)) as { schedule: { error?: boolean; resolvedGroup: string; resolvedWeek: string } };
+
+		expect(pageData.schedule.error).toBe(false);
+		expect(pageData.schedule.resolvedGroup).toBe('1-CS');
+		expect(pageData.schedule.resolvedWeek).toBe('05');
+		expect(cookies.set).not.toHaveBeenCalled();
+	});
+
+	it('handle calendar and page redirect branches', async () => {
 		useUpstreamStubs();
 
 		const missingToken = await getCalendar({
