@@ -20,6 +20,7 @@ function setGroupCookieIfChanged(
 		path: '/',
 		sameSite: 'lax',
 		maxAge: GROUP_COOKIE_MAX_AGE,
+		httpOnly: false,
 		secure: url.protocol === 'https:'
 	});
 }

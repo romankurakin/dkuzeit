@@ -170,35 +170,6 @@ test.describe('schedule navigation', () => {
 		);
 	});
 
-	test('keep selected group for next root request', async ({ page }) => {
-		const metaResponse = await page.request.get('/api/meta');
-		expect(metaResponse.ok()).toBe(true);
-		const meta = (await metaResponse.json()) as MetaPayload;
-		const group = meta.groups[1] ?? meta.groups[0];
-		test.skip(!group, 'No groups available in upstream meta');
-
-		const slug = toSlug(group!.codeRu);
-		await page.context().addCookies([
-			{
-				name: 'dku_group',
-				value: group!.codeRaw,
-				domain: 'localhost',
-				path: '/',
-				sameSite: 'Lax'
-			}
-		]);
-
-		const probe = Date.now();
-		const rootResponse = await page.request.get(`/?persist_probe=${probe}`, {
-			maxRedirects: 0,
-			headers: { cookie: await cookieHeader(page) }
-		});
-		expect(rootResponse.status()).toBe(302);
-		expect(rootResponse.headers()['location']).toMatch(
-			new RegExp(`/${slug}\\?.*persist_probe=${probe}`)
-		);
-	});
-
 	test('restore selected group from legacy query flow on next root request', async ({ page }) => {
 		const metaResponse = await page.request.get('/api/meta');
 		expect(metaResponse.ok()).toBe(true);

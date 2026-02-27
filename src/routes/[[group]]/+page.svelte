@@ -26,6 +26,8 @@
 	let pendingGroup: string | null = null;
 	let pendingWeek: string | null = null;
 	let pendingCohorts: string | null = null;
+	const GROUP_COOKIE_NAME = 'dku_group';
+	const GROUP_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 
 	function clearGithubArmTimer(): void {
 		if (!githubArmTimer) return;
@@ -37,6 +39,19 @@
 		if (!navigateTimer) return;
 		clearTimeout(navigateTimer);
 		navigateTimer = null;
+	}
+
+	function persistGroupCookie(group: string): void {
+		if (!group || typeof document === 'undefined') return;
+		const encoded = encodeURIComponent(group);
+		const current = document.cookie
+			.split('; ')
+			.find((entry) => entry.startsWith(`${GROUP_COOKIE_NAME}=`))
+			?.split('=')[1];
+		if (current === encoded) return;
+		const secure =
+			typeof location !== 'undefined' && location.protocol === 'https:' ? '; Secure' : '';
+		document.cookie = `${GROUP_COOKIE_NAME}=${encoded}; Max-Age=${GROUP_COOKIE_MAX_AGE}; Path=/; SameSite=Lax${secure}`;
 	}
 
 	function groupToSlug(codeRaw: string): string {
@@ -84,6 +99,7 @@
 
 	function handleGroupChange(value: string): void {
 		pendingGroup = value;
+		persistGroupCookie(value);
 		flushNavigate();
 	}
 
@@ -151,6 +167,11 @@
 	onDestroy(() => {
 		clearGithubArmTimer();
 		clearNavigateTimer();
+	});
+
+	$effect(() => {
+		if (!page.params.group) return;
+		persistGroupCookie(schedule.resolvedGroup);
 	});
 </script>
 

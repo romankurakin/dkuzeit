@@ -263,7 +263,8 @@ describe('routes via msw', () => {
 			'1-CS',
 			expect.objectContaining({
 				path: '/',
-				sameSite: 'lax'
+				sameSite: 'lax',
+				httpOnly: false
 			})
 		);
 	});
