@@ -1,69 +1,53 @@
-import { error, redirect, type Cookies } from '@sveltejs/kit';
+import { error, redirect } from '@sveltejs/kit';
 import { localizeHref } from '$lib/paraglide/runtime';
-import { buildMergedSchedule, getMeta, CLIENT_CACHE_HEADER } from '$lib/server/dku';
+import { buildMergedSchedule, getMeta } from '$lib/server/dku';
+import { parseCohortsCsv } from '$lib/server/cohorts';
 import { todayInAlmaty } from '$lib/server/time';
-import { resolveGroup, resolveWeek, groupSlug } from '$lib/server/resolve';
+import { resolveGroup, resolveWeekWithFloor, groupSlug } from '$lib/server/resolve';
 import type { Cohort, LessonEvent } from '$lib/server/types';
+import {
+	cohortsSelectionCookie,
+	getServerCookieValue,
+	groupSelectionCookie,
+	setServerCookieIfChanged,
+	weekSelectionCookie
+} from '$lib/persistence/selection-cookies';
 import type { PageServerLoad } from './$types';
-
-const GROUP_COOKIE_NAME = 'dku_group';
-const GROUP_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
-
-function setGroupCookieIfChanged(
-	cookies: Pick<Cookies, 'get' | 'set'> | undefined,
-	url: URL,
-	groupCode: string
-): void {
-	if (!groupCode) return;
-	if (cookies?.get(GROUP_COOKIE_NAME) === groupCode) return;
-	cookies?.set(GROUP_COOKIE_NAME, groupCode, {
-		path: '/',
-		sameSite: 'lax',
-		maxAge: GROUP_COOKIE_MAX_AGE,
-		httpOnly: false,
-		secure: url.protocol === 'https:'
-	});
-}
 
 export const load: PageServerLoad = async ({ params, url, setHeaders, cookies }) => {
 	const meta = await getMeta();
-
-	// 301 redirect old ?group= query param to path
-	const qGroup = url.searchParams.get('group');
-	if (qGroup) {
-		const g = resolveGroup(meta.groups, qGroup);
-		if (!g) {
-			throw error(404, 'Requested group was not found');
-		}
-		setGroupCookieIfChanged(cookies, url, g);
-		const slug = groupSlug(meta.groups, g);
+	const stateQueryKeys = ['group', 'week', 'cohorts'] as const;
+	if (stateQueryKeys.some((key) => url.searchParams.has(key))) {
 		const rest = new URLSearchParams(url.searchParams);
-		rest.delete('group');
+		for (const key of stateQueryKeys) {
+			rest.delete(key);
+		}
+		const base = localizeHref(`/${params.group ?? ''}`);
 		const qs = rest.toString();
-		redirect(301, localizeHref(`/${slug}${qs ? `?${qs}` : ''}`));
+		redirect(301, `${base}${qs ? `?${qs}` : ''}`);
 	}
 
 	// Restore last selected group when opening root path (e.g. PWA start_url)
-	const rememberedGroupRaw = cookies?.get(GROUP_COOKIE_NAME) ?? '';
+	const rememberedGroupRaw = getServerCookieValue(cookies, groupSelectionCookie);
 	if (!params.group && rememberedGroupRaw) {
 		const rememberedGroup = resolveGroup(meta.groups, rememberedGroupRaw);
 		if (rememberedGroup) {
 			const slug = groupSlug(meta.groups, rememberedGroup);
-			redirect(302, localizeHref(`/${slug}${url.search}`));
+			const qs = url.searchParams.toString();
+			redirect(302, localizeHref(`/${slug}${qs ? `?${qs}` : ''}`));
 		}
 	}
 
-	// Resolve group from path, week from query param
+	// Resolve group from path.
 	// Unknown group slugs must return 404 to avoid expensive schedule work
 	const groupCode = resolveGroup(meta.groups, params.group ?? '');
-	const weekValue = resolveWeek(meta.weeks, url.searchParams.get('week') ?? '');
 
 	if (params.group && !groupCode) {
 		throw error(404, 'Requested group was not found');
 	}
 
 	if (params.group && groupCode) {
-		setGroupCookieIfChanged(cookies, url, groupCode);
+		setServerCookieIfChanged(cookies, url, groupSelectionCookie, groupCode);
 	}
 
 	// Canonical redirect if group slug mismatch
@@ -72,6 +56,15 @@ export const load: PageServerLoad = async ({ params, url, setHeaders, cookies })
 		redirect(301, localizeHref(`/${slug}${url.search}`));
 	}
 
+	const rememberedCohortsCsv = getServerCookieValue(cookies, cohortsSelectionCookie);
+	const selectedCohorts = parseCohortsCsv(rememberedCohortsCsv);
+	const rememberedWeekRaw = getServerCookieValue(cookies, weekSelectionCookie);
+	const weekValue = resolveWeekWithFloor(meta.weeks, rememberedWeekRaw);
+	if (rememberedWeekRaw && rememberedWeekRaw !== weekValue) {
+		setServerCookieIfChanged(cookies, url, weekSelectionCookie, weekValue);
+	}
+
+	setHeaders({ 'cache-control': 'private, no-store' });
 	const todayIso = todayInAlmaty();
 	const metaPayload = { groups: meta.groups, weeks: meta.weeks, resolvedWeek: weekValue };
 	const emptySchedule: {
@@ -79,11 +72,17 @@ export const load: PageServerLoad = async ({ params, url, setHeaders, cookies })
 		cohorts: Cohort[];
 		resolvedGroup: string;
 		resolvedWeek: string;
+		selectedCohortsCsv: string;
 		error?: boolean;
-	} = { events: [], cohorts: [], resolvedGroup: groupCode, resolvedWeek: weekValue };
+	} = {
+		events: [],
+		cohorts: [],
+		resolvedGroup: groupCode,
+		resolvedWeek: weekValue,
+		selectedCohortsCsv: rememberedCohortsCsv
+	};
 
 	if (!groupCode || !weekValue) {
-		setHeaders({ 'cache-control': 'private, no-store' });
 		return {
 			todayIso,
 			meta: metaPayload,
@@ -92,8 +91,7 @@ export const load: PageServerLoad = async ({ params, url, setHeaders, cookies })
 	}
 
 	try {
-		const merged = await buildMergedSchedule(groupCode, weekValue, [], meta);
-		setHeaders({ 'cache-control': CLIENT_CACHE_HEADER });
+		const merged = await buildMergedSchedule(groupCode, weekValue, selectedCohorts, meta);
 		return {
 			todayIso,
 			meta: metaPayload,
@@ -102,11 +100,11 @@ export const load: PageServerLoad = async ({ params, url, setHeaders, cookies })
 				cohorts: merged.cohorts,
 				resolvedGroup: groupCode,
 				resolvedWeek: weekValue,
+				selectedCohortsCsv: rememberedCohortsCsv,
 				error: false
 			}
 		};
 	} catch {
-		setHeaders({ 'cache-control': 'private, no-store' });
 		return {
 			todayIso,
 			meta: metaPayload,

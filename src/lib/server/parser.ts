@@ -17,9 +17,9 @@ import type { ChildNode, Element } from 'domhandler';
 
 type TimeRange = { start: string; end: string };
 
-function parseWeekLabelDate(label: string): string {
+function parseWeekLabelDate(label: string): string | null {
 	const match = label.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
-	if (!match) return new Date().toISOString().slice(0, 10);
+	if (!match) return null;
 	const [, d, m, y] = match;
 	return `${y!}-${m!.padStart(2, '0')}-${d!.padStart(2, '0')}`;
 }
@@ -53,7 +53,9 @@ export function parseNavHtml(html: string): MetaPayload {
 	for (const match of weekSelectMatch[0].matchAll(/<option\s+value="(\d+)">([^<]+)<\/option>/gi)) {
 		const value = match[1]!.padStart(2, '0');
 		const label = cleanText(match[2]!);
-		weekOptions.push({ value, label, startDateIso: parseWeekLabelDate(label) });
+		const startDateIso = parseWeekLabelDate(label);
+		if (!startDateIso) continue;
+		weekOptions.push({ value, label, startDateIso });
 	}
 
 	const classesMatch = html.match(/var\s+classes\s*=\s*\[([\s\S]*?)\];/i);
