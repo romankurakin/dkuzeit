@@ -154,9 +154,9 @@ async function setSelectionCookies(
 	opts: { group: string; week: string; cohorts?: string[] }
 ): Promise<void> {
 	const values: Array<{ name: string; value: string }> = [
-		{ name: 'dku_group', value: opts.group },
-		{ name: 'dku_week', value: opts.week },
-		{ name: 'dku_cohorts', value: (opts.cohorts ?? []).join(',') }
+		{ name: 'dku_group', value: encodeURIComponent(opts.group) },
+		{ name: 'dku_week', value: encodeURIComponent(opts.week) },
+		{ name: 'dku_cohorts', value: encodeURIComponent((opts.cohorts ?? []).join(',')) }
 	];
 	if (opts.cohorts === undefined) {
 		values.pop();
@@ -182,14 +182,19 @@ test.describe('calendar export', () => {
 		await setSelectionCookies(page, { group, week });
 		await page.goto(buildScheduleUrl(meta, group, week));
 
-		await setSelectionCookies(page, { group, week, cohorts });
-		await page.goto(buildScheduleUrl(meta, group, week, cohorts));
+		await page.evaluate((csv) => {
+			const secure = location.protocol === 'https:' ? '; Secure' : '';
+			document.cookie = `dku_cohorts=${encodeURIComponent(csv)}; Path=/; SameSite=Lax${secure}`;
+		}, cohorts.join(','));
+		await page.reload();
 		await expect(page).toHaveURL(new RegExp(`/${groupSlug(meta, group)}$`), { timeout: 5_000 });
 
-		const cookieValue = (await page.context().cookies()).find(
-			(c) => c.name === 'dku_cohorts'
-		)?.value;
-		expect(cookieValue).toBe(cohorts.join(','));
+		await expect
+			.poll(async () => {
+				const value = (await page.context().cookies()).find((c) => c.name === 'dku_cohorts')?.value;
+				return value ? decodeURIComponent(value) : undefined;
+			})
+			.toBe(cohorts.join(','));
 	});
 
 	test('not run when required cohorts are not selected', async ({ page }) => {
