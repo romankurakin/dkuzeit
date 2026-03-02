@@ -65,7 +65,7 @@ export async function fetchText(path: string): Promise<string> {
 		return await res.text();
 	} catch (err) {
 		if (err instanceof Error && (err.name === 'AbortError' || err.name === 'TimeoutError')) {
-			throw new Error(`Request to ${url} was aborted`);
+			throw new Error(`Request to ${url} was aborted`, { cause: err });
 		}
 		throw err;
 	}
