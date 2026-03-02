@@ -251,12 +251,13 @@ describe('routes via msw', () => {
 		};
 		const pageData = (await loadPage({
 			params: { group: '1-cs' },
-			url: new URL('http://localhost/1-cs?week=05'),
+			url: new URL('http://localhost/1-cs'),
 			setHeaders,
 			cookies
-		} as never)) as { schedule: { events: unknown[]; error?: boolean } };
-		expect(setHeaders).toHaveBeenCalled();
+		} as never)) as { schedule: { events: unknown[]; error?: boolean; resolvedWeek: string } };
+		expect(setHeaders).toHaveBeenCalledWith({ 'cache-control': 'private, no-store' });
 		expect(pageData.schedule.events).toHaveLength(1);
+		expect(pageData.schedule.resolvedWeek).toBe('05');
 		expect(pageData.schedule.error).toBe(false);
 		expect(cookies.set).toHaveBeenCalledWith(
 			'dku_group',
@@ -274,12 +275,16 @@ describe('routes via msw', () => {
 
 		const setHeaders = vi.fn();
 		const cookies = {
-			get: vi.fn((name: string) => (name === 'dku_group' ? '1-CS' : undefined)),
+			get: vi.fn((name: string) => {
+				if (name === 'dku_group') return '1-CS';
+				if (name === 'dku_week') return '05';
+				return undefined;
+			}),
 			set: vi.fn()
 		};
 		const pageData = (await loadPage({
 			params: { group: '1-cs' },
-			url: new URL('http://localhost/1-cs?week=05'),
+			url: new URL('http://localhost/1-cs'),
 			setHeaders,
 			cookies
 		} as never)) as { schedule: { events: unknown[]; error?: boolean; resolvedGroup: string } };
@@ -289,25 +294,7 @@ describe('routes via msw', () => {
 		expect(cookies.set).not.toHaveBeenCalled();
 	});
 
-	it('avoid rewriting group cookie in legacy redirect when already up to date', async () => {
-		useUpstreamStubs();
-
-		const cookies = {
-			get: vi.fn((name: string) => (name === 'dku_group' ? '1-CS' : undefined)),
-			set: vi.fn()
-		};
-
-		const redirectResult = loadPage({
-			params: {},
-			url: new URL('http://localhost/?group=1-CS&week=05'),
-			setHeaders: vi.fn(),
-			cookies
-		} as never);
-		await expect(redirectResult).rejects.toMatchObject({ status: 301, location: '/1-cs?week=05' });
-		expect(cookies.set).not.toHaveBeenCalled();
-	});
-
-	it('ignore invalid remembered cookie and continue with default group', async () => {
+	it('ignore invalid remembered group cookie and continue with default group', async () => {
 		useUpstreamStubs();
 
 		const setHeaders = vi.fn();
@@ -318,7 +305,7 @@ describe('routes via msw', () => {
 
 		const pageData = (await loadPage({
 			params: {},
-			url: new URL('http://localhost/?week=05'),
+			url: new URL('http://localhost/'),
 			setHeaders,
 			cookies
 		} as never)) as { schedule: { error?: boolean; resolvedGroup: string; resolvedWeek: string } };
@@ -327,6 +314,143 @@ describe('routes via msw', () => {
 		expect(pageData.schedule.resolvedGroup).toBe('1-CS');
 		expect(pageData.schedule.resolvedWeek).toBe('05');
 		expect(cookies.set).not.toHaveBeenCalled();
+	});
+
+	it('repair invalid remembered week cookie by falling back to automatic week', async () => {
+		useUpstreamStubs();
+
+		const cookies = {
+			get: vi.fn((name: string) => {
+				if (name === 'dku_group') return '1-CS';
+				if (name === 'dku_week') return '99';
+				return undefined;
+			}),
+			set: vi.fn()
+		};
+		const pageData = (await loadPage({
+			params: { group: '1-cs' },
+			url: new URL('http://localhost/1-cs'),
+			setHeaders: vi.fn(),
+			cookies
+		} as never)) as { schedule: { resolvedWeek: string; error?: boolean } };
+
+		expect(pageData.schedule.error).toBe(false);
+		expect(pageData.schedule.resolvedWeek).toBe('05');
+		expect(cookies.set).toHaveBeenCalledWith(
+			'dku_week',
+			'05',
+			expect.objectContaining({
+				path: '/',
+				sameSite: 'lax',
+				httpOnly: false
+			})
+		);
+	});
+
+	it('preserve valid past week cookie without overwriting it', async () => {
+		const twoWeekNavbar = `
+<html>
+	<body>
+		<select name="week">
+			<option value="4">29.01.2026 - 04.02.2026</option>
+			<option value="5">05.02.2026 - 11.02.2026</option>
+		</select>
+		<script>
+			var classes = ["1-CS"];
+		</script>
+	</body>
+</html>
+`;
+		useUpstreamStubs({ navbar: twoWeekNavbar });
+		server.use(
+			http.get('https://timetable.dku.kz/04/c/c00001.htm', () => HttpResponse.text(SCHEDULE_HTML))
+		);
+
+		const cookies = {
+			get: vi.fn((name: string) => {
+				if (name === 'dku_group') return '1-CS';
+				if (name === 'dku_week') return '04';
+				return undefined;
+			}),
+			set: vi.fn()
+		};
+		const pageData = (await loadPage({
+			params: { group: '1-cs' },
+			url: new URL('http://localhost/1-cs'),
+			setHeaders: vi.fn(),
+			cookies
+		} as never)) as { schedule: { resolvedWeek: string; error?: boolean } };
+
+		expect(pageData.schedule.error).toBe(false);
+		expect(pageData.schedule.resolvedWeek).toBe('04');
+		expect(cookies.set).not.toHaveBeenCalledWith('dku_week', expect.anything(), expect.anything());
+	});
+
+	it('ignore invalid remembered cohorts cookie and continue rendering', async () => {
+		useUpstreamStubs();
+
+		const cookies = {
+			get: vi.fn((name: string) => {
+				if (name === 'dku_group') return '1-CS';
+				if (name === 'dku_week') return '05';
+				if (name === 'dku_cohorts') return '<script>,UNKNOWN,   ';
+				return undefined;
+			}),
+			set: vi.fn()
+		};
+		const pageData = (await loadPage({
+			params: { group: '1-cs' },
+			url: new URL('http://localhost/1-cs'),
+			setHeaders: vi.fn(),
+			cookies
+		} as never)) as {
+			schedule: { events: unknown[]; selectedCohortsCsv: string; error?: boolean };
+		};
+
+		expect(pageData.schedule.error).toBe(false);
+		expect(pageData.schedule.events.length).toBeGreaterThan(0);
+		expect(pageData.schedule.selectedCohortsCsv).toContain('UNKNOWN');
+	});
+
+	it('strip state query params from incoming requests', async () => {
+		useUpstreamStubs();
+
+		const redirectResult = loadPage({
+			params: {},
+			url: new URL('http://localhost/?group=1-CS&week=05&cohorts=WPM1&probe=1'),
+			setHeaders: vi.fn(),
+			cookies: {
+				get: vi.fn(() => undefined),
+				set: vi.fn()
+			}
+		} as never);
+		await expect(redirectResult).rejects.toMatchObject({
+			status: 301,
+			location: '/?probe=1'
+		});
+	});
+
+	it('restore remembered group and keep state params out of redirected URL', async () => {
+		useUpstreamStubs();
+
+		const rememberedGroupResult = loadPage({
+			params: {},
+			url: new URL('http://localhost/?persist_probe=1'),
+			setHeaders: vi.fn(),
+			cookies: {
+				get: vi.fn((name: string) => {
+					if (name === 'dku_group') return '1-CS';
+					if (name === 'dku_cohorts') return 'WPM1';
+					if (name === 'dku_week') return '05';
+					return undefined;
+				}),
+				set: vi.fn()
+			}
+		} as never);
+		await expect(rememberedGroupResult).rejects.toMatchObject({
+			status: 302,
+			location: '/1-cs?persist_probe=1'
+		});
 	});
 
 	it('handle calendar and page redirect branches', async () => {
@@ -384,30 +508,34 @@ describe('routes via msw', () => {
 		expect(scheduleFailure.status).toBe(503);
 
 		useUpstreamStubs();
-		const redirectResult = loadPage({
+		const stripStateRedirect = loadPage({
 			params: {},
 			url: new URL('http://localhost/?group=1-CS&week=05'),
-			setHeaders: vi.fn()
+			setHeaders: vi.fn(),
+			cookies: {
+				get: vi.fn(() => undefined),
+				set: vi.fn()
+			}
 		} as never);
-		await expect(redirectResult).rejects.toMatchObject({ status: 301 });
-
-		const unknownLegacyGroupResult = loadPage({
-			params: {},
-			url: new URL('http://localhost/?group=unknown-group&week=05'),
-			setHeaders: vi.fn()
-		} as never);
-		await expect(unknownLegacyGroupResult).rejects.toMatchObject({ status: 404 });
+		await expect(stripStateRedirect).rejects.toMatchObject({
+			status: 301,
+			location: '/'
+		});
 
 		const unknownGroupResult = loadPage({
 			params: { group: 'unknown-group' },
-			url: new URL('http://localhost/unknown-group?week=05'),
-			setHeaders: vi.fn()
+			url: new URL('http://localhost/unknown-group'),
+			setHeaders: vi.fn(),
+			cookies: {
+				get: vi.fn(() => undefined),
+				set: vi.fn()
+			}
 		} as never);
 		await expect(unknownGroupResult).rejects.toMatchObject({ status: 404 });
 
 		const rememberedGroupResult = loadPage({
 			params: {},
-			url: new URL('http://localhost/?week=05'),
+			url: new URL('http://localhost/'),
 			setHeaders: vi.fn(),
 			cookies: {
 				get: vi.fn((name: string) => (name === 'dku_group' ? '1-CS' : undefined)),
@@ -416,7 +544,7 @@ describe('routes via msw', () => {
 		} as never);
 		await expect(rememberedGroupResult).rejects.toMatchObject({
 			status: 302,
-			location: '/1-cs?week=05'
+			location: '/1-cs'
 		});
 	});
 });

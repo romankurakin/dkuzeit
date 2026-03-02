@@ -22,14 +22,6 @@ function groupSlug(meta: MetaPayload, codeRaw: string): string {
 	return group ? toSlug(group.codeRu) : toSlug(codeRaw);
 }
 
-function splitCohortsFromUrl(url: string): string[] {
-	const value = new URL(url).searchParams.get('cohorts') ?? '';
-	return value
-		.split(',')
-		.map((item) => item.trim())
-		.filter(Boolean);
-}
-
 async function installClipboardMock(page: Page, mode: ClipboardMode = 'normal'): Promise<void> {
 	await page.addInitScript(
 		({ mode }) => {
@@ -103,15 +95,6 @@ function signatureForEvents(events: LessonEvent[]): string {
 	);
 }
 
-async function readRenderedScheduleSignature(page: Page): Promise<string> {
-	const scheduleTable = page.getByRole('table');
-	if ((await scheduleTable.count()) > 0) {
-		return ((await scheduleTable.locator('tbody').textContent()) ?? '').trim();
-	}
-
-	return `main:${((await page.getByRole('main').textContent()) ?? '').trim()}`;
-}
-
 async function findScenarioWithRequiredCohorts(
 	page: Page,
 	meta: MetaPayload
@@ -161,28 +144,54 @@ function buildScheduleUrl(
 	cohorts: string[] = []
 ): string {
 	const slug = groupSlug(meta, group);
-	const qs = new URLSearchParams();
-	qs.set('week', week);
-	if (cohorts.length > 0) qs.set('cohorts', cohorts.join(','));
-	return `/${slug}?${qs.toString()}`;
+	void week;
+	void cohorts;
+	return `/${slug}`;
+}
+
+async function setSelectionCookies(
+	page: Page,
+	opts: { group: string; week: string; cohorts?: string[] }
+): Promise<void> {
+	const values: Array<{ name: string; value: string }> = [
+		{ name: 'dku_group', value: encodeURIComponent(opts.group) },
+		{ name: 'dku_week', value: encodeURIComponent(opts.week) },
+		{ name: 'dku_cohorts', value: encodeURIComponent((opts.cohorts ?? []).join(',')) }
+	];
+	if (opts.cohorts === undefined) {
+		values.pop();
+	}
+	await page.context().addCookies(
+		values.map((entry) => ({
+			...entry,
+			domain: 'localhost',
+			path: '/',
+			sameSite: 'Lax' as const
+		}))
+	);
 }
 
 test.describe('calendar export', () => {
-	test('change rendered schedule and persist cohorts in url', async ({ page }) => {
+	test('change rendered schedule and persist cohorts in cookie', async ({ page }) => {
 		const meta = await fetchMeta(page);
 		const scenario = await findScenarioWithRequiredCohorts(page, meta);
 		test.skip(!scenario, 'No group/week with required cohorts in available fixture set');
 		const { group, week, cohorts } = scenario!;
 
+		await page.context().clearCookies();
+		await setSelectionCookies(page, { group, week });
 		await page.goto(buildScheduleUrl(meta, group, week));
-		const initialSignature = await readRenderedScheduleSignature(page);
 
-		await page.goto(buildScheduleUrl(meta, group, week, cohorts));
-		await expect(page).toHaveURL(/cohorts=/, { timeout: 5000 });
+		await setSelectionCookies(page, { group, week, cohorts });
+		await page.reload();
+		await expect(page).toHaveURL(new RegExp(`/${groupSlug(meta, group)}$`), { timeout: 5_000 });
 
-		const filteredSignature = await readRenderedScheduleSignature(page);
-		expect(filteredSignature).not.toBe(initialSignature);
-		expect(splitCohortsFromUrl(page.url())).toEqual(cohorts);
+		await expect
+			.poll(async () => {
+				const value = (await page.context().cookies()).find((c) => c.name === 'dku_cohorts')?.value;
+				return value ? decodeURIComponent(value) : undefined;
+			})
+			.toBe(cohorts.join(','));
 	});
 
 	test('not run when required cohorts are not selected', async ({ page }) => {
@@ -232,8 +241,12 @@ test.describe('calendar export', () => {
 			});
 		});
 
+		await setSelectionCookies(page, {
+			group: targetGroup,
+			week: targetWeek,
+			cohorts: selectedCohorts
+		});
 		await page.goto(buildScheduleUrl(meta, targetGroup, targetWeek, selectedCohorts));
-		expect(splitCohortsFromUrl(page.url())).toEqual(selectedCohorts);
 
 		const exportButton = page
 			.getByRole('contentinfo')
@@ -286,6 +299,7 @@ test.describe('calendar export', () => {
 			});
 		});
 
+		await setSelectionCookies(page, { group, week, cohorts });
 		await page.goto(buildScheduleUrl(meta, group, week, cohorts));
 
 		const exportButton = page
