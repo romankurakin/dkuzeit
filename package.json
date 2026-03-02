@@ -31,6 +31,7 @@
 	"dependencies": {
 		"@evilmartians/harmony": "^1.4.0",
 		"@hackernoon/pixel-icon-library": "^1.0.6",
+		"@sentry/core": "^10.41.0",
 		"@sentry/sveltekit": "^10.40.0",
 		"bits-ui": "^2.16.2",
 		"htmlparser2": "^10.1.0",
