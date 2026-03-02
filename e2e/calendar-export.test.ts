@@ -179,10 +179,10 @@ test.describe('calendar export', () => {
 		const { group, week, cohorts } = scenario!;
 
 		await page.context().clearCookies();
-		await setSelectionCookies(page, { group, week });
-		await page.goto(buildScheduleUrl(meta, group, week));
-
+		// Set all cookies before navigation so they are sent in the HTTP request.
+		// Adding cookies after a page has already loaded is unreliable in webkit.
 		await setSelectionCookies(page, { group, week, cohorts });
+		await page.goto(buildScheduleUrl(meta, group, week));
 		await page.reload();
 		await expect(page).toHaveURL(new RegExp(`/${groupSlug(meta, group)}$`), { timeout: 5_000 });
 
