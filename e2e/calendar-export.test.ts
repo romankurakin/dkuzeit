@@ -182,10 +182,7 @@ test.describe('calendar export', () => {
 		await setSelectionCookies(page, { group, week });
 		await page.goto(buildScheduleUrl(meta, group, week));
 
-		await page.evaluate((csv) => {
-			const secure = location.protocol === 'https:' ? '; Secure' : '';
-			document.cookie = `dku_cohorts=${encodeURIComponent(csv)}; Path=/; SameSite=Lax${secure}`;
-		}, cohorts.join(','));
+		await setSelectionCookies(page, { group, week, cohorts });
 		await page.reload();
 		await expect(page).toHaveURL(new RegExp(`/${groupSlug(meta, group)}$`), { timeout: 5_000 });
 

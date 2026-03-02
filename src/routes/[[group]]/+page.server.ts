@@ -1,9 +1,8 @@
 import { error, redirect } from '@sveltejs/kit';
 import { localizeHref } from '$lib/paraglide/runtime';
 import { buildMergedSchedule, getMeta } from '$lib/server/dku';
-import { parseCohortsCsv } from '$lib/server/cohorts';
 import { todayInAlmaty } from '$lib/server/time';
-import { resolveGroup, resolveWeekWithFloor, groupSlug } from '$lib/server/resolve';
+import { resolveGroup, resolveWeek, groupSlug } from '$lib/server/resolve';
 import type { Cohort, LessonEvent } from '$lib/server/types';
 import {
 	cohortsSelectionCookie,
@@ -57,9 +56,8 @@ export const load: PageServerLoad = async ({ params, url, setHeaders, cookies })
 	}
 
 	const rememberedCohortsCsv = getServerCookieValue(cookies, cohortsSelectionCookie);
-	const selectedCohorts = parseCohortsCsv(rememberedCohortsCsv);
 	const rememberedWeekRaw = getServerCookieValue(cookies, weekSelectionCookie);
-	const weekValue = resolveWeekWithFloor(meta.weeks, rememberedWeekRaw);
+	const weekValue = resolveWeek(meta.weeks, rememberedWeekRaw);
 	if (rememberedWeekRaw && rememberedWeekRaw !== weekValue) {
 		setServerCookieIfChanged(cookies, url, weekSelectionCookie, weekValue);
 	}
@@ -91,7 +89,7 @@ export const load: PageServerLoad = async ({ params, url, setHeaders, cookies })
 	}
 
 	try {
-		const merged = await buildMergedSchedule(groupCode, weekValue, selectedCohorts, meta);
+		const merged = await buildMergedSchedule(groupCode, weekValue, [], meta);
 		return {
 			todayIso,
 			meta: metaPayload,

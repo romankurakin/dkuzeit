@@ -347,6 +347,45 @@ describe('routes via msw', () => {
 		);
 	});
 
+	it('preserve valid past week cookie without overwriting it', async () => {
+		const twoWeekNavbar = `
+<html>
+	<body>
+		<select name="week">
+			<option value="4">29.01.2026 - 04.02.2026</option>
+			<option value="5">05.02.2026 - 11.02.2026</option>
+		</select>
+		<script>
+			var classes = ["1-CS"];
+		</script>
+	</body>
+</html>
+`;
+		useUpstreamStubs({ navbar: twoWeekNavbar });
+		server.use(
+			http.get('https://timetable.dku.kz/04/c/c00001.htm', () => HttpResponse.text(SCHEDULE_HTML))
+		);
+
+		const cookies = {
+			get: vi.fn((name: string) => {
+				if (name === 'dku_group') return '1-CS';
+				if (name === 'dku_week') return '04';
+				return undefined;
+			}),
+			set: vi.fn()
+		};
+		const pageData = (await loadPage({
+			params: { group: '1-cs' },
+			url: new URL('http://localhost/1-cs'),
+			setHeaders: vi.fn(),
+			cookies
+		} as never)) as { schedule: { resolvedWeek: string; error?: boolean } };
+
+		expect(pageData.schedule.error).toBe(false);
+		expect(pageData.schedule.resolvedWeek).toBe('04');
+		expect(cookies.set).not.toHaveBeenCalledWith('dku_week', expect.anything(), expect.anything());
+	});
+
 	it('ignore invalid remembered cohorts cookie and continue rendering', async () => {
 		useUpstreamStubs();
 
