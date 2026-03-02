@@ -8,26 +8,25 @@
 	import { getLocale, localizeHref } from '$lib/paraglide/runtime';
 	import { toSlug } from '$lib/url-slug';
 	import { navigating, page } from '$app/state';
-	import { goto } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { onDestroy } from 'svelte';
-	import { SvelteURLSearchParams } from 'svelte/reactivity';
-	import { useSearchParams } from 'runed/kit';
-	import { scheduleSearchSchema } from './search-params';
+	import {
+		cohortsSelectionCookie,
+		groupSelectionCookie,
+		setClientCookieIfChanged,
+		weekSelectionCookie
+	} from '$lib/persistence/selection-cookies';
 
 	let { data }: PageProps = $props();
 	const meta = $derived(data.meta);
 	const schedule = $derived(data.schedule);
 	const todayIso = $derived(data.todayIso);
-	const searchParams = useSearchParams(scheduleSearchSchema);
 	let githubArmed = $state(false);
 	let githubArmTimer: ReturnType<typeof setTimeout> | null = null;
 	let navigateTimer: ReturnType<typeof setTimeout> | null = null;
 	let pendingGroup: string | null = null;
-	let pendingWeek: string | null = null;
 	let pendingCohorts: string | null = null;
-	const GROUP_COOKIE_NAME = 'dku_group';
-	const GROUP_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 
 	function clearGithubArmTimer(): void {
 		if (!githubArmTimer) return;
@@ -41,33 +40,13 @@
 		navigateTimer = null;
 	}
 
-	function persistGroupCookie(group: string): void {
-		if (!group || typeof document === 'undefined') return;
-		const encoded = encodeURIComponent(group);
-		const current = document.cookie
-			.split('; ')
-			.find((entry) => entry.startsWith(`${GROUP_COOKIE_NAME}=`))
-			?.split('=')[1];
-		if (current === encoded) return;
-		const secure =
-			typeof location !== 'undefined' && location.protocol === 'https:' ? '; Secure' : '';
-		document.cookie = `${GROUP_COOKIE_NAME}=${encoded}; Max-Age=${GROUP_COOKIE_MAX_AGE}; Path=/; SameSite=Lax${secure}`;
-	}
-
 	function groupToSlug(codeRaw: string): string {
 		const group = meta.groups.find((g) => g.codeRaw === codeRaw);
 		return group ? toSlug(group.codeRu) : toSlug(codeRaw);
 	}
 
-	function schedulePath(group: string, week: string, cohorts = ''): string {
-		const path = localizeHref(`/${groupToSlug(group)}`);
-		const qs = new SvelteURLSearchParams();
-		if (week) qs.set('week', week);
-		else qs.delete('week');
-		if (cohorts) qs.set('cohorts', cohorts);
-		else qs.delete('cohorts');
-		const str = qs.toString();
-		return str ? `${path}?${str}` : path;
+	function schedulePath(group: string): string {
+		return localizeHref(`/${groupToSlug(group)}`);
 	}
 
 	function flushNavigate(): void {
@@ -75,12 +54,15 @@
 		navigateTimer = setTimeout(() => {
 			navigateTimer = null;
 			const group = pendingGroup ?? schedule.resolvedGroup;
-			const week = pendingWeek ?? schedule.resolvedWeek;
-			const cohorts = pendingCohorts ?? cohortsCsv;
 			pendingGroup = null;
-			pendingWeek = null;
 			pendingCohorts = null;
-			goto(resolve(schedulePath(group, week, cohorts)), {
+			const target = resolve(schedulePath(group));
+			const current = page.url.pathname;
+			if (target === current) {
+				void invalidateAll();
+				return;
+			}
+			goto(target, {
 				replaceState: true,
 				noScroll: true,
 				keepFocus: true
@@ -88,7 +70,7 @@
 		}, 150);
 	}
 
-	const cohortsCsv = $derived(searchParams.cohorts || (page.url.searchParams.get('cohorts') ?? ''));
+	const cohortsCsv = $derived(pendingCohorts ?? schedule.selectedCohortsCsv ?? '');
 
 	const urlCohorts = $derived(
 		cohortsCsv
@@ -99,12 +81,12 @@
 
 	function handleGroupChange(value: string): void {
 		pendingGroup = value;
-		persistGroupCookie(value);
+		setClientCookieIfChanged(groupSelectionCookie, value);
 		flushNavigate();
 	}
 
 	function handleWeekChange(value: string): void {
-		pendingWeek = value;
+		setClientCookieIfChanged(weekSelectionCookie, value);
 		flushNavigate();
 	}
 
@@ -120,6 +102,7 @@
 			.filter(Boolean);
 		const filtered = current.filter((c) => !sameCategory.has(c));
 		pendingCohorts = [...filtered, code].join(',');
+		setClientCookieIfChanged(cohortsSelectionCookie, pendingCohorts);
 		flushNavigate();
 	}
 
@@ -171,7 +154,8 @@
 
 	$effect(() => {
 		if (!page.params.group) return;
-		persistGroupCookie(schedule.resolvedGroup);
+		setClientCookieIfChanged(groupSelectionCookie, schedule.resolvedGroup);
+		setClientCookieIfChanged(cohortsSelectionCookie, cohortsCsv);
 	});
 </script>
 

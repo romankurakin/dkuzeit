@@ -20,17 +20,31 @@ export function resolveWeekByDate(weeks: WeekOption[]): string {
 	if (dowFmt.format(now) === 'Sun') {
 		target = dateFmt.format(new Date(now.getTime() + 86_400_000));
 	}
-	let best = weeks[0]!.value;
+	let earliest = weeks[0]!;
+	let best: WeekOption | null = null;
 	for (const week of weeks) {
-		if (week.startDateIso <= target) best = week.value;
+		if (week.startDateIso < earliest.startDateIso) earliest = week;
+		if (week.startDateIso > target) continue;
+		if (!best || week.startDateIso > best.startDateIso) best = week;
 	}
-	return best;
+	return (best ?? earliest).value;
 }
 
 export function resolveWeek(weeks: WeekOption[], param: string): string {
 	if (!param) return resolveWeekByDate(weeks);
 	const match = weeks.find((w) => w.value === param);
 	return match?.value ?? resolveWeekByDate(weeks);
+}
+
+export function resolveWeekWithFloor(weeks: WeekOption[], param: string): string {
+	const auto = resolveWeekByDate(weeks);
+	if (!param) return auto;
+	const selected = weeks.find((w) => w.value === param);
+	if (!selected) return auto;
+	const autoWeek = weeks.find((w) => w.value === auto);
+	if (!autoWeek) return selected.value;
+	if (selected.startDateIso < autoWeek.startDateIso) return autoWeek.value;
+	return selected.value;
 }
 
 export function groupSlug(groups: GroupOption[], codeRaw: string): string {

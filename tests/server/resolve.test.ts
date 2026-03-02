@@ -3,7 +3,8 @@ import {
 	groupSlug,
 	resolveGroup,
 	resolveWeek,
-	resolveWeekByDate
+	resolveWeekByDate,
+	resolveWeekWithFloor
 } from '../../src/lib/server/resolve';
 import type { GroupOption, WeekOption } from '../../src/lib/server/types';
 
@@ -45,6 +46,19 @@ describe('resolve helpers', () => {
 		// Sunday in Almaty; helper should evaluate using Monday date.
 		vi.setSystemTime(new Date('2026-02-15T12:00:00Z'));
 		expect(resolveWeekByDate(weeks)).toBe('03');
+	});
+
+	it('floor remembered week using dates, not array order', () => {
+		vi.setSystemTime(new Date('2026-02-24T10:00:00Z'));
+		const unsortedWeeks: WeekOption[] = [
+			{ value: '03', label: 'w3', startDateIso: '2026-02-16' },
+			{ value: '01', label: 'w1', startDateIso: '2026-02-02' },
+			{ value: '04', label: 'w4', startDateIso: '2026-02-23' },
+			{ value: '02', label: 'w2', startDateIso: '2026-02-09' }
+		];
+		expect(resolveWeekWithFloor(unsortedWeeks, '02')).toBe('04');
+		expect(resolveWeekWithFloor(unsortedWeeks, '04')).toBe('04');
+		expect(resolveWeekWithFloor(unsortedWeeks, '99')).toBe('04');
 	});
 
 	it('build group slug from localized label', () => {
