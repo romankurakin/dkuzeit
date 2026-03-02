@@ -38,6 +38,12 @@ importers:
       ts-ics:
         specifier: ^2.4.1
         version: 2.4.1
+      workbox-core:
+        specifier: ^7.4.0
+        version: 7.4.0
+      workbox-precaching:
+        specifier: ^7.4.0
+        version: 7.4.0
     devDependencies:
       '@commitlint/cli':
         specifier: ^20.4.2
