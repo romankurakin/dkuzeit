@@ -137,16 +137,8 @@ async function findScenarioWithRequiredCohorts(
 	return null;
 }
 
-function buildScheduleUrl(
-	meta: MetaPayload,
-	group: string,
-	week: string,
-	cohorts: string[] = []
-): string {
-	const slug = groupSlug(meta, group);
-	void week;
-	void cohorts;
-	return `/${slug}`;
+function buildScheduleUrl(meta: MetaPayload, group: string): string {
+	return `/${groupSlug(meta, group)}`;
 }
 
 async function setSelectionCookies(
@@ -179,10 +171,8 @@ test.describe('calendar export', () => {
 		const { group, week, cohorts } = scenario!;
 
 		await page.context().clearCookies();
-		// Set all cookies before navigation so they are sent in the HTTP request.
-		// Adding cookies after a page has already loaded is unreliable in webkit.
 		await setSelectionCookies(page, { group, week, cohorts });
-		await page.goto(buildScheduleUrl(meta, group, week));
+		await page.goto(buildScheduleUrl(meta, group));
 		await page.reload();
 		await expect(page).toHaveURL(new RegExp(`/${groupSlug(meta, group)}$`), { timeout: 5_000 });
 
@@ -246,7 +236,7 @@ test.describe('calendar export', () => {
 			week: targetWeek,
 			cohorts: selectedCohorts
 		});
-		await page.goto(buildScheduleUrl(meta, targetGroup, targetWeek, selectedCohorts));
+		await page.goto(buildScheduleUrl(meta, targetGroup));
 
 		const exportButton = page
 			.getByRole('contentinfo')
@@ -300,7 +290,7 @@ test.describe('calendar export', () => {
 		});
 
 		await setSelectionCookies(page, { group, week, cohorts });
-		await page.goto(buildScheduleUrl(meta, group, week, cohorts));
+		await page.goto(buildScheduleUrl(meta, group));
 
 		const exportButton = page
 			.getByRole('contentinfo')
