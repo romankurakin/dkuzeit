@@ -178,23 +178,17 @@ test.describe('selection persistence', () => {
 		const optionCount = await options.count();
 		test.skip(optionCount < 2, 'Need at least two selectable group options');
 
-		const candidateIndexes: number[] = [];
+		let targetIndex: number | undefined;
 		for (let i = 0; i < optionCount; i += 1) {
 			const label = ((await options.nth(i).textContent()) ?? '').trim();
 			if (!label || label === selectedLabel) continue;
-			candidateIndexes.push(i);
+			targetIndex = i;
+			break;
 		}
-		test.skip(candidateIndexes.length === 0, 'No alternative group option found');
+		test.skip(targetIndex === undefined, 'No alternative group option found');
 
-		const targetIndex =
-			randomItem(candidateIndexes.filter((i) => i >= 2)) ?? randomItem(candidateIndexes);
-		const resolvedTargetIndex = targetIndex ?? candidateIndexes[0];
-		if (resolvedTargetIndex === undefined) {
-			test.skip(true, 'No target option index available');
-			return;
-		}
-
-		const targetOption = options.nth(resolvedTargetIndex);
+		const targetOption = options.nth(targetIndex!);
+		await targetOption.scrollIntoViewIfNeeded();
 		await expect(targetOption).toBeVisible({ timeout: 5_000 });
 		await targetOption.click();
 
@@ -295,6 +289,7 @@ test.describe('selection persistence', () => {
 		}
 		test.skip(targetIndex === undefined, 'No alternative cohort option found');
 		const targetOption = options.nth(targetIndex!);
+		await targetOption.scrollIntoViewIfNeeded();
 		await expect(targetOption).toBeVisible({ timeout: 5_000 });
 		await targetOption.click();
 
