@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { toSlug } from '../src/lib/url-slug';
 
 type MetaPayload = {
@@ -113,6 +113,12 @@ async function cookieValue(page: Page, name: string): Promise<string | undefined
 	return (await page.context().cookies()).find((cookie) => cookie.name === name)?.value;
 }
 
+async function clickOption(option: Locator): Promise<void> {
+	await option.scrollIntoViewIfNeeded();
+	await expect(option).toBeVisible({ timeout: 5_000 });
+	await option.click();
+}
+
 test.describe('selection persistence', () => {
 	test('keep selected group for next root request', async ({ page }) => {
 		const metaResponse = await page.request.get('/api/meta');
@@ -188,9 +194,7 @@ test.describe('selection persistence', () => {
 		test.skip(targetIndex === undefined, 'No alternative group option found');
 
 		const targetOption = options.nth(targetIndex!);
-		await targetOption.scrollIntoViewIfNeeded();
-		await expect(targetOption).toBeVisible({ timeout: 5_000 });
-		await targetOption.click();
+		await clickOption(targetOption);
 
 		await expect.poll(() => new URL(page.url()).pathname).not.toBe(initialPath);
 		const selectedUrl = new URL(page.url());
@@ -289,9 +293,7 @@ test.describe('selection persistence', () => {
 		}
 		test.skip(targetIndex === undefined, 'No alternative cohort option found');
 		const targetOption = options.nth(targetIndex!);
-		await targetOption.scrollIntoViewIfNeeded();
-		await expect(targetOption).toBeVisible({ timeout: 5_000 });
-		await targetOption.click();
+		await clickOption(targetOption);
 
 		await expect.poll(() => cookieValue(page, 'dku_cohorts')).not.toBe(scenario!.initialCode);
 

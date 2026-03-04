@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import { onDestroy, tick } from 'svelte';
+	import { SvelteMap } from 'svelte/reactivity';
 	import { toast } from 'svelte-sonner';
 	import { m } from '$lib/paraglide/messages';
 	import { getLocale, localizeHref } from '$lib/paraglide/runtime';
@@ -68,8 +69,23 @@
 
 	const timeSlots = $derived(extractTimeSlots(displayEvents));
 
+	const slotIndex = $derived.by(() => {
+		const idx = new SvelteMap<string, SvelteMap<string, LessonEvent[]>>();
+		for (const [date, dayEvents] of Object.entries(groupedEvents)) {
+			const bySlot = new SvelteMap<string, LessonEvent[]>();
+			for (const event of dayEvents) {
+				const key = `${event.startTime}-${event.endTime}`;
+				const bucket = bySlot.get(key) ?? [];
+				bucket.push(event);
+				bySlot.set(key, bucket);
+			}
+			idx.set(date, bySlot);
+		}
+		return idx;
+	});
+
 	function getSlotEvents(date: string, slotKey: string): LessonEvent[] {
-		return (groupedEvents[date] ?? []).filter((e) => `${e.startTime}-${e.endTime}` === slotKey);
+		return slotIndex.get(date)?.get(slotKey) ?? [];
 	}
 
 	const groupSelectItems = $derived(
@@ -85,10 +101,6 @@
 
 	function isToday(dateIso: string): boolean {
 		return dateIso === todayIso;
-	}
-
-	function handleCohortChangeInternal(trackLabel: string, code: string): void {
-		onCohortChange(trackLabel, code);
 	}
 
 	function resetCalendarCopyState(): void {
@@ -221,8 +233,8 @@
 	groupSelectItems,
 	weekSelectItems,
 	cohortGroups,
-	selectedGroup: resolvedGroup,
-	selectedWeek: resolvedWeek,
+	resolvedGroup,
+	resolvedWeek,
 	uiLocale,
 	todayIso,
 	isGeneratingLinks,
@@ -231,7 +243,7 @@
 	copiedField,
 	onGroupChange,
 	onWeekChange,
-	onCohortChange: handleCohortChangeInternal,
+	onCohortChange,
 	onCopySiteLink: async () => {
 		await navigator.clipboard.writeText(location.href);
 		copiedField = 'site';

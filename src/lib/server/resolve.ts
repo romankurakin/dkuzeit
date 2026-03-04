@@ -1,5 +1,5 @@
 import { toSlug } from '$lib/url-slug';
-import { ALMATY_TIME_ZONE } from './time';
+import { todayInAlmaty, isSundayInAlmaty } from './time';
 import type { GroupOption, WeekOption } from './types';
 
 export function resolveGroup(groups: GroupOption[], param: string): string {
@@ -14,11 +14,10 @@ export function resolveGroup(groups: GroupOption[], param: string): string {
 export function resolveWeekByDate(weeks: WeekOption[]): string {
 	if (weeks.length === 0) return '';
 	const now = new Date();
-	const dateFmt = new Intl.DateTimeFormat('en-CA', { timeZone: ALMATY_TIME_ZONE });
-	const dowFmt = new Intl.DateTimeFormat('en-US', { timeZone: ALMATY_TIME_ZONE, weekday: 'short' });
-	let target = dateFmt.format(now);
-	if (dowFmt.format(now) === 'Sun') {
-		target = dateFmt.format(new Date(now.getTime() + 86_400_000));
+	let target = todayInAlmaty(now);
+	// On Sunday, start looking from Monday (next week)
+	if (isSundayInAlmaty(now)) {
+		target = todayInAlmaty(new Date(now.getTime() + 86_400_000));
 	}
 	let earliest = weeks[0]!;
 	let best: WeekOption | null = null;
