@@ -1,1 +1,2 @@
 export const BUTTON_ACTIVATION_DURATION_MS = 1240;
+export const NAVIGATE_DEBOUNCE_MS = 150;

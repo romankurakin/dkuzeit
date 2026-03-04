@@ -3,7 +3,7 @@
 	import BrutalSelect from '$lib/components/BrutalSelect.svelte';
 	import type { PageProps } from './$types';
 	import { cv, subjectColorKey } from '$lib/scheduler/subject-colors';
-	import { BUTTON_ACTIVATION_DURATION_MS } from '$lib/ui-timing';
+	import { BUTTON_ACTIVATION_DURATION_MS, NAVIGATE_DEBOUNCE_MS } from '$lib/ui-timing';
 	import { m } from '$lib/paraglide/messages';
 	import { getLocale, localizeHref } from '$lib/paraglide/runtime';
 	import { toSlug } from '$lib/url-slug';
@@ -19,14 +19,11 @@
 	} from '$lib/persistence/selection-cookies';
 
 	let { data }: PageProps = $props();
-	const meta = $derived(data.meta);
-	const schedule = $derived(data.schedule);
-	const todayIso = $derived(data.todayIso);
 	let githubArmed = $state(false);
 	let githubArmTimer: ReturnType<typeof setTimeout> | null = null;
 	let navigateTimer: ReturnType<typeof setTimeout> | null = null;
 	let pendingGroup: string | null = null;
-	let pendingCohorts: string | null = null;
+	let pendingCohorts = $state<string | null>(null);
 
 	function clearGithubArmTimer(): void {
 		if (!githubArmTimer) return;
@@ -41,7 +38,7 @@
 	}
 
 	function groupToSlug(codeRaw: string): string {
-		const group = meta.groups.find((g) => g.codeRaw === codeRaw);
+		const group = data.meta.groups.find((g) => g.codeRaw === codeRaw);
 		return group ? toSlug(group.codeRu) : toSlug(codeRaw);
 	}
 
@@ -53,7 +50,7 @@
 		clearNavigateTimer();
 		navigateTimer = setTimeout(() => {
 			navigateTimer = null;
-			const group = pendingGroup ?? schedule.resolvedGroup;
+			const group = pendingGroup ?? data.schedule.resolvedGroup;
 			pendingGroup = null;
 			pendingCohorts = null;
 			const target = resolve(schedulePath(group));
@@ -67,16 +64,27 @@
 				noScroll: true,
 				keepFocus: true
 			});
-		}, 150);
+		}, NAVIGATE_DEBOUNCE_MS);
 	}
 
-	const cohortsCsv = $derived(pendingCohorts ?? schedule.selectedCohortsCsv ?? '');
+	const cohortsCsv = $derived(pendingCohorts ?? data.schedule.selectedCohortsCsv ?? '');
 
 	const urlCohorts = $derived(
 		cohortsCsv
 			.split(',')
 			.map((s) => s.trim())
 			.filter(Boolean)
+	);
+
+	const cohortsByTrack = $derived(
+		data.schedule.cohorts.reduce(
+			(acc, c) => {
+				if (!acc[c.track]) acc[c.track] = new Set();
+				acc[c.track]!.add(c.code);
+				return acc;
+			},
+			{} as Record<string, Set<string>>
+		)
 	);
 
 	function handleGroupChange(value: string): void {
@@ -91,16 +99,10 @@
 	}
 
 	function handleCohortChange(_trackLabel: string, code: string): void {
-		const cohort = schedule.cohorts.find((c) => c.code === code);
+		const cohort = data.schedule.cohorts.find((c) => c.code === code);
 		if (!cohort) return;
-		const sameCategory = new Set(
-			schedule.cohorts.filter((c) => c.track === cohort.track).map((c) => c.code)
-		);
-		const current = (pendingCohorts ?? cohortsCsv)
-			.split(',')
-			.map((s) => s.trim())
-			.filter(Boolean);
-		const filtered = current.filter((c) => !sameCategory.has(c));
+		const sameCategory = cohortsByTrack[cohort.track] ?? new Set();
+		const filtered = urlCohorts.filter((c) => !sameCategory.has(c));
 		pendingCohorts = [...filtered, code].join(',');
 		setClientCookieIfChanged(cohortsSelectionCookie, pendingCohorts);
 		flushNavigate();
@@ -150,8 +152,7 @@
 		});
 	});
 
-	const canonicalPath = $derived(localizeHref(`/${page.params.group ?? ''}`));
-	const canonicalUrl = $derived(`${page.url.origin}${canonicalPath}`);
+	const canonicalUrl = $derived(`${page.url.origin}${localizeHref(`/${page.params.group ?? ''}`)}`);
 	const ruUrl = $derived(`${page.url.origin}/${page.params.group ?? ''}`);
 	const deUrl = $derived(`${page.url.origin}/de/${page.params.group ?? ''}`);
 
@@ -162,7 +163,7 @@
 
 	$effect(() => {
 		if (!page.params.group) return;
-		setClientCookieIfChanged(groupSelectionCookie, schedule.resolvedGroup);
+		setClientCookieIfChanged(groupSelectionCookie, data.schedule.resolvedGroup);
 		setClientCookieIfChanged(cohortsSelectionCookie, cohortsCsv);
 	});
 </script>
@@ -185,7 +186,7 @@
 	<meta name="twitter:description" content={m.meta_description()} />
 </svelte:head>
 
-{#if schedule.error}
+{#if data.schedule.error}
 	<main
 		id="main-content"
 		class="bg-foreground text-background flex min-h-[calc(100dvh-8rem)] flex-col items-center justify-center p-8 text-center"
@@ -201,13 +202,13 @@
 	<svelte:boundary>
 		<div class="min-h-[calc(100dvh-8rem)]">
 			<BrutalSchedulerView
-				groups={meta.groups}
-				weeks={meta.weeks}
-				events={schedule.events}
-				cohorts={schedule.cohorts}
-				resolvedGroup={schedule.resolvedGroup}
-				resolvedWeek={schedule.resolvedWeek}
-				{todayIso}
+				groups={data.meta.groups}
+				weeks={data.meta.weeks}
+				events={data.schedule.events}
+				cohorts={data.schedule.cohorts}
+				resolvedGroup={data.schedule.resolvedGroup}
+				resolvedWeek={data.schedule.resolvedWeek}
+				todayIso={data.todayIso}
 				{urlCohorts}
 				onGroupChange={handleGroupChange}
 				onWeekChange={handleWeekChange}
@@ -226,7 +227,7 @@
 						>
 							<BrutalSelect
 								label={m.group_label()}
-								value={ctx.selectedGroup}
+								value={ctx.resolvedGroup}
 								items={ctx.groupSelectItems}
 								onValueChange={ctx.onGroupChange}
 								autofocus={!page.params.group}
@@ -234,7 +235,7 @@
 							/>
 							<BrutalSelect
 								label={m.week_label()}
-								value={ctx.selectedWeek}
+								value={ctx.resolvedWeek}
 								items={ctx.weekSelectItems}
 								onValueChange={ctx.onWeekChange}
 								disabled={!!navigating.to}

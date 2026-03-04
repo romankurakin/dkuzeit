@@ -21,8 +21,8 @@ export interface SchedulerContext {
 	weekSelectItems: SelectItem[];
 	cohortGroups: CohortGroup[];
 
-	selectedGroup: string;
-	selectedWeek: string;
+	resolvedGroup: string;
+	resolvedWeek: string;
 
 	uiLocale: 'ru' | 'de';
 	todayIso: string;

@@ -9,17 +9,6 @@
 
 	let selectedLocale: string = $derived(getLocale());
 
-	const jsonLd = $derived(
-		JSON.stringify({
-			'@context': 'https://schema.org',
-			'@type': 'WebApplication',
-			name: m.app_title(),
-			description: m.meta_description(),
-			url: 'https://dkuzeit.net',
-			inLanguage: ['ru', 'de']
-		})
-	);
-
 	function handleLocaleChange(value: string | undefined) {
 		if (value && value !== getLocale()) {
 			setLocale(value as 'ru' | 'de');
@@ -40,10 +29,6 @@
 	<link rel="icon" href="/favicon.ico" sizes="any" />
 	<link rel="icon" href="/icon.svg" type="image/svg+xml" />
 	<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-	<svelte:element this={'script'} type="application/ld+json">
-		<!-- eslint-disable-next-line svelte/no-at-html-tags -- JSON payload is generated in app code -->
-		{@html jsonLd}
-	</svelte:element>
 </svelte:head>
 
 <div class="mx-auto max-w-screen-2xl space-y-0 p-4">

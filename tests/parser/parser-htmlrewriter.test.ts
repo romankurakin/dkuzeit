@@ -243,9 +243,9 @@ describe('parser parse timetable page html rewriter state machine', () => {
 		expect(event.subjectFullRaw).toBe('СПУРП2');
 	});
 
-	it('throw a clear error when center container is absent', async () => {
-		await expect(
+	it('throw a clear error when center container is absent', () => {
+		expect(() =>
 			parseTimetablePage('<html><body><table></table></body></html>', group, week)
-		).rejects.toThrow('Timetable center container not found');
+		).toThrow('Timetable center container not found');
 	});
 });

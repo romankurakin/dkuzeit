@@ -341,16 +341,15 @@ function stableEventId(input: string): string {
 	return `e${fnv1aHex(input)}`;
 }
 
-// Regex check for events on a timetable page
 export function hasEvents(html: string): boolean {
 	return parseLegendEntries(html, 'Дисциплины').length > 0;
 }
 
-export async function parseTimetablePage(
+export function parseTimetablePage(
 	html: string,
 	group: GroupOption,
 	week: WeekOption
-): Promise<Pick<GroupWeekSchedule, 'events' | 'cohorts'>> {
+): Pick<GroupWeekSchedule, 'events' | 'cohorts'> {
 	if (!/<center\b/i.test(html)) throw new Error('Timetable center container not found');
 
 	const { rows, foundMainTable } = collectMainTableRows(html);
