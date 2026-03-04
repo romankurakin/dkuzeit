@@ -52,11 +52,15 @@
 			navigateTimer = null;
 			const group = pendingGroup ?? data.schedule.resolvedGroup;
 			pendingGroup = null;
-			pendingCohorts = null;
 			const target = resolve(schedulePath(group));
 			const current = page.url.pathname;
 			if (target === current) {
-				void invalidateAll();
+				const cohortSnapshot = pendingCohorts;
+				void invalidateAll().finally(() => {
+					if (pendingCohorts === cohortSnapshot) {
+						pendingCohorts = null;
+					}
+				});
 				return;
 			}
 			goto(target, {
@@ -145,6 +149,7 @@
 	}
 
 	afterNavigate((nav) => {
+		pendingCohorts = null;
 		if (nav.type !== 'popstate' || !nav.to?.scroll) return;
 		const { x, y } = nav.to.scroll;
 		requestAnimationFrame(() => {
