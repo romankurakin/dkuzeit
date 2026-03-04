@@ -31,23 +31,23 @@
 	"dependencies": {
 		"@evilmartians/harmony": "^1.4.0",
 		"@hackernoon/pixel-icon-library": "^1.0.6",
-		"@sentry/core": "^10.41.0",
-		"@sentry/sveltekit": "^10.40.0",
+		"@sentry/core": "^10.42.0",
+		"@sentry/sveltekit": "^10.42.0",
 		"bits-ui": "^2.16.2",
 		"domhandler": "^5.0.3",
 		"htmlparser2": "^10.1.0",
 		"runed": "^0.37.1",
 		"slugify": "^1.6.6",
-		"svelte-sonner": "^1.0.7",
+		"svelte-sonner": "^1.0.8",
 		"ts-ics": "^2.4.1",
 		"workbox-core": "^7.4.0",
 		"workbox-precaching": "^7.4.0"
 	},
 	"devDependencies": {
-		"@commitlint/cli": "^20.4.2",
-		"@commitlint/config-conventional": "^20.4.2",
+		"@commitlint/cli": "^20.4.3",
+		"@commitlint/config-conventional": "^20.4.3",
 		"@eslint/js": "^10.0.1",
-		"@inlang/paraglide-js": "^2.13.0",
+		"@inlang/paraglide-js": "^2.13.1",
 		"@inlang/plugin-m-function-matcher": "^2.2.1",
 		"@inlang/plugin-message-format": "^4.3.0",
 		"@j178/prek": "^0.3.4",
@@ -67,9 +67,9 @@
 		"globals": "^17.4.0",
 		"msw": "^2.12.10",
 		"prettier": "^3.8.1",
-		"prettier-plugin-svelte": "^3.5.0",
+		"prettier-plugin-svelte": "^3.5.1",
 		"prettier-plugin-tailwindcss": "^0.7.2",
-		"svelte": "^5.53.6",
+		"svelte": "^5.53.7",
 		"svelte-check": "^4.4.4",
 		"tailwindcss": "^4.2.1",
 		"tsx": "^4.21.0",
@@ -78,6 +78,6 @@
 		"vite": "^7.3.1",
 		"vite-plugin-devtools-json": "^1.0.0",
 		"vitest": "^4.0.18",
-		"wrangler": "^4.69.0"
+		"wrangler": "^4.70.0"
 	}
 }
