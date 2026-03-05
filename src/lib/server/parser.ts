@@ -12,6 +12,7 @@ import { trackRules, cohortCodeRules, genericCodes } from './cohort-config';
 import { fnv1aHex } from './hash';
 import { makeLegendResolver, parseLegendEntries } from './legend';
 import { isMissingGermanName, sanitizeLabel, splitBilingualLabel } from './bilingual';
+import { toSlug } from '$lib/url-slug';
 import { parseDocument } from 'htmlparser2';
 import type { ChildNode, Element } from 'domhandler';
 
@@ -45,6 +46,26 @@ function preserveYearPrefixForGermanGroupCode(codeRu: string, codeDe: string): s
 	return `${year}-${normalizedDe}`;
 }
 
+function countNonEmptyLabels(labels: string[]): Map<string, number> {
+	const counts = new Map<string, number>();
+	for (const label of labels) {
+		if (!label) continue;
+		counts.set(label, (counts.get(label) ?? 0) + 1);
+	}
+	return counts;
+}
+
+function pickDisambiguatedLabel(
+	shortLabel: string,
+	fullLabel: string,
+	shortLabelCounts: Map<string, number>
+): string {
+	const base = shortLabel || fullLabel;
+	if (!base) return '';
+	if ((shortLabelCounts.get(shortLabel) ?? 0) > 1 && fullLabel) return fullLabel;
+	return base;
+}
+
 export function parseNavHtml(html: string): MetaPayload {
 	const weekSelectMatch = html.match(/<select\s+name="week"[\s\S]*?<\/select>/i);
 	if (!weekSelectMatch) throw new Error('Week select not found in navbar');
@@ -61,15 +82,57 @@ export function parseNavHtml(html: string): MetaPayload {
 	const classesMatch = html.match(/var\s+classes\s*=\s*\[([\s\S]*?)\];/i);
 	if (!classesMatch) throw new Error('Classes array not found in navbar');
 
-	const groups: GroupOption[] = parseJsStringArray(classesMatch[1]!).map((codeRaw, idx) => {
-		const codeRu = sanitizeLabel(stripParenSuffix(russianOnlyLabel(codeRaw)));
-		const codeDeRaw = sanitizeLabel(stripParenSuffix(germanOnlyLabel(codeRaw)));
+	const parsedGroups = parseJsStringArray(classesMatch[1]!).map((codeRaw, idx) => {
+		const cleanedCodeRaw = cleanText(codeRaw);
+		const codeRuFull = sanitizeLabel(russianOnlyLabel(cleanedCodeRaw));
+		const codeDeFull = sanitizeLabel(germanOnlyLabel(cleanedCodeRaw));
 		return {
 			id: idx + 1,
-			codeRaw: cleanText(codeRaw),
-			codeRu,
-			codeDe: preserveYearPrefixForGermanGroupCode(codeRu, codeDeRaw)
+			codeRaw: cleanedCodeRaw,
+			codeRuFull,
+			codeRuShort: sanitizeLabel(stripParenSuffix(codeRuFull)),
+			codeDeFull,
+			codeDeShort: sanitizeLabel(stripParenSuffix(codeDeFull))
 		};
+	});
+	const codeRuShortCounts = countNonEmptyLabels(parsedGroups.map((g) => g.codeRuShort));
+	const codeDeShortCounts = countNonEmptyLabels(parsedGroups.map((g) => g.codeDeShort));
+
+	let groups: GroupOption[] = parsedGroups.map((group) => {
+		const codeRu = pickDisambiguatedLabel(group.codeRuShort, group.codeRuFull, codeRuShortCounts);
+		const codeDeBase = pickDisambiguatedLabel(
+			group.codeDeShort,
+			group.codeDeFull,
+			codeDeShortCounts
+		);
+		return {
+			id: group.id,
+			codeRaw: group.codeRaw,
+			codeRu,
+			codeDe: preserveYearPrefixForGermanGroupCode(codeRu, codeDeBase)
+		};
+	});
+	const codeRuSlugCounts = countNonEmptyLabels(groups.map((group) => toSlug(group.codeRu)));
+	groups = groups.map((group, idx) => {
+		const fallback = parsedGroups[idx]!.codeRaw;
+		if ((codeRuSlugCounts.get(toSlug(group.codeRu)) ?? 0) <= 1) return group;
+		return { ...group, codeRu: fallback };
+	});
+
+	let codeDeCounts = countNonEmptyLabels(groups.map((group) => group.codeDe));
+	groups = groups.map((group, idx) => {
+		if ((codeDeCounts.get(group.codeDe) ?? 0) <= 1) return group;
+		const fullGerman = parsedGroups[idx]!.codeDeFull || parsedGroups[idx]!.codeDeShort;
+		const altCodeDe = preserveYearPrefixForGermanGroupCode(group.codeRu, fullGerman);
+		if (!altCodeDe || altCodeDe === group.codeDe) return group;
+		return { ...group, codeDe: altCodeDe };
+	});
+
+	codeDeCounts = countNonEmptyLabels(groups.map((group) => group.codeDe));
+	groups = groups.map((group, idx) => {
+		const fallback = parsedGroups[idx]!.codeRaw;
+		if ((codeDeCounts.get(group.codeDe) ?? 0) <= 1) return group;
+		return { ...group, codeDe: fallback };
 	});
 
 	return { weeks: weekOptions, groups };
