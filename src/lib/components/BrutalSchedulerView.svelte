@@ -8,6 +8,7 @@
 	import type { GroupOption, Cohort, LessonEvent, WeekOption } from '$lib/server/types';
 	import { buildSubjectColorMap } from '$lib/scheduler/subject-colors';
 	import { formatDateLabel } from '$lib/scheduler/date-format';
+	import { openCalendarSubscription, toWebcalLink } from '$lib/scheduler/calendar-link';
 	import type { SchedulerContext } from '$lib/scheduler/types';
 	import { BUTTON_ACTIVATION_DURATION_MS } from '$lib/ui-timing';
 	import {
@@ -195,8 +196,15 @@
 		isGeneratingLinks = true;
 		await tick();
 		try {
-			const textPromise = buildCalendarLink();
-			await copyCalendarLink(textPromise);
+			const calendarUrl = await buildCalendarLink();
+			const textPromise = Promise.resolve(calendarUrl);
+			const hasOpenedCalendar = openCalendarSubscription(toWebcalLink(calendarUrl));
+			try {
+				await copyCalendarLink(textPromise);
+			} catch (copyErr) {
+				// If protocol handoff already happened, clipboard failure should not fail the action.
+				if (!hasOpenedCalendar) throw copyErr;
+			}
 			copiedField = 'calendar';
 			calendarCopyState = 'success';
 			scheduleCalendarCopyStateReset(BUTTON_ACTIVATION_DURATION_MS);
