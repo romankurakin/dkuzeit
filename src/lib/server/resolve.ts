@@ -4,11 +4,18 @@ import type { GroupOption, WeekOption } from './types';
 
 export function resolveGroup(groups: GroupOption[], param: string): string {
 	if (!param) return groups[0]?.codeRaw ?? '';
-	const match = groups.find(
-		(g) =>
-			g.codeRaw === param || g.codeRu === param || g.codeDe === param || toSlug(g.codeRu) === param
-	);
-	return match?.codeRaw ?? '';
+	const exactRaw = groups.find((g) => g.codeRaw === param);
+	if (exactRaw) return exactRaw.codeRaw;
+
+	const exactRu = groups.find((g) => g.codeRu === param);
+	if (exactRu) return exactRu.codeRaw;
+
+	const exactDe = groups.find((g) => g.codeDe === param);
+	if (exactDe) return exactDe.codeRaw;
+
+	const bySlug = groups.filter((g) => toSlug(g.codeRu) === param);
+	if (bySlug.length === 1) return bySlug[0]!.codeRaw;
+	return '';
 }
 
 export function resolveWeekByDate(weeks: WeekOption[]): string {

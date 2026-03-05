@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parseNavHtml, parseTimetablePage } from '../../src/lib/server/parser';
+import { toSlug } from '../../src/lib/url-slug';
 
 interface Manifest {
 	weeks: string[];
@@ -71,12 +72,18 @@ suite('parser parse nav html', () => {
 		}
 	});
 
-	it('strip parenthesized suffixes from group labels', async () => {
+	it('keep parenthesized suffixes for colliding management groups', async () => {
 		const meta = await loadMeta();
-		for (const group of meta.groups) {
-			expect(group.codeRu).not.toMatch(/\(/);
-			expect(group.codeDe).not.toMatch(/\(/);
-		}
+		const ma = meta.groups.find((group) => group.codeRaw === '2-Мен(МА)/2-Man(MA)');
+		const main = meta.groups.find((group) => group.codeRaw === '2-Мен/Man');
+		expect(ma?.codeRu).toBe('2-Мен(МА)');
+		expect(main?.codeRu).toBe('2-Мен');
+	});
+
+	it('build unique slugs for group labels', async () => {
+		const meta = await loadMeta();
+		const slugs = meta.groups.map((group) => toSlug(group.codeRu));
+		expect(new Set(slugs).size).toBe(slugs.length);
 	});
 });
 

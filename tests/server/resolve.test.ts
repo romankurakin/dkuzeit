@@ -35,6 +35,42 @@ describe('resolve helpers', () => {
 		expect(resolveGroup(groups, 'unknown')).toBe('');
 	});
 
+	it('prefer exact matches over slug matches', () => {
+		const mixedGroups: GroupOption[] = [
+			{ id: 1, codeRaw: '2-men', codeRu: 'X', codeDe: 'X' },
+			{ id: 2, codeRaw: 'B', codeRu: '2-Мен', codeDe: '2-Man' }
+		];
+		expect(resolveGroup(mixedGroups, '2-men')).toBe('2-men');
+	});
+
+	it('resolve colliding management slugs to distinct groups', () => {
+		const collidingGroups: GroupOption[] = [
+			{
+				id: 21,
+				codeRaw: '2-Мен(МА)/2-Man(MA)',
+				codeRu: '2-Мен(МА)',
+				codeDe: '2-Man(MA)'
+			},
+			{
+				id: 22,
+				codeRaw: '2-Мен/Man',
+				codeRu: '2-Мен',
+				codeDe: '2-Man'
+			}
+		];
+
+		expect(resolveGroup(collidingGroups, '2-men')).toBe('2-Мен/Man');
+		expect(resolveGroup(collidingGroups, '2-menma')).toBe('2-Мен(МА)/2-Man(MA)');
+	});
+
+	it('return empty when slug lookup is ambiguous', () => {
+		const ambiguousGroups: GroupOption[] = [
+			{ id: 1, codeRaw: 'A', codeRu: '1-IM-IBE', codeDe: '1-IBE' },
+			{ id: 2, codeRaw: 'B', codeRu: '1-IM-IBE', codeDe: '1-IBE' }
+		];
+		expect(resolveGroup(ambiguousGroups, '1-im-ibe')).toBe('');
+	});
+
 	it('resolve week by explicit value or by date', () => {
 		vi.setSystemTime(new Date('2026-02-10T10:00:00Z'));
 		expect(resolveWeek(weeks, '03')).toBe('03');
