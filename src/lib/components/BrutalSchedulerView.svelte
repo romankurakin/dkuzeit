@@ -137,6 +137,18 @@
 		return calendarUrl.toString();
 	}
 
+	function toWebcalLink(calendarUrl: string): string {
+		return calendarUrl.replace(/^https?:\/\//i, 'webcal://');
+	}
+
+	function openCalendarSubscription(url: string): void {
+		try {
+			location.assign(url);
+		} catch {
+			// Opening protocol handlers is browser-dependent; ignore synchronous failures.
+		}
+	}
+
 	async function copyCalendarLink(textPromise: Promise<string>): Promise<void> {
 		if (typeof navigator.clipboard === 'undefined') {
 			throw new Error(m.api_error_calendar());
@@ -195,7 +207,9 @@
 		isGeneratingLinks = true;
 		await tick();
 		try {
-			const textPromise = buildCalendarLink();
+			const calendarUrl = await buildCalendarLink();
+			const textPromise = Promise.resolve(calendarUrl);
+			openCalendarSubscription(toWebcalLink(calendarUrl));
 			await copyCalendarLink(textPromise);
 			copiedField = 'calendar';
 			calendarCopyState = 'success';
