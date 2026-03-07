@@ -40,7 +40,7 @@ importers:
         version: 1.0.8(svelte@5.53.7)
       ts-ics:
         specifier: ^2.4.1
-        version: 2.4.1
+        version: 2.4.2
       workbox-core:
         specifier: ^7.4.0
         version: 7.4.0
@@ -4130,8 +4130,8 @@ packages:
     peerDependencies:
       typescript: '>=4.8.4'
 
-  ts-ics@2.4.1:
-    resolution: {integrity: sha512-7iI90sLYPukVuoS4zOEixDCG34wMU0S4KK87Tq81rDencS99qdU2qhXFYGidoXBx5L6kPG6n8ku3EKFKgcWMDg==}
+  ts-ics@2.4.2:
+    resolution: {integrity: sha512-wbrFDku/Vc7xx89zuIflPUpFvTFoL3vH9upM/KTPeI1GQ66zscg48v4vpfR6iwkkR+72T5F57l66ApiAbNitjw==}
 
   tslib@2.8.1:
     resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
@@ -8661,7 +8661,7 @@ snapshots:
     dependencies:
       typescript: 5.9.3
 
-  ts-ics@2.4.1:
+  ts-ics@2.4.2:
     dependencies:
       '@standard-schema/spec': 1.1.0
 
