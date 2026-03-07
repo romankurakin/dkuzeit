@@ -59,7 +59,7 @@ importers:
         version: 10.0.1(eslint@10.0.3(jiti@2.6.1))
       '@inlang/paraglide-js':
         specifier: ^2.13.1
-        version: 2.13.1
+        version: 2.13.2
       '@inlang/plugin-m-function-matcher':
         specifier: ^2.2.1
         version: 2.2.1
@@ -1172,8 +1172,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@inlang/paraglide-js@2.13.1':
-    resolution: {integrity: sha512-IsGm5gHmH6hVA9iwzvoRkt+Q9nrzX+6+G1nAmxODk/l+mpm0siPebfkXiu6DODSluFuHg0Q6fjXcDXAaqOen+Q==}
+  '@inlang/paraglide-js@2.13.2':
+    resolution: {integrity: sha512-ecxw95pmMbasVj7M/B6pu5wqYHomYQBcu3QzDl1svwAkbnRqRmsdrH4IizzFwqeVWd+uluibMIy1VOGywin94A==}
     hasBin: true
 
   '@inlang/plugin-m-function-matcher@2.2.1':
@@ -5592,7 +5592,7 @@ snapshots:
   '@img/sharp-win32-x64@0.34.5':
     optional: true
 
-  '@inlang/paraglide-js@2.13.1':
+  '@inlang/paraglide-js@2.13.2':
     dependencies:
       '@inlang/recommend-sherlock': 0.2.1
       '@inlang/sdk': 2.7.0
