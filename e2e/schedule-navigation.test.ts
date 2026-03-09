@@ -59,6 +59,8 @@ async function clickOption(option: Locator): Promise<void> {
 }
 
 test.describe('schedule navigation', () => {
+	test.use({ serviceWorkers: 'block' });
+
 	test('navigate on group change without crash', async ({ page }) => {
 		await page.goto('/');
 		const scheduleTable = page.getByRole('table');
