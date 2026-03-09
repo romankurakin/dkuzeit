@@ -1,10 +1,10 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { toSlug } from '../src/lib/url-slug';
 import { localizedMessageRegex } from './i18n';
 
 type MetaPayload = {
 	groups: Array<{ codeRaw: string; codeRu: string }>;
-	weeks: Array<{ value: string }>;
+	weeks: Array<{ value: string; label: string }>;
 };
 type SchedulePayload = { events: unknown[] };
 
@@ -50,6 +50,12 @@ async function setSelectionCookies(
 			sameSite: 'Lax' as const
 		}))
 	);
+}
+
+async function clickOption(option: Locator): Promise<void> {
+	await option.scrollIntoViewIfNeeded();
+	await expect(option).toBeVisible({ timeout: 5_000 });
+	await option.click();
 }
 
 test.describe('schedule navigation', () => {
@@ -139,6 +145,44 @@ test.describe('schedule navigation', () => {
 		expect(updatedHeader !== initialHeader || updatedBodySignature !== initialBodySignature).toBe(
 			true
 		);
+	});
+
+	test('keep the latest week selection when reload is already in flight', async ({ page }) => {
+		const metaResponse = await page.request.get('/api/meta');
+		expect(metaResponse.ok()).toBe(true);
+		const meta = (await metaResponse.json()) as MetaPayload;
+		const group = meta.groups[0];
+		const initialWeek = meta.weeks[0];
+		const laterWeeks = meta.weeks.slice(1, 3);
+		test.skip(!group || !initialWeek || laterWeeks.length < 2, 'Need at least three weeks');
+
+		const slug = groupSlug(meta, group!.codeRaw);
+		await setSelectionCookies(page, {
+			group: group!.codeRaw,
+			week: initialWeek!.value
+		});
+		await page.goto(`/${slug}`);
+		await expect(page.getByRole('table')).toBeVisible({ timeout: 15_000 });
+
+		let delayedRequestSeen = false;
+		await page.route(/\/__data\.json(?:\?|$)/, async (route) => {
+			if (!delayedRequestSeen) {
+				delayedRequestSeen = true;
+				await new Promise((resolve) => setTimeout(resolve, 700));
+			}
+			await route.continue();
+		});
+
+		const weekTrigger = page.getByRole('toolbar').locator('button[data-nav-select]').nth(1);
+		await expect(weekTrigger).toContainText(initialWeek!.label);
+
+		await weekTrigger.click();
+		await clickOption(page.getByRole('option', { name: laterWeeks[0]!.label }));
+		await weekTrigger.click();
+		await clickOption(page.getByRole('option', { name: laterWeeks[1]!.label }));
+
+		await expect.poll(() => delayedRequestSeen).toBe(true);
+		await expect(weekTrigger).toContainText(laterWeeks[1]!.label, { timeout: 15_000 });
 	});
 
 	test('strip state query params from URL', async ({ page }) => {
