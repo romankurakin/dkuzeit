@@ -68,7 +68,7 @@ importers:
         version: 4.3.0
       '@j178/prek':
         specifier: ^0.3.4
-        version: 0.3.4
+        version: 0.3.5
       '@playwright/test':
         specifier: ^1.58.2
         version: 1.58.2
@@ -1231,8 +1231,8 @@ packages:
     resolution: {integrity: sha512-AokJm4tuBHillT+FpMtxQ60n8ObyXBatq7jD2/JA9dxbDDokKQm8KMht5ibGzLVU9IJDIKK4TPKgMHEYMn3lMg==}
     engines: {node: '>=18'}
 
-  '@j178/prek@0.3.4':
-    resolution: {integrity: sha512-r0HU31ydtVfFcpfDZp054iHvZvPafTHfeRLjFxbO/QbU+yJ4muD5X1fgwojFHakqPW2rSNmFJrKpdCw/fia1DQ==}
+  '@j178/prek@0.3.5':
+    resolution: {integrity: sha512-AC8GTELWfi5KVn5ma/YUH1XLylRk+Uc4LnsqYSO8OzuaMh7vYOgMTBJoVmoQqv4Pu6iKsZnHwcm21X/ELAlm6g==}
     engines: {node: '>=14', npm: '>=6'}
     hasBin: true
 
@@ -5662,7 +5662,7 @@ snapshots:
 
   '@isaacs/cliui@9.0.0': {}
 
-  '@j178/prek@0.3.4':
+  '@j178/prek@0.3.5':
     dependencies:
       axios: 1.13.6
       axios-proxy-builder: 0.1.2
