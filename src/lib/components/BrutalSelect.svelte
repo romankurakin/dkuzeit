@@ -26,7 +26,7 @@
 	</span>
 	<Select.Root type="single" {value} {onValueChange} {items} {disabled}>
 		<Select.Trigger
-			data-nav-select
+			data-nav-select="true"
 			data-cohort-empty={empty || undefined}
 			data-loading={disabled || undefined}
 			autofocus={autofocus || undefined}
