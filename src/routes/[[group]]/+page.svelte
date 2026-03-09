@@ -24,6 +24,7 @@
 	let navigateTimer: ReturnType<typeof setTimeout> | null = null;
 	let pendingGroup: string | null = null;
 	let pendingCohorts = $state<string | null>(null);
+	let invalidating = false;
 
 	function clearGithubArmTimer(): void {
 		if (!githubArmTimer) return;
@@ -55,10 +56,21 @@
 			const target = resolve(schedulePath(group));
 			const current = page.url.pathname;
 			if (target === current) {
+				if (invalidating) {
+					// An invalidation is already in-flight; the .finally() handler will
+					// re-trigger flushNavigate() if pendingCohorts has changed by then.
+					return;
+				}
+				invalidating = true;
 				const cohortSnapshot = pendingCohorts;
 				void invalidateAll().finally(() => {
+					invalidating = false;
 					if (pendingCohorts === cohortSnapshot) {
 						pendingCohorts = null;
+					} else if (pendingCohorts !== null) {
+						// Cohorts changed while invalidation was in-flight; re-trigger
+						// so the latest selection is reflected.
+						flushNavigate();
 					}
 				});
 				return;
@@ -150,6 +162,7 @@
 
 	afterNavigate((nav) => {
 		pendingCohorts = null;
+		invalidating = false;
 		if (nav.type !== 'popstate' || !nav.to?.scroll) return;
 		const { x, y } = nav.to.scroll;
 		requestAnimationFrame(() => {
