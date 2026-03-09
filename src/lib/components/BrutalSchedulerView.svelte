@@ -138,7 +138,7 @@
 		return calendarUrl.toString();
 	}
 
-	async function copyCalendarLink(textPromise: Promise<string>): Promise<void> {
+	async function copyCalendarLink(text: string): Promise<void> {
 		if (typeof navigator.clipboard === 'undefined') {
 			throw new Error(m.api_error_calendar());
 		}
@@ -147,7 +147,7 @@
 			try {
 				await navigator.clipboard.write([
 					new ClipboardItem({
-						'text/plain': textPromise.then((text) => new Blob([text], { type: 'text/plain' }))
+						'text/plain': new Blob([text], { type: 'text/plain' })
 					})
 				]);
 				return;
@@ -157,7 +157,6 @@
 		}
 
 		if (typeof navigator.clipboard.writeText === 'function') {
-			const text = await textPromise;
 			await navigator.clipboard.writeText(text);
 			return;
 		}
@@ -197,10 +196,9 @@
 		await tick();
 		try {
 			const calendarUrl = await buildCalendarLink();
-			const textPromise = Promise.resolve(calendarUrl);
 			const hasOpenedCalendar = openCalendarSubscription(toWebcalLink(calendarUrl));
 			try {
-				await copyCalendarLink(textPromise);
+				await copyCalendarLink(calendarUrl);
 			} catch (copyErr) {
 				// If protocol handoff already happened, clipboard failure should not fail the action.
 				if (!hasOpenedCalendar) throw copyErr;
