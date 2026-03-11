@@ -161,6 +161,10 @@
 		githubArmed = false;
 	}
 
+	function throwBoundaryError(message: string): never {
+		throw new Error(message);
+	}
+
 	afterNavigate((nav) => {
 		pendingCohorts = null;
 		invalidating = false;
@@ -206,20 +210,10 @@
 	<meta name="twitter:description" content={m.meta_description()} />
 </svelte:head>
 
-{#if data.schedule.error}
-	<main
-		id="main-content"
-		class="bg-foreground text-background flex min-h-[calc(100dvh-8rem)] flex-col items-center justify-center p-8 text-center"
-	>
-		<h2 class="brutal-heading">
-			{m.upstream_down_title()}
-		</h2>
-		<p class="brutal-micro mt-section max-w-md">
-			{m.upstream_down_body()}
-		</p>
-	</main>
-{:else}
-	<svelte:boundary>
+<svelte:boundary>
+	{#if data.schedule.error}
+		{throwBoundaryError(m.upstream_down_body())}
+	{:else}
 		<div class="min-h-[calc(100dvh-8rem)]">
 			<BrutalSchedulerView
 				groups={data.meta.groups}
@@ -471,22 +465,21 @@
 				{/snippet}
 			</BrutalSchedulerView>
 		</div>
-
-		{#snippet failed()}
-			<main
-				id="main-content"
-				class="bg-foreground text-background flex min-h-[calc(100dvh-8rem)] flex-col items-center justify-center p-8 text-center"
-			>
-				<h2 class="brutal-heading">
-					{m.upstream_down_title()}
-				</h2>
-				<p class="brutal-micro mt-section max-w-md">
-					{m.upstream_down_body()}
-				</p>
-			</main>
-		{/snippet}
-	</svelte:boundary>
-{/if}
+	{/if}
+	{#snippet failed()}
+		<main
+			id="main-content"
+			class="bg-foreground text-background flex min-h-[calc(100dvh-8rem)] flex-col items-center justify-center p-8 text-center"
+		>
+			<h2 class="brutal-heading">
+				{m.upstream_down_title()}
+			</h2>
+			<p class="brutal-micro mt-section max-w-md">
+				{m.upstream_down_body()}
+			</p>
+		</main>
+	{/snippet}
+</svelte:boundary>
 
 <style>
 	.controls-toolbar {
