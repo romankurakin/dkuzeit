@@ -15,6 +15,7 @@ import {
 } from '$lib/server/problem';
 import { traceSerialize } from '$lib/server/tracing';
 import { verifyToken } from '$lib/server/token';
+import type { GroupWeekSchedule } from '$lib/server/types';
 import type { RequestHandler } from './$types';
 
 const CALENDAR_ROLLING_WEEKS = 4;
@@ -35,10 +36,14 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
 	}
 
 	const lang = payload.l === 'de' ? 'de' : 'ru';
-	const meta = await getMeta(locals?.dkuRequest);
-	const weeks = pickRollingWeeksForCalendar(meta.weeks, '', { windowSize: CALENDAR_ROLLING_WEEKS });
-	let schedules;
+	let meta: Awaited<ReturnType<typeof getMeta>>;
+	let weeks: ReturnType<typeof pickRollingWeeksForCalendar>;
+	let schedules: GroupWeekSchedule[];
 	try {
+		meta = await getMeta(locals?.dkuRequest);
+		weeks = pickRollingWeeksForCalendar(meta.weeks, '', {
+			windowSize: CALENDAR_ROLLING_WEEKS
+		});
 		schedules = await Promise.all(
 			weeks.map((week) =>
 				buildMergedSchedule(payload.g, week.value, payload.c, {

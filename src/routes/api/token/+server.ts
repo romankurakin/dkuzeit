@@ -1,7 +1,12 @@
 import { json } from '@sveltejs/kit';
 import { normalizeCohortList } from '$lib/server/cohorts';
 import { getMeta } from '$lib/server/dku';
-import { badRequestProblem, internalErrorProblem, notFoundProblem } from '$lib/server/problem';
+import {
+	badRequestProblem,
+	internalErrorProblem,
+	notFoundProblem,
+	serviceUnavailableProblem
+} from '$lib/server/problem';
 import { signToken } from '$lib/server/token';
 import type { UiLanguage } from '$lib/server/types';
 import type { RequestHandler } from './$types';
@@ -19,7 +24,12 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
 		return badRequestProblem('group is required', '/api/token');
 	}
 
-	const meta = await getMeta(locals?.dkuRequest);
+	let meta: Awaited<ReturnType<typeof getMeta>>;
+	try {
+		meta = await getMeta(locals?.dkuRequest);
+	} catch {
+		return serviceUnavailableProblem('Unable to load schedule metadata', '/api/token');
+	}
 	const week = body.week ?? meta.weeks[0]?.value;
 	if (!week) {
 		return badRequestProblem('week is required and source has no defaults', '/api/token');
