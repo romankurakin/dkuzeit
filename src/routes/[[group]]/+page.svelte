@@ -71,22 +71,26 @@
 				}
 				invalidating = true;
 				refreshQueued = false;
-				void invalidateAll().finally(() => {
-					invalidating = false;
-					if (refreshQueued) {
-						refreshQueued = false;
-						flushNavigate();
-						return;
-					}
-					pendingCohorts = null;
-				});
+				// Transient client fetch failures during reload should not surface as
+				// unhandled promise rejections; the user can retry from the current page.
+				void invalidateAll()
+					.catch(() => {})
+					.finally(() => {
+						invalidating = false;
+						if (refreshQueued) {
+							refreshQueued = false;
+							flushNavigate();
+							return;
+						}
+						pendingCohorts = null;
+					});
 				return;
 			}
-			goto(target, {
+			void goto(target, {
 				replaceState: true,
 				noScroll: true,
 				keepFocus: true
-			});
+			}).catch(() => {});
 		}, NAVIGATE_DEBOUNCE_MS);
 	}
 
