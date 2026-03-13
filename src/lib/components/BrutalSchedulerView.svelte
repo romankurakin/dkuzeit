@@ -69,6 +69,10 @@
 	const subjectColorMap = $derived(buildSubjectColorMap(displayEvents));
 
 	const timeSlots = $derived(extractTimeSlots(displayEvents));
+	const autoScrollTarget = $derived(resolveAutoScrollTarget(orderedDates, todayIso));
+	const autoScrollSignature = $derived(
+		`${resolvedGroup}:${resolvedWeek}:${todayIso}:${orderedDates.join('|')}`
+	);
 
 	const slotIndex = $derived.by(() => {
 		const idx = new SvelteMap<string, SvelteMap<string, LessonEvent[]>>();
@@ -87,6 +91,13 @@
 
 	function getSlotEvents(date: string, slotKey: string): LessonEvent[] {
 		return slotIndex.get(date)?.get(slotKey) ?? [];
+	}
+
+	function resolveAutoScrollTarget(orderedDates: string[], todayIso: string): string | null {
+		if (orderedDates.length === 0) return null;
+		return orderedDates.includes(todayIso)
+			? todayIso
+			: (orderedDates.findLast((date) => date <= todayIso) ?? orderedDates[0] ?? null);
 	}
 
 	const groupSelectItems = $derived(
@@ -217,19 +228,6 @@
 	onDestroy(() => {
 		if (calendarClearTimer) clearTimeout(calendarClearTimer);
 	});
-
-	// Auto-scroll to today on data load
-	$effect(() => {
-		if (orderedDates.length === 0) return;
-		const target = orderedDates.includes(todayIso)
-			? todayIso
-			: (orderedDates.findLast((d) => d <= todayIso) ?? orderedDates[0]);
-		void tick().then(() => {
-			const el =
-				document.getElementById(`day-mobile-${target}`) ?? document.getElementById(`day-${target}`);
-			el?.scrollIntoView({ behavior: 'auto', block: 'center', inline: 'center' });
-		});
-	});
 </script>
 
 {@render children({
@@ -247,6 +245,8 @@
 	calendarCopyState,
 	cohortWarningActive,
 	copiedField,
+	autoScrollTarget,
+	autoScrollSignature,
 	onGroupChange,
 	onWeekChange,
 	onCohortChange,

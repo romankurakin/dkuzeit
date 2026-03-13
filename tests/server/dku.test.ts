@@ -92,7 +92,7 @@ describe('dku helpers', () => {
 		parseNavHtmlMock.mockReturnValue(meta);
 
 		await expect(getMeta()).resolves.toEqual(meta);
-		expect(cachedMock).toHaveBeenCalledWith('meta', expect.any(Function));
+		expect(cachedMock).toHaveBeenCalledWith('meta', expect.any(Function), undefined);
 		expect(fetchTextMock).toHaveBeenCalledWith('frames/navbar.htm');
 		expect(parseNavHtmlMock).toHaveBeenCalledWith('<html>nav</html>');
 	});
@@ -121,7 +121,7 @@ describe('dku helpers', () => {
 			]
 		});
 
-		const merged = await buildMergedSchedule('1-CS', '05', [' WPM1 '], meta);
+		const merged = await buildMergedSchedule('1-CS', '05', [' WPM1 '], { meta });
 		expect(fetchTextMock).toHaveBeenCalledWith('05/c/c00001.htm');
 		expect(merged.events.map((item) => item.id)).toEqual(['core', 'selected', 'assess']);
 		expect(merged.cohorts.map((item) => item.code)).toEqual(['A1', 'WPM2']);
@@ -133,8 +133,12 @@ describe('dku helpers', () => {
 			groups: [{ id: 1, codeRaw: '1-CS', codeRu: '1-КС', codeDe: '1-KS' }]
 		};
 
-		await expect(buildMergedSchedule('1-CS', '99', [], meta)).rejects.toThrow('Unknown week: 99');
-		await expect(buildMergedSchedule('404', '05', [], meta)).rejects.toThrow('Unknown group: 404');
+		await expect(buildMergedSchedule('1-CS', '99', [], { meta })).rejects.toThrow(
+			'Unknown week: 99'
+		);
+		await expect(buildMergedSchedule('404', '05', [], { meta })).rejects.toThrow(
+			'Unknown group: 404'
+		);
 	});
 
 	it('build calendar title and pick rolling weeks', () => {

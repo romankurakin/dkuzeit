@@ -6,6 +6,7 @@
 	import { BUTTON_ACTIVATION_DURATION_MS, NAVIGATE_DEBOUNCE_MS } from '$lib/ui-timing';
 	import { m } from '$lib/paraglide/messages';
 	import { getLocale, localizeHref } from '$lib/paraglide/runtime';
+	import { fromAction } from 'svelte/attachments';
 	import { toSlug } from '$lib/url-slug';
 	import { navigating, page } from '$app/state';
 	import { afterNavigate, goto, invalidateAll } from '$app/navigation';
@@ -26,6 +27,11 @@
 	let pendingCohorts = $state<string | null>(null);
 	let invalidating = false;
 	let refreshQueued = false;
+
+	type AutoScrollArgs = {
+		active: boolean;
+		signature: string;
+	};
 
 	function clearGithubArmTimer(): void {
 		if (!githubArmTimer) return;
@@ -165,6 +171,36 @@
 		throw new Error(message);
 	}
 
+	function scrollIntoViewWhenActive(node: HTMLElement, args: AutoScrollArgs) {
+		let lastSignature = '';
+
+		function sync(next: AutoScrollArgs) {
+			if (!next.active || next.signature === lastSignature || node.getClientRects().length === 0) {
+				return;
+			}
+
+			lastSignature = next.signature;
+			node.scrollIntoView({ behavior: 'auto', block: 'center', inline: 'center' });
+		}
+
+		sync(args);
+
+		return {
+			update: sync
+		};
+	}
+
+	function autoScrollAttachment(date: string, target: string | null, signature: string) {
+		return fromAction(scrollIntoViewWhenActive, () => ({
+			active: date === target,
+			signature
+		}));
+	}
+
+	function daySurfaceClass(base: string, isToday: boolean) {
+		return [base, isToday ? 'bg-foreground text-background' : 'bg-muted-surface'];
+	}
+
 	afterNavigate((nav) => {
 		pendingCohorts = null;
 		invalidating = false;
@@ -183,12 +219,6 @@
 	onDestroy(() => {
 		clearGithubArmTimer();
 		clearNavigateTimer();
-	});
-
-	$effect(() => {
-		if (!page.params.group) return;
-		setClientCookieIfChanged(groupSelectionCookie, data.schedule.resolvedGroup);
-		setClientCookieIfChanged(cohortsSelectionCookie, cohortsCsv);
 	});
 </script>
 
@@ -236,7 +266,7 @@
 							aria-orientation="horizontal"
 							aria-label={`${m.group_label()}, ${m.week_label()}`}
 							class="controls-toolbar brutal-border-b pb-section brutal-shell-inset"
-							style={`--grid-days:${Math.max(ctx.orderedDates.length, 1)};`}
+							style:--grid-days={Math.max(ctx.orderedDates.length, 1)}
 							onkeydown={handleToolbarKeydown}
 						>
 							<BrutalSelect
@@ -283,10 +313,15 @@
 											{#each ctx.orderedDates as date (date)}
 												<th
 													id="day-{date}"
-													class="brutal-micro brutal-border-l p-3 text-left"
-													class:bg-foreground={ctx.isToday(date)}
-													class:text-background={ctx.isToday(date)}
-													class:bg-muted-surface={!ctx.isToday(date)}
+													class={daySurfaceClass(
+														'brutal-micro brutal-border-l p-3 text-left',
+														ctx.isToday(date)
+													)}
+													{@attach autoScrollAttachment(
+														date,
+														ctx.autoScrollTarget,
+														ctx.autoScrollSignature
+													)}
 												>
 													{ctx.formatDateLabel(date)}
 												</th>
@@ -309,10 +344,11 @@
 															? ctx.subjectColorMap.get(subjectColorKey(slotEvents[0]!))
 															: undefined}
 													<td
-														class="brutal-border-l p-0 {slotEvents.length === 0
-															? 'bg-muted-surface'
-															: ''}"
-														style={firstColor ? `background: ${cv(firstColor)};` : ''}
+														class={[
+															'brutal-border-l schedule-slot-cell p-0',
+															slotEvents.length === 0 && 'bg-muted-surface'
+														]}
+														style:--slot-color={firstColor ? cv(firstColor) : undefined}
 													>
 														{#if slotEvents.length === 0}
 															<span class="sr-only">{m.empty_slot()}</span>
@@ -320,12 +356,14 @@
 														{#each slotEvents as event, ei (event.id)}
 															{@const color = ctx.subjectColorMap.get(subjectColorKey(event))}
 															<div
-																class="brutal-cell p-control {ei > 0
-																	? 'border-border border-t'
-																	: ''} {!color ? 'bg-muted-surface text-muted-text' : ''}"
-																style={slotEvents.length > 1 && color
-																	? `background: ${cv(color)};`
-																	: ''}
+																class={[
+																	'brutal-cell p-control schedule-slot-event',
+																	ei > 0 && 'border-border border-t',
+																	!color && 'bg-muted-surface text-muted-text'
+																]}
+																style:--event-color={slotEvents.length > 1 && color
+																	? cv(color)
+																	: undefined}
 															>
 																<div class="text-xs leading-tight font-bold">
 																	{ctx.eventTitleLabel(event)}
@@ -352,20 +390,28 @@
 
 							<div class="lg:hidden">
 								{#each ctx.orderedDates as date, i (date)}
-									<div id="day-mobile-{date}" class={i > 0 ? 'brutal-border-t' : ''}>
+									<div
+										id="day-mobile-{date}"
+										class={i > 0 ? 'brutal-border-t' : ''}
+										{@attach autoScrollAttachment(
+											date,
+											ctx.autoScrollTarget,
+											ctx.autoScrollSignature
+										)}
+									>
 										<div
-											class="brutal-micro sticky top-0 z-10 p-3"
-											class:bg-foreground={ctx.isToday(date)}
-											class:text-background={ctx.isToday(date)}
-											class:bg-muted-surface={!ctx.isToday(date)}
+											class={daySurfaceClass(
+												'brutal-micro sticky top-0 z-10 p-3',
+												ctx.isToday(date)
+											)}
 										>
 											{ctx.formatDateLabel(date)}
 										</div>
 										{#each ctx.groupedEvents[date] ?? [] as event (event.id)}
 											{@const color = ctx.subjectColorMap.get(subjectColorKey(event))}
 											<div
-												class="brutal-cell-mobile border-border flex items-start gap-3 border-t p-3"
-												style={color ? `background: ${cv(color)};` : ''}
+												class="brutal-cell-mobile border-border schedule-mobile-event flex items-start gap-3 border-t p-3"
+												style:--event-color={color ? cv(color) : undefined}
 											>
 												<div
 													class="w-16 shrink-0 pt-0.5 text-xs font-bold {color
@@ -407,43 +453,52 @@
 									target="_blank"
 									rel="noopener noreferrer"
 									title={githubArmed ? m.source_code() : `${m.source_code()} ×2`}
-									class="brutal-link brutal-control brutal-control-icon brutal-focus relative overflow-hidden"
-									class:github-arm-shell={githubArmed}
+									class={[
+										'brutal-link brutal-control brutal-control-icon brutal-focus relative overflow-hidden',
+										githubArmed && 'github-arm-shell'
+									]}
 									onclick={handleGithubClick}
 								>
 									<span class="sr-only">{m.source_code()}</span>
 									<span
 										aria-hidden="true"
-										class="pixel-icon pixel-icon-mask"
-										class:github-arm-icon={githubArmed}
+										class={['pixel-icon pixel-icon-mask', githubArmed && 'github-arm-icon']}
 										style="--pixel-icon: url('/icons/pixel-github.svg')"
 									></span>
 									<span
 										aria-hidden="true"
-										class="pointer-events-none absolute inset-0 block"
-										class:github-arm-scan={githubArmed}
+										class={[
+											'pointer-events-none absolute inset-0 block',
+											githubArmed && 'github-arm-scan'
+										]}
 									></span>
 								</a>
 								<button
 									type="button"
-									class="brutal-link brutal-control brutal-control-icon brutal-focus relative overflow-hidden"
-									class:calendar-copy-shell-pending={ctx.calendarCopyState === 'pending'}
+									class={[
+										'brutal-link brutal-control brutal-control-icon brutal-focus relative overflow-hidden',
+										ctx.calendarCopyState === 'pending' && 'calendar-copy-shell-pending'
+									]}
 									disabled={ctx.isGeneratingLinks || ctx.cohortWarningActive}
 									onclick={ctx.onCopyCalendarLink}
 								>
 									<span class="sr-only">{m.copy_calendar_link()}</span>
 									<span
 										aria-hidden="true"
-										class="pixel-icon pixel-icon-mask"
-										class:text-poison={ctx.calendarCopyState !== 'idle'}
-										class:calendar-copy-icon-pending={ctx.calendarCopyState === 'pending'}
-										class:calendar-copy-icon-success={ctx.calendarCopyState === 'success'}
+										class={[
+											'pixel-icon pixel-icon-mask',
+											ctx.calendarCopyState !== 'idle' && 'text-poison',
+											ctx.calendarCopyState === 'pending' && 'calendar-copy-icon-pending',
+											ctx.calendarCopyState === 'success' && 'calendar-copy-icon-success'
+										]}
 										style="--pixel-icon: url('/icons/pixel-apple.svg')"
 									></span>
 									<span
 										aria-hidden="true"
-										class="calendar-copy-flash pointer-events-none absolute inset-0 block"
-										class:calendar-copy-flash-active={ctx.calendarCopyState === 'success'}
+										class={[
+											'calendar-copy-flash pointer-events-none absolute inset-0 block',
+											ctx.calendarCopyState === 'success' && 'calendar-copy-flash-active'
+										]}
 									></span>
 								</button>
 								<span class="sr-only" role="status" aria-live="polite">
@@ -488,6 +543,15 @@
 		flex-wrap: wrap;
 		gap: 0.75rem;
 		align-items: flex-end;
+	}
+
+	.schedule-slot-cell {
+		background: var(--slot-color);
+	}
+
+	.schedule-slot-event,
+	.schedule-mobile-event {
+		background: var(--event-color);
 	}
 
 	@keyframes github-arm-shell-kf {

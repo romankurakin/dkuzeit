@@ -4,8 +4,8 @@ import type { RequestHandler } from './$types';
 
 const ORIGIN = 'https://dkuzeit.net';
 
-export const GET: RequestHandler = async () => {
-	const meta = await getMeta();
+export const GET: RequestHandler = async ({ locals }) => {
+	const meta = await getMeta(locals?.dkuRequest);
 
 	const groupSlugs = meta.groups.map((g) => toSlug(g.codeRu));
 

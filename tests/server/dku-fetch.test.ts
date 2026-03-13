@@ -8,7 +8,13 @@ vi.mock('../../src/lib/server/tracing', () => ({
 	traceCacheGet: traceCacheGetMock
 }));
 
-import { BASE_URL, cached, fetchText, setCacheVersion } from '../../src/lib/server/dku-fetch';
+import {
+	BASE_URL,
+	CACHE_NAMESPACE_VERSION,
+	cached,
+	createDkuRequestContext,
+	fetchText
+} from '../../src/lib/server/dku-fetch';
 
 type CacheApi = {
 	default: {
@@ -17,11 +23,12 @@ type CacheApi = {
 	};
 };
 
+const TEST_BUILD_ID = 'current-build';
+
 describe('dku fetch cache helpers', () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
 		delete (globalThis as unknown as { caches?: unknown }).caches;
-		setCacheVersion('');
 	});
 
 	it('return cache hit without running compute', async () => {
@@ -29,13 +36,15 @@ describe('dku fetch cache helpers', () => {
 		const put = vi.fn().mockResolvedValue(undefined);
 		(globalThis as unknown as { caches?: CacheApi }).caches = { default: { match, put } };
 		traceCacheGetMock.mockImplementation(async (_key, fn) => fn(() => {}));
-		setCacheVersion('v1');
+		const request = createDkuRequestContext(TEST_BUILD_ID);
 
 		const compute = vi.fn(async () => ({ ok: false }));
-		await expect(cached('meta key', compute)).resolves.toEqual({ ok: true });
+		await expect(cached('meta key', compute, request)).resolves.toEqual({ ok: true });
 
 		expect(compute).not.toHaveBeenCalled();
-		expect(match).toHaveBeenCalledWith(`${BASE_URL}/_cache/v1/${encodeURIComponent('meta key')}`);
+		expect(match).toHaveBeenCalledWith(
+			`${BASE_URL}/_cache/${CACHE_NAMESPACE_VERSION}-${TEST_BUILD_ID}/${encodeURIComponent('meta key')}`
+		);
 		expect(put).not.toHaveBeenCalled();
 	});
 
@@ -44,7 +53,7 @@ describe('dku fetch cache helpers', () => {
 		const put = vi.fn().mockResolvedValue(undefined);
 		(globalThis as unknown as { caches?: CacheApi }).caches = { default: { match, put } };
 		traceCacheGetMock.mockImplementation(async (_key, fn) => fn(() => {}));
-		setCacheVersion('v2');
+		const request = createDkuRequestContext(TEST_BUILD_ID);
 
 		const compute = vi.fn(async () => {
 			await new Promise((resolve) => setTimeout(resolve, 5));
@@ -52,13 +61,15 @@ describe('dku fetch cache helpers', () => {
 		});
 
 		const [left, right] = await Promise.all([
-			cached('same-key', compute),
-			cached('same-key', compute)
+			cached('same-key', compute, request),
+			cached('same-key', compute, request)
 		]);
 		expect(left).toEqual({ value: 7 });
 		expect(right).toEqual({ value: 7 });
 		expect(compute).toHaveBeenCalledTimes(1);
-		expect(match).toHaveBeenCalledWith(`${BASE_URL}/_cache/v2/${encodeURIComponent('same-key')}`);
+		expect(match).toHaveBeenCalledWith(
+			`${BASE_URL}/_cache/${CACHE_NAMESPACE_VERSION}-${TEST_BUILD_ID}/${encodeURIComponent('same-key')}`
+		);
 		expect(put).toHaveBeenCalledTimes(2);
 	});
 

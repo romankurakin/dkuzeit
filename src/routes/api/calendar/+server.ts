@@ -19,7 +19,7 @@ import type { RequestHandler } from './$types';
 
 const CALENDAR_ROLLING_WEEKS = 4;
 
-export const GET: RequestHandler = async ({ url, platform }) => {
+export const GET: RequestHandler = async ({ url, platform, locals }) => {
 	const token = url.searchParams.get('token');
 	if (!token) {
 		return badRequestProblem('Missing token', '/api/calendar');
@@ -35,12 +35,17 @@ export const GET: RequestHandler = async ({ url, platform }) => {
 	}
 
 	const lang = payload.l === 'de' ? 'de' : 'ru';
-	const meta = await getMeta();
+	const meta = await getMeta(locals?.dkuRequest);
 	const weeks = pickRollingWeeksForCalendar(meta.weeks, '', { windowSize: CALENDAR_ROLLING_WEEKS });
 	let schedules;
 	try {
 		schedules = await Promise.all(
-			weeks.map((week) => buildMergedSchedule(payload.g, week.value, payload.c, meta))
+			weeks.map((week) =>
+				buildMergedSchedule(payload.g, week.value, payload.c, {
+					meta,
+					request: locals?.dkuRequest
+				})
+			)
 		);
 	} catch (error) {
 		if (isUnknownEntityError(error)) {

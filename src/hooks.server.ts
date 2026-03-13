@@ -4,7 +4,7 @@ import * as Sentry from '@sentry/sveltekit';
 import { sequence } from '@sveltejs/kit/hooks';
 import { paraglideMiddleware } from '$lib/paraglide/server';
 import { sentryConfig } from '$lib/sentry';
-import { setCacheVersion } from '$lib/server/dku-fetch';
+import { createDkuRequestContext } from '$lib/server/dku-fetch';
 
 const SECURITY_HEADERS: Record<string, string> = {
 	'X-Frame-Options': 'DENY',
@@ -23,15 +23,10 @@ const securityHeadersHandle: Handle = async ({ event, resolve }) => {
 	return response;
 };
 
-let versionSet = false;
-const versionHandle: Handle = ({ event, resolve }) => {
-	if (!versionSet) {
-		const id = event.platform?.env?.CF_VERSION_METADATA?.id;
-		if (id) {
-			setCacheVersion(id);
-			versionSet = true;
-		}
-	}
+const requestContextHandle: Handle = ({ event, resolve }) => {
+	event.locals.dkuRequest = createDkuRequestContext(
+		event.platform?.env?.CF_VERSION_METADATA?.id ?? ''
+	);
 	return resolve(event);
 };
 
@@ -46,7 +41,7 @@ const paraglideHandle: Handle = ({ event, resolve }) =>
 export const handle = sequence(
 	initCloudflareSentryHandle(sentryConfig),
 	sentryHandle(),
-	versionHandle,
+	requestContextHandle,
 	paraglideHandle,
 	securityHeadersHandle
 );

@@ -1,4 +1,5 @@
 import 'vite-plugin-pwa/info';
+import type { DkuRequestContext } from '$lib/server/dku-fetch';
 
 declare global {
 	namespace App {
@@ -7,6 +8,10 @@ declare global {
 				TOKEN_SECRET?: string;
 				CF_VERSION_METADATA?: { id: string; tag: string; timestamp: string };
 			};
+		}
+
+		interface Locals {
+			dkuRequest?: DkuRequestContext;
 		}
 	}
 

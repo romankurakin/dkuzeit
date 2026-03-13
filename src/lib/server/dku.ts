@@ -2,7 +2,7 @@ import { cleanText } from './text';
 import { parseNavHtml, parseTimetablePage } from './parser';
 import type { GroupWeekSchedule, LessonEvent, MetaPayload, WeekOption } from './types';
 import { todayInAlmaty } from './time';
-import { cached, fetchText } from './dku-fetch';
+import { cached, fetchText, type DkuRequestContext } from './dku-fetch';
 import { traceFn } from './tracing';
 
 export { CLIENT_CACHE_HEADER, CLIENT_TTL_SECONDS } from './dku-fetch';
@@ -12,33 +12,47 @@ export function isUnknownEntityError(err: unknown): boolean {
 	return /^Unknown (group|week): /.test(err.message);
 }
 
-export async function getMeta(): Promise<MetaPayload> {
-	return cached('meta', async () => {
-		const html = await fetchText('frames/navbar.htm');
-		return parseNavHtml(html);
-	});
+export interface DkuRequestOptions {
+	meta?: MetaPayload;
+	request?: DkuRequestContext;
+}
+
+export async function getMeta(request?: DkuRequestContext): Promise<MetaPayload> {
+	return cached(
+		'meta',
+		async () => {
+			const html = await fetchText('frames/navbar.htm');
+			return parseNavHtml(html);
+		},
+		request
+	);
 }
 
 async function getSchedule(
 	meta: MetaPayload,
 	groupCode: string,
-	weekValue: string
+	weekValue: string,
+	request?: DkuRequestContext
 ): Promise<GroupWeekSchedule> {
 	const week = meta.weeks.find((w) => w.value === weekValue);
 	if (!week) throw new Error(`Unknown week: ${weekValue}`);
 	const group = meta.groups.find((g) => g.codeRaw === groupCode || g.codeRu === groupCode);
 	if (!group) throw new Error(`Unknown group: ${groupCode}`);
 
-	return cached(`schedule:${week.value}:${group.id}`, async () => {
-		const path = `${week.value}/c/c${String(group.id).padStart(5, '0')}.htm`;
-		const html = await fetchText(path);
-		const parsed = await traceFn(
-			'parseTimetablePage',
-			{ group: group.codeRaw, week: week.value },
-			() => parseTimetablePage(html, group, week)
-		);
-		return { group, week, events: parsed.events, cohorts: parsed.cohorts };
-	});
+	return cached(
+		`schedule:${week.value}:${group.id}`,
+		async () => {
+			const path = `${week.value}/c/c${String(group.id).padStart(5, '0')}.htm`;
+			const html = await fetchText(path);
+			const parsed = await traceFn(
+				'parseTimetablePage',
+				{ group: group.codeRaw, week: week.value },
+				() => parseTimetablePage(html, group, week)
+			);
+			return { group, week, events: parsed.events, cohorts: parsed.cohorts };
+		},
+		request
+	);
 }
 
 const ASSESSMENT_RE =
@@ -54,10 +68,10 @@ export async function buildMergedSchedule(
 	groupCode: string,
 	weekValue: string,
 	selectedCohorts: string[],
-	meta?: MetaPayload
+	opts: DkuRequestOptions = {}
 ): Promise<GroupWeekSchedule> {
-	const resolvedMeta = meta ?? (await getMeta());
-	const core = await getSchedule(resolvedMeta, groupCode, weekValue);
+	const resolvedMeta = opts.meta ?? (await getMeta(opts.request));
+	const core = await getSchedule(resolvedMeta, groupCode, weekValue, opts.request);
 	const cohorts = [...core.cohorts].sort(
 		(a, b) => a.track.localeCompare(b.track) || a.code.localeCompare(b.code)
 	);
