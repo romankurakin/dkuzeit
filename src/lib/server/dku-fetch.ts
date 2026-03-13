@@ -1,10 +1,22 @@
 import { traceCacheGet } from './tracing';
 
 export const BASE_URL = 'https://timetable.dku.kz';
+export const CACHE_NAMESPACE_VERSION = 'v2';
 
-let cacheVersion = '';
-export function setCacheVersion(v: string) {
-	cacheVersion = v;
+function buildCacheNamespace(buildId = ''): string {
+	return buildId ? `${CACHE_NAMESPACE_VERSION}-${buildId}` : CACHE_NAMESPACE_VERSION;
+}
+
+export interface DkuRequestContext {
+	cacheNamespace: string;
+	inflight: Map<string, Promise<unknown>>;
+}
+
+export function createDkuRequestContext(buildId = ''): DkuRequestContext {
+	return {
+		cacheNamespace: buildCacheNamespace(buildId),
+		inflight: new Map()
+	};
 }
 
 // Worst case staleness is EDGE_TTL + CLIENT_TTL
@@ -13,11 +25,13 @@ export const CLIENT_TTL_SECONDS = 1800;
 const SWR_SECONDS = EDGE_TTL_SECONDS - CLIENT_TTL_SECONDS;
 export const CLIENT_CACHE_HEADER = `public, max-age=${CLIENT_TTL_SECONDS}, stale-while-revalidate=${SWR_SECONDS}`;
 
-const inflight = new Map<string, Promise<unknown>>();
-
-export async function cached<T>(key: string, compute: () => Promise<T>): Promise<T> {
+export async function cached<T>(
+	key: string,
+	compute: () => Promise<T>,
+	request?: DkuRequestContext
+): Promise<T> {
 	const cache = typeof caches !== 'undefined' ? caches.default : null;
-	const url = `${BASE_URL}/_cache/${cacheVersion}/${encodeURIComponent(key)}`;
+	const url = `${BASE_URL}/_cache/${request?.cacheNamespace ?? CACHE_NAMESPACE_VERSION}/${encodeURIComponent(key)}`;
 
 	if (cache) {
 		const hit = await traceCacheGet(key, async (setHit) => {
@@ -36,10 +50,11 @@ export async function cached<T>(key: string, compute: () => Promise<T>): Promise
 		if (hit !== undefined) return hit;
 	}
 
-	let pending = inflight.get(key) as Promise<T> | undefined;
+	const inflight = request?.inflight;
+	let pending = inflight?.get(key) as Promise<T> | undefined;
 	if (!pending) {
-		pending = compute().finally(() => inflight.delete(key));
-		inflight.set(key, pending);
+		pending = compute().finally(() => inflight?.delete(key));
+		inflight?.set(key, pending);
 	}
 	const value = await pending;
 

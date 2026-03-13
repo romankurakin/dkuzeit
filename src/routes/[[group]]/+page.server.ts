@@ -13,8 +13,8 @@ import {
 } from '$lib/persistence/selection-cookies';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ params, url, setHeaders, cookies }) => {
-	const meta = await getMeta();
+export const load: PageServerLoad = async ({ params, url, setHeaders, cookies, locals }) => {
+	const meta = await getMeta(locals?.dkuRequest);
 	const stateQueryKeys = ['group', 'week', 'cohorts'] as const;
 	if (stateQueryKeys.some((key) => url.searchParams.has(key))) {
 		const rest = new URLSearchParams(url.searchParams);
@@ -89,7 +89,10 @@ export const load: PageServerLoad = async ({ params, url, setHeaders, cookies })
 	}
 
 	try {
-		const merged = await buildMergedSchedule(groupCode, weekValue, [], meta);
+		const merged = await buildMergedSchedule(groupCode, weekValue, [], {
+			meta,
+			request: locals?.dkuRequest
+		});
 		return {
 			todayIso,
 			meta: metaPayload,

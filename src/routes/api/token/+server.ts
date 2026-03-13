@@ -6,7 +6,7 @@ import { signToken } from '$lib/server/token';
 import type { UiLanguage } from '$lib/server/types';
 import type { RequestHandler } from './$types';
 
-export const POST: RequestHandler = async ({ request, platform }) => {
+export const POST: RequestHandler = async ({ request, platform, locals }) => {
 	let payload: unknown;
 	try {
 		payload = await request.json();
@@ -19,7 +19,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 		return badRequestProblem('group is required', '/api/token');
 	}
 
-	const meta = await getMeta();
+	const meta = await getMeta(locals?.dkuRequest);
 	const week = body.week ?? meta.weeks[0]?.value;
 	if (!week) {
 		return badRequestProblem('week is required and source has no defaults', '/api/token');

@@ -30,6 +30,8 @@ export interface SchedulerContext {
 	calendarCopyState: 'idle' | 'pending' | 'success';
 	cohortWarningActive: boolean;
 	copiedField: 'site' | 'calendar' | null;
+	autoScrollTarget: string | null;
+	autoScrollSignature: string;
 
 	onGroupChange: (value: string) => void;
 	onWeekChange: (value: string) => void;

@@ -9,13 +9,13 @@ import { parseCohortsCsv } from '$lib/server/cohorts';
 import { badRequestProblem, notFoundProblem, serviceUnavailableProblem } from '$lib/server/problem';
 import type { RequestHandler } from './$types';
 
-export const GET: RequestHandler = async ({ url }) => {
+export const GET: RequestHandler = async ({ url, locals }) => {
 	const group = url.searchParams.get('group');
 	if (!group) {
 		return badRequestProblem('group query parameter is required', '/api/schedule');
 	}
 
-	const meta = await getMeta();
+	const meta = await getMeta(locals?.dkuRequest);
 	const week = url.searchParams.get('week') ?? meta.weeks[0]?.value;
 	if (!week) {
 		return serviceUnavailableProblem('No weeks available in source timetable', '/api/schedule');
@@ -24,7 +24,10 @@ export const GET: RequestHandler = async ({ url }) => {
 	const cohorts = parseCohortsCsv(url.searchParams.get('cohorts'));
 
 	try {
-		const schedule = await buildMergedSchedule(group, week, cohorts, meta);
+		const schedule = await buildMergedSchedule(group, week, cohorts, {
+			meta,
+			request: locals?.dkuRequest
+		});
 		return json(
 			{ cohorts: schedule.cohorts, events: schedule.events },
 			{ headers: { 'cache-control': CLIENT_CACHE_HEADER } }
