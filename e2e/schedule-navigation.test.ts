@@ -187,6 +187,52 @@ test.describe('schedule navigation', () => {
 		await expect(weekTrigger).toContainText(laterWeeks[1]!.label, { timeout: 15_000 });
 	});
 
+	test('do not raise an unhandled error when same-route reload fetch fails', async ({ page }) => {
+		const metaResponse = await page.request.get('/api/meta');
+		expect(metaResponse.ok()).toBe(true);
+		const meta = (await metaResponse.json()) as MetaPayload;
+		const group = meta.groups[0];
+		const initialWeek = meta.weeks[0];
+		const nextWeek = meta.weeks[1];
+		test.skip(!group || !initialWeek || !nextWeek, 'Need at least one group and two weeks');
+
+		const slug = groupSlug(meta, group!.codeRaw);
+		await setSelectionCookies(page, {
+			group: group!.codeRaw,
+			week: initialWeek!.value
+		});
+		await page.goto(`/${slug}`);
+		await expect(page.getByRole('table')).toBeVisible({ timeout: 15_000 });
+
+		const pageErrors: string[] = [];
+		page.on('pageerror', (error) => {
+			pageErrors.push(error.message);
+		});
+
+		let abortedReload = false;
+		await page.route(/\/__data\.json\?x-sveltekit-invalidated=/, async (route) => {
+			if (!abortedReload) {
+				abortedReload = true;
+				await route.abort('failed');
+				return;
+			}
+			await route.continue();
+		});
+
+		const weekTrigger = page.getByRole('toolbar').locator('button[data-nav-select]').nth(1);
+		await expect(weekTrigger).toContainText(initialWeek!.label);
+		await weekTrigger.click();
+		await clickOption(page.getByRole('option', { name: nextWeek!.label }));
+
+		await expect.poll(() => abortedReload).toBe(true);
+		await expect(page.getByRole('heading', { level: 2 })).toContainText(
+			localizedMessageRegex('upstream_down_title'),
+			{ timeout: 15_000 }
+		);
+		await page.waitForTimeout(300);
+		expect(pageErrors).toEqual([]);
+	});
+
 	test('strip state query params from URL', async ({ page }) => {
 		const metaResponse = await page.request.get('/api/meta');
 		expect(metaResponse.ok()).toBe(true);
