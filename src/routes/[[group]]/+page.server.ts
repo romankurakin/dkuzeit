@@ -14,7 +14,24 @@ import {
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params, url, setHeaders, cookies, locals }) => {
-	const meta = await getMeta(locals?.dkuRequest);
+	let meta: Awaited<ReturnType<typeof getMeta>>;
+	try {
+		meta = await getMeta(locals?.dkuRequest);
+	} catch {
+		setHeaders({ 'cache-control': 'private, no-store' });
+		return {
+			todayIso: todayInAlmaty(),
+			meta: { groups: [], weeks: [], resolvedWeek: '' },
+			schedule: {
+				events: [],
+				cohorts: [],
+				resolvedGroup: '',
+				resolvedWeek: '',
+				selectedCohortsCsv: getServerCookieValue(cookies, cohortsSelectionCookie),
+				error: true
+			}
+		};
+	}
 	const stateQueryKeys = ['group', 'week', 'cohorts'] as const;
 	if (stateQueryKeys.some((key) => url.searchParams.has(key))) {
 		const rest = new URLSearchParams(url.searchParams);

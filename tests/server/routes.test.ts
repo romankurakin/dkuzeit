@@ -87,6 +87,14 @@ function useUpstreamStubs(
 	);
 }
 
+function useNavbarAbort() {
+	server.use(
+		http.get('https://timetable.dku.kz/frames/navbar.htm', () => {
+			throw new DOMException('The operation was aborted.', 'AbortError');
+		})
+	);
+}
+
 describe('routes via msw', () => {
 	it('serve meta and schedule from real parsing pipeline', async () => {
 		useUpstreamStubs();
@@ -545,6 +553,66 @@ describe('routes via msw', () => {
 		await expect(rememberedGroupResult).rejects.toMatchObject({
 			status: 302,
 			location: '/1-cs'
+		});
+	});
+
+	it('degrade gracefully when loading metadata aborts upstream', async () => {
+		useNavbarAbort();
+
+		const token = await signToken(
+			{
+				g: '1-CS',
+				w: '05',
+				c: [],
+				l: 'ru',
+				exp: Math.floor(Date.now() / 1000) + 3600
+			},
+			SECRET
+		);
+
+		const metaResponse = await getMeta({} as never);
+		expect(metaResponse.status).toBe(503);
+
+		const scheduleResponse = await getSchedule({
+			url: new URL('http://localhost/api/schedule?group=1-CS&week=05')
+		} as never);
+		expect(scheduleResponse.status).toBe(503);
+
+		const tokenResponse = await postToken({
+			request: new Request('http://localhost/api/token', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ group: '1-CS' })
+			}),
+			platform: { env: { TOKEN_SECRET: SECRET } }
+		} as never);
+		expect(tokenResponse.status).toBe(503);
+
+		const calendarResponse = await getCalendar({
+			url: new URL(`http://localhost/api/calendar?token=${token}`),
+			platform: { env: { TOKEN_SECRET: SECRET } }
+		} as never);
+		expect(calendarResponse.status).toBe(503);
+
+		const setHeaders = vi.fn();
+		const pageData = (await loadPage({
+			params: { group: '1-cs' },
+			url: new URL('http://localhost/1-cs'),
+			setHeaders,
+			cookies: {
+				get: vi.fn(() => undefined),
+				set: vi.fn()
+			}
+		} as never)) as {
+			meta: { groups: unknown[]; weeks: unknown[]; resolvedWeek: string };
+			schedule: { error?: boolean; resolvedGroup: string; resolvedWeek: string };
+		};
+		expect(setHeaders).toHaveBeenCalledWith({ 'cache-control': 'private, no-store' });
+		expect(pageData.meta).toEqual({ groups: [], weeks: [], resolvedWeek: '' });
+		expect(pageData.schedule).toMatchObject({
+			error: true,
+			resolvedGroup: '',
+			resolvedWeek: ''
 		});
 	});
 });

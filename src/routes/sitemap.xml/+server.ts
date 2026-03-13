@@ -5,7 +5,12 @@ import type { RequestHandler } from './$types';
 const ORIGIN = 'https://dkuzeit.net';
 
 export const GET: RequestHandler = async ({ locals }) => {
-	const meta = await getMeta(locals?.dkuRequest);
+	let meta: Awaited<ReturnType<typeof getMeta>>;
+	try {
+		meta = await getMeta(locals?.dkuRequest);
+	} catch {
+		return new Response('Service unavailable', { status: 503 });
+	}
 
 	const groupSlugs = meta.groups.map((g) => toSlug(g.codeRu));
 

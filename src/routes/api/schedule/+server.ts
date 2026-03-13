@@ -15,15 +15,15 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		return badRequestProblem('group query parameter is required', '/api/schedule');
 	}
 
-	const meta = await getMeta(locals?.dkuRequest);
-	const week = url.searchParams.get('week') ?? meta.weeks[0]?.value;
-	if (!week) {
-		return serviceUnavailableProblem('No weeks available in source timetable', '/api/schedule');
-	}
-
 	const cohorts = parseCohortsCsv(url.searchParams.get('cohorts'));
 
 	try {
+		const meta = await getMeta(locals?.dkuRequest);
+		const week = url.searchParams.get('week') ?? meta.weeks[0]?.value;
+		if (!week) {
+			return serviceUnavailableProblem('No weeks available in source timetable', '/api/schedule');
+		}
+
 		const schedule = await buildMergedSchedule(group, week, cohorts, {
 			meta,
 			request: locals?.dkuRequest
