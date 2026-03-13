@@ -62,7 +62,7 @@ importers:
         version: 2.14.0
       '@inlang/plugin-m-function-matcher':
         specifier: ^2.2.1
-        version: 2.2.1
+        version: 2.2.2
       '@inlang/plugin-message-format':
         specifier: ^4.3.0
         version: 4.3.0
@@ -1188,8 +1188,8 @@ packages:
     resolution: {integrity: sha512-6Tno8RvEhnALdgueWNQACiEm3YM6hAfbxnYB+JWML9p5s1O4t0DOqgU9YD8fwpixOnZbU6cJRkvt4v9acXDioA==}
     hasBin: true
 
-  '@inlang/plugin-m-function-matcher@2.2.1':
-    resolution: {integrity: sha512-lRljMQpwAb6m+mztpPS2f4LfXFq1epTJEbq2rFwyJn5r0PVhz+YUadtt716P5r0qp0eIXNN8c4KoArjMmTAKFQ==}
+  '@inlang/plugin-m-function-matcher@2.2.2':
+    resolution: {integrity: sha512-DfUTUts80gtZahK8mfVNX0BXpHh2QO0pTfiSy7JceQzcJNEIOTcvXalKG093HgWJOIJwpJ4ULXeJfRlX+64UEg==}
 
   '@inlang/plugin-message-format@4.3.0':
     resolution: {integrity: sha512-7Tmqd2Z0yhIZ3CwsdlMcJsMpqygN65TuoOzDviDmMp03v3XEC0NGmGr3fxZB6o2hp/Mt5t+GpOqYD30Bvp/6Qw==}
@@ -1199,6 +1199,10 @@ packages:
 
   '@inlang/sdk@2.7.0':
     resolution: {integrity: sha512-yJNBD0o8i29TTJqWX5uDRHxnalDGcsUDctxepzFXsUfkzqGWfiFBxODdxvReqvM2CuKAAOo/kib/F1UcgdYFNQ==}
+    engines: {node: '>=18.0.0'}
+
+  '@inlang/sdk@2.8.0':
+    resolution: {integrity: sha512-w1jysvUDTMgCaONklIgOJAp9dUDl0UhLbsdqfWEwY/GIqoc9IwpuHsrP3pzC+h3DfOpkMMDnDkTpPv8kIZ98iA==}
     engines: {node: '>=18.0.0'}
 
   '@inquirer/ansi@1.0.2':
@@ -5620,9 +5624,9 @@ snapshots:
     transitivePeerDependencies:
       - babel-plugin-macros
 
-  '@inlang/plugin-m-function-matcher@2.2.1':
+  '@inlang/plugin-m-function-matcher@2.2.2':
     dependencies:
-      '@inlang/sdk': 2.7.0
+      '@inlang/sdk': 2.8.0
     transitivePeerDependencies:
       - babel-plugin-macros
 
@@ -5635,6 +5639,16 @@ snapshots:
       comment-json: 4.6.2
 
   '@inlang/sdk@2.7.0':
+    dependencies:
+      '@lix-js/sdk': 0.4.7
+      '@sinclair/typebox': 0.31.28
+      kysely: 0.27.6
+      sqlite-wasm-kysely: 0.3.0(kysely@0.27.6)
+      uuid: 13.0.0
+    transitivePeerDependencies:
+      - babel-plugin-macros
+
+  '@inlang/sdk@2.8.0':
     dependencies:
       '@lix-js/sdk': 0.4.7
       '@sinclair/typebox': 0.31.28
