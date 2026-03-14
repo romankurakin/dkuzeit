@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import { onDestroy, tick } from 'svelte';
+	import { onDestroy, onMount, tick } from 'svelte';
 	import { SvelteMap } from 'svelte/reactivity';
 	import { toast } from 'svelte-sonner';
 	import { m } from '$lib/paraglide/messages';
@@ -10,6 +10,7 @@
 	import { formatDateLabel } from '$lib/scheduler/date-format';
 	import { openCalendarSubscription, toWebcalLink } from '$lib/scheduler/calendar-link';
 	import type { SchedulerContext } from '$lib/scheduler/types';
+	import { traceCalendarExport, traceInitialRender } from '$lib/client-tracing';
 	import { BUTTON_ACTIVATION_DURATION_MS } from '$lib/ui-timing';
 	import {
 		filterDisplayEvents,
@@ -52,6 +53,24 @@
 	let copiedField = $state<'site' | 'calendar' | null>(null);
 	let cohortWarningActive = $state(false);
 	let calendarClearTimer: ReturnType<typeof setTimeout> | null = null;
+
+	const renderStart = Date.now() / 1000;
+	onMount(() => {
+		let active = true;
+		void tick().then(() => {
+			if (!active) return;
+			traceInitialRender(renderStart, {
+				days: orderedDates.length,
+				events: displayEvents.length,
+				group: resolvedGroup,
+				locale: uiLocale,
+				week: resolvedWeek
+			});
+		});
+		return () => {
+			active = false;
+		};
+	});
 
 	const uiLocale = $derived((getLocale() === 'de' ? 'de' : 'ru') as 'ru' | 'de');
 	const categoryLabels = $derived<Record<string, string>>({
@@ -206,14 +225,19 @@
 		isGeneratingLinks = true;
 		await tick();
 		try {
-			const calendarUrl = await buildCalendarLink();
-			const hasOpenedCalendar = openCalendarSubscription(toWebcalLink(calendarUrl));
-			try {
-				await copyCalendarLink(calendarUrl);
-			} catch (copyErr) {
-				// If protocol handoff already happened, clipboard failure should not fail the action.
-				if (!hasOpenedCalendar) throw copyErr;
-			}
+			await traceCalendarExport(
+				{ group: resolvedGroup, locale: uiLocale, week: resolvedWeek },
+				async () => {
+					const calendarUrl = await buildCalendarLink();
+					const hasOpenedCalendar = openCalendarSubscription(toWebcalLink(calendarUrl));
+					try {
+						await copyCalendarLink(calendarUrl);
+					} catch (copyErr) {
+						// If protocol handoff already happened, clipboard failure should not fail the action.
+						if (!hasOpenedCalendar) throw copyErr;
+					}
+				}
+			);
 			copiedField = 'calendar';
 			calendarCopyState = 'success';
 			scheduleCalendarCopyStateReset(BUTTON_ACTIVATION_DURATION_MS);

@@ -7,6 +7,7 @@
 	import { m } from '$lib/paraglide/messages';
 	import { getLocale, localizeHref } from '$lib/paraglide/runtime';
 	import { fromAction } from 'svelte/attachments';
+	import { traceNavigate } from '$lib/client-tracing';
 	import { toSlug } from '$lib/url-slug';
 	import { navigating, page } from '$app/state';
 	import { afterNavigate, goto, invalidateAll } from '$app/navigation';
@@ -73,7 +74,7 @@
 				refreshQueued = false;
 				// Transient client fetch failures during reload should not surface as
 				// unhandled promise rejections; the user can retry from the current page.
-				void invalidateAll()
+				void traceNavigate(target, 'invalidate', () => invalidateAll())
 					.catch(() => {})
 					.finally(() => {
 						invalidating = false;
@@ -86,11 +87,13 @@
 					});
 				return;
 			}
-			void goto(target, {
-				replaceState: true,
-				noScroll: true,
-				keepFocus: true
-			}).catch(() => {});
+			void traceNavigate(target, 'goto', () =>
+				goto(target, {
+					replaceState: true,
+					noScroll: true,
+					keepFocus: true
+				})
+			).catch(() => {});
 		}, NAVIGATE_DEBOUNCE_MS);
 	}
 
