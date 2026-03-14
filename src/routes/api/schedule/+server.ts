@@ -3,7 +3,7 @@ import {
 	buildMergedSchedule,
 	getMeta,
 	isUnknownEntityError,
-	CLIENT_CACHE_HEADER
+	API_RESPONSE_CACHE_HEADER
 } from '$lib/server/dku';
 import { parseCohortsCsv } from '$lib/server/cohorts';
 import { badRequestProblem, notFoundProblem, serviceUnavailableProblem } from '$lib/server/problem';
@@ -30,7 +30,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		});
 		return json(
 			{ cohorts: schedule.cohorts, events: schedule.events },
-			{ headers: { 'cache-control': CLIENT_CACHE_HEADER } }
+			{ headers: { 'cache-control': API_RESPONSE_CACHE_HEADER } }
 		);
 	} catch (error) {
 		if (isUnknownEntityError(error)) {
