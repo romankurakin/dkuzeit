@@ -105,6 +105,7 @@ describe('routes via msw', () => {
 			weeks: Array<{ value: string }>;
 			groups: Array<{ codeRaw: string }>;
 		};
+		expect(metaResponse.headers.get('cache-control')).toBe('no-store');
 		expect(meta.weeks.map((w) => w.value)).toEqual(['05']);
 		expect(meta.groups.map((g) => g.codeRaw)).toEqual(['1-CS']);
 
@@ -115,6 +116,7 @@ describe('routes via msw', () => {
 		const schedule = (await scheduleResponse.json()) as {
 			events: Array<{ subjectShortRaw: string; room: string }>;
 		};
+		expect(scheduleResponse.headers.get('cache-control')).toBe('no-store');
 		expect(schedule.events).toHaveLength(1);
 		expect(schedule.events[0]).toMatchObject({ subjectShortRaw: 'MATH', room: 'A101' });
 	});

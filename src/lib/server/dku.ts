@@ -2,10 +2,16 @@ import { cleanText } from './text';
 import { parseNavHtml, parseTimetablePage } from './parser';
 import type { GroupWeekSchedule, LessonEvent, MetaPayload, WeekOption } from './types';
 import { todayInAlmaty } from './time';
-import { cached, fetchText, type DkuRequestContext } from './dku-fetch';
+import {
+	cached,
+	fetchText,
+	META_CACHE_POLICY,
+	SCHEDULE_CACHE_POLICY,
+	type DkuRequestContext
+} from './dku-fetch';
 import { traceFn } from './tracing';
 
-export { CLIENT_CACHE_HEADER, CLIENT_TTL_SECONDS } from './dku-fetch';
+export { API_RESPONSE_CACHE_HEADER } from './dku-fetch';
 
 export function isUnknownEntityError(err: unknown): boolean {
 	if (!(err instanceof Error)) return false;
@@ -24,7 +30,8 @@ export async function getMeta(request?: DkuRequestContext): Promise<MetaPayload>
 			const html = await fetchText('frames/navbar.htm');
 			return parseNavHtml(html);
 		},
-		request
+		request,
+		META_CACHE_POLICY
 	);
 }
 
@@ -51,7 +58,8 @@ async function getSchedule(
 			);
 			return { group, week, events: parsed.events, cohorts: parsed.cohorts };
 		},
-		request
+		request,
+		SCHEDULE_CACHE_POLICY
 	);
 }
 

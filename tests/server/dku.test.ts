@@ -18,8 +18,17 @@ const {
 }));
 
 vi.mock('../../src/lib/server/dku-fetch', () => ({
-	CLIENT_CACHE_HEADER: 'public, max-age=1800, stale-while-revalidate=1800',
-	CLIENT_TTL_SECONDS: 1800,
+	META_CACHE_POLICY: {
+		edgeTtlSeconds: 43_200,
+		clientTtlSeconds: 3_600,
+		staleWhileRevalidateSeconds: 18_000
+	},
+	SCHEDULE_CACHE_POLICY: {
+		edgeTtlSeconds: 10_800,
+		clientTtlSeconds: 900,
+		staleWhileRevalidateSeconds: 2_700
+	},
+	API_RESPONSE_CACHE_HEADER: 'no-store',
 	cached: cachedMock,
 	fetchText: fetchTextMock
 }));
@@ -92,7 +101,16 @@ describe('dku helpers', () => {
 		parseNavHtmlMock.mockReturnValue(meta);
 
 		await expect(getMeta()).resolves.toEqual(meta);
-		expect(cachedMock).toHaveBeenCalledWith('meta', expect.any(Function), undefined);
+		expect(cachedMock).toHaveBeenCalledWith(
+			'meta',
+			expect.any(Function),
+			undefined,
+			expect.objectContaining({
+				edgeTtlSeconds: 43_200,
+				clientTtlSeconds: 3_600,
+				staleWhileRevalidateSeconds: 18_000
+			})
+		);
 		expect(fetchTextMock).toHaveBeenCalledWith('frames/navbar.htm');
 		expect(parseNavHtmlMock).toHaveBeenCalledWith('<html>nav</html>');
 	});

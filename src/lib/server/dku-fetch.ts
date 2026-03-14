@@ -3,6 +3,12 @@ import { traceCacheGet } from './tracing';
 export const BASE_URL = 'https://timetable.dku.kz';
 export const CACHE_NAMESPACE_VERSION = 'v2';
 
+export interface CachePolicy {
+	edgeTtlSeconds: number;
+	clientTtlSeconds: number;
+	staleWhileRevalidateSeconds: number;
+}
+
 function buildCacheNamespace(buildId = ''): string {
 	return buildId ? `${CACHE_NAMESPACE_VERSION}-${buildId}` : CACHE_NAMESPACE_VERSION;
 }
@@ -19,16 +25,25 @@ export function createDkuRequestContext(buildId = ''): DkuRequestContext {
 	};
 }
 
-// Worst case staleness is EDGE_TTL + CLIENT_TTL
-export const EDGE_TTL_SECONDS = 3600;
-export const CLIENT_TTL_SECONDS = 1800;
-const SWR_SECONDS = EDGE_TTL_SECONDS - CLIENT_TTL_SECONDS;
-export const CLIENT_CACHE_HEADER = `public, max-age=${CLIENT_TTL_SECONDS}, stale-while-revalidate=${SWR_SECONDS}`;
+export const META_CACHE_POLICY: CachePolicy = {
+	edgeTtlSeconds: 43_200,
+	clientTtlSeconds: 3_600,
+	staleWhileRevalidateSeconds: 18_000
+};
+
+export const SCHEDULE_CACHE_POLICY: CachePolicy = {
+	edgeTtlSeconds: 10_800,
+	clientTtlSeconds: 900,
+	staleWhileRevalidateSeconds: 2_700
+};
+
+export const API_RESPONSE_CACHE_HEADER = 'no-store';
 
 export async function cached<T>(
 	key: string,
 	compute: () => Promise<T>,
-	request?: DkuRequestContext
+	request?: DkuRequestContext,
+	policy: CachePolicy = SCHEDULE_CACHE_POLICY
 ): Promise<T> {
 	const cache = typeof caches !== 'undefined' ? caches.default : null;
 	const url = `${BASE_URL}/_cache/${request?.cacheNamespace ?? CACHE_NAMESPACE_VERSION}/${encodeURIComponent(key)}`;
@@ -62,7 +77,8 @@ export async function cached<T>(
 		?.put(
 			url,
 			new Response(JSON.stringify(value), {
-				headers: { 'cache-control': `s-maxage=${EDGE_TTL_SECONDS}` }
+				// Cloudflare Cache API honors Cache-Control for TTL, but not stale-while-revalidate.
+				headers: { 'cache-control': `s-maxage=${policy.edgeTtlSeconds}` }
 			})
 		)
 		.catch(() => {});
