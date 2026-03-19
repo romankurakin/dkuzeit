@@ -23,8 +23,8 @@ const event: LessonEvent = {
 	scope: 'cohort_shared'
 };
 
-describe('ics build ics calendar', () => {
-	it('build valid calendar envelope and event fields', () => {
+describe('buildIcsCalendar', () => {
+	it('builds valid calendar envelope and event fields', () => {
 		const ics = buildIcsCalendar('DKU 3-ТМ (E3)', [event]);
 
 		expect(ics).toContain('BEGIN:VCALENDAR');
@@ -39,8 +39,72 @@ describe('ics build ics calendar', () => {
 		expect(ics).not.toContain('DESCRIPTION');
 	});
 
-	it('use de prod id for german calendar', () => {
+	it('uses de prod id for german calendar', () => {
 		const ics = buildIcsCalendar('DKU 3-TM (E3)', [event], 'de');
 		expect(ics).toContain('PRODID:-//DKUZeit//DKU Timetable//DE');
+	});
+
+	it('uses subjectFullDe as summary for de locale', () => {
+		const ics = buildIcsCalendar('DKU', [event], 'de');
+		expect(ics).toContain('Akademisches Schreiben');
+	});
+
+	it('falls back through de summary chain when fields are empty', () => {
+		const sparse = {
+			...event,
+			subjectFullDe: '',
+			subjectShortDe: '',
+			subjectFullRu: '',
+			subjectShortRu: ''
+		};
+		const ics = buildIcsCalendar('DKU', [sparse], 'de');
+		expect(ics).toContain('ENG');
+	});
+
+	it('falls back to shortDe when fullDe is empty for de locale', () => {
+		const sparse = { ...event, subjectFullDe: '' };
+		const ics = buildIcsCalendar('DKU', [sparse], 'de');
+		expect(ics).toContain('Englisch');
+	});
+
+	it('falls back to fullRu when both de fields are empty for de locale', () => {
+		const sparse = { ...event, subjectFullDe: '', subjectShortDe: '' };
+		const ics = buildIcsCalendar('DKU', [sparse], 'de');
+		expect(ics).toContain('Академическое письмо');
+	});
+
+	it('falls back through ru summary chain when fields are empty', () => {
+		const sparse = {
+			...event,
+			subjectFullRu: '',
+			subjectShortRu: '',
+			subjectFullDe: '',
+			subjectShortDe: ''
+		};
+		const ics = buildIcsCalendar('DKU', [sparse]);
+		expect(ics).toContain('ENG');
+	});
+
+	it('falls back to shortRu when fullRu is empty for ru locale', () => {
+		const sparse = { ...event, subjectFullRu: '' };
+		const ics = buildIcsCalendar('DKU', [sparse]);
+		expect(ics).toContain('Английский');
+	});
+
+	it('falls back to fullDe when both ru fields are empty for ru locale', () => {
+		const sparse = { ...event, subjectFullRu: '', subjectShortRu: '' };
+		const ics = buildIcsCalendar('DKU', [sparse]);
+		expect(ics).toContain('Akademisches Schreiben');
+	});
+
+	it('omits LOCATION when room is empty', () => {
+		const noRoom = { ...event, room: '' };
+		const ics = buildIcsCalendar('DKU', [noRoom]);
+		expect(ics).not.toContain('LOCATION');
+	});
+
+	it('includes X-PUBLISHED-TTL header', () => {
+		const ics = buildIcsCalendar('DKU', [event]);
+		expect(ics).toContain('X-PUBLISHED-TTL:PT1D');
 	});
 });

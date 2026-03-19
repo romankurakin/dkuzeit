@@ -15,7 +15,7 @@ describe('client tracing wrappers', () => {
 		vi.clearAllMocks();
 	});
 
-	it('trace navigate wraps fn with ui.navigate span', async () => {
+	it('wraps traceNavigate with ui.navigate span', async () => {
 		startSpanMock.mockImplementation((_ctx, fn: () => Promise<void>) => fn());
 		await traceNavigate('/group', 'invalidate', async () => {});
 		expect(startSpanMock).toHaveBeenCalledWith(
@@ -28,7 +28,7 @@ describe('client tracing wrappers', () => {
 		);
 	});
 
-	it('trace navigate propagates goto type', async () => {
+	it('propagates goto type in traceNavigate', async () => {
 		startSpanMock.mockImplementation((_ctx, fn: () => Promise<void>) => fn());
 		await traceNavigate('/other', 'goto', async () => {});
 		expect(startSpanMock).toHaveBeenCalledWith(
@@ -41,7 +41,7 @@ describe('client tracing wrappers', () => {
 		);
 	});
 
-	it('trace calendar export wraps fn with ui.calendar_export span', async () => {
+	it('wraps traceCalendarExport with ui.calendar_export span', async () => {
 		startSpanMock.mockImplementation((_ctx, fn: () => Promise<string>) => fn());
 		await expect(
 			traceCalendarExport({ group: '2-CS', locale: 'de', week: '05' }, async () => 'url')
@@ -60,7 +60,7 @@ describe('client tracing wrappers', () => {
 		);
 	});
 
-	it('trace initial render creates span with custom start time', () => {
+	it('creates span with custom start time in traceInitialRender', () => {
 		startSpanMock.mockImplementation((_ctx, fn: () => void) => fn());
 		const start = 1700000000;
 		traceInitialRender(start, {
@@ -87,7 +87,7 @@ describe('client tracing wrappers', () => {
 		);
 	});
 
-	it('trace wrappers propagate callback failures', async () => {
+	it('propagates callback failures', async () => {
 		const boom = new Error('boom');
 		startSpanMock.mockImplementation((_ctx, fn: () => Promise<never>) => fn());
 		await expect(

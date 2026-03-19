@@ -13,8 +13,8 @@ import { fnv1aHex } from './hash';
 import { makeLegendResolver, parseLegendEntries } from './legend';
 import { isMissingGermanName, sanitizeLabel, splitBilingualLabel } from './bilingual';
 import { toSlug } from '$lib/url-slug';
-import { parseDocument } from 'htmlparser2';
-import type { ChildNode, Element } from 'domhandler';
+import type { ChildNode, Document, Element } from 'domhandler';
+import { collectText, collectTextBuilder, hasChildren, isElementNode } from './dom-utils';
 
 type TimeRange = { start: string; end: string };
 
@@ -66,23 +66,47 @@ function pickDisambiguatedLabel(
 	return base;
 }
 
-export function parseNavHtml(html: string): MetaPayload {
-	const weekSelectMatch = html.match(/<select\s+name="week"[\s\S]*?<\/select>/i);
-	if (!weekSelectMatch) throw new Error('Week select not found in navbar');
+function findElementByName(node: ChildNode, name: string): Element | null {
+	if (isElementNode(node) && node.name === name) return node;
+	if (!hasChildren(node)) return null;
+	for (const child of node.children) {
+		const found = findElementByName(child, name);
+		if (found) return found;
+	}
+	return null;
+}
+
+export function parseNavHtml(document: Document): MetaPayload {
+	const weekSelect = findElementByName(document, 'select');
+	if (!weekSelect || weekSelect.attribs.name !== 'week')
+		throw new Error('Week select not found in navbar');
 
 	const weekOptions: WeekOption[] = [];
-	for (const match of weekSelectMatch[0].matchAll(/<option\s+value="(\d+)">([^<]+)<\/option>/gi)) {
-		const value = match[1]!.padStart(2, '0');
-		const label = cleanText(match[2]!);
+	for (const child of weekSelect.children) {
+		if (!isElementNode(child) || child.name !== 'option') continue;
+		const value = (child.attribs.value ?? '').padStart(2, '0');
+		const label = cleanText(collectText(child));
 		const startDateIso = parseWeekLabelDate(label);
 		if (!startDateIso) continue;
 		weekOptions.push({ value, label, startDateIso });
 	}
 
-	const classesMatch = html.match(/var\s+classes\s*=\s*\[([\s\S]*?)\];/i);
-	if (!classesMatch) throw new Error('Classes array not found in navbar');
+	let classesBody: string | null = null;
+	const findClassesBody = (node: ChildNode) => {
+		if (classesBody) return;
+		if (isElementNode(node) && node.name === 'script') {
+			const text = collectText(node);
+			const m = /var\s+classes\s*=\s*\[([\s\S]*?)\];/i.exec(text);
+			if (m) classesBody = m[1]!;
+		}
+		if (hasChildren(node)) {
+			for (const child of node.children) findClassesBody(child);
+		}
+	};
+	findClassesBody(document);
+	if (!classesBody) throw new Error('Classes array not found in navbar');
 
-	const parsedGroups = parseJsStringArray(classesMatch[1]!).map((codeRaw, idx) => {
+	const parsedGroups = parseJsStringArray(classesBody).map((codeRaw, idx) => {
 		const cleanedCodeRaw = cleanText(codeRaw);
 		const codeRuFull = sanitizeLabel(russianOnlyLabel(cleanedCodeRaw));
 		const codeDeFull = sanitizeLabel(germanOnlyLabel(cleanedCodeRaw));
@@ -138,14 +162,43 @@ export function parseNavHtml(html: string): MetaPayload {
 	return { weeks: weekOptions, groups };
 }
 
-function parseFooterYear(html: string, fallbackYear: number): number {
-	const match = html.match(/ЛС\/SS\s+\d{1,2}\.\d{1,2}\.(\d{4})/i);
-	if (!match) return fallbackYear;
-	return Number(match[1]);
+function parseFooterYear(document: Document, fallbackYear: number): number {
+	let result: number | null = null;
+	const walk = (node: ChildNode) => {
+		if (result !== null) return;
+		if (node.type === 'text') {
+			const m = node.data.match(/ЛС\/SS\s+\d{1,2}\.\d{1,2}\.(\d{4})/i);
+			if (m) {
+				result = Number(m[1]);
+				return;
+			}
+		}
+		if (hasChildren(node)) {
+			for (const child of node.children) walk(child);
+		}
+	};
+	walk(document);
+	return result ?? fallbackYear;
 }
 
-function parseDayDates(html: string, weekStartDateIso: string): string[] {
-	const match = [...html.matchAll(/<B>\s*[А-Яа-яA-Za-z]+\s+(\d{1,2})\.(\d{1,2})\.?\s*<\/B>/gi)];
+function parseDayDates(document: Document, weekStartDateIso: string): string[] {
+	const matches: Array<{ day: number; month: number }> = [];
+	const walk = (node: ChildNode) => {
+		if (isElementNode(node) && node.name === 'b') {
+			const parts: string[] = [];
+			if (hasChildren(node)) {
+				for (const child of node.children) collectTextBuilder(child, parts);
+			}
+			const text = parts.join('');
+			const m = text.match(/^\s*[А-Яа-яA-Za-z]+\s+(\d{1,2})\.(\d{1,2})\.?\s*$/);
+			if (m) matches.push({ day: Number(m[1]), month: Number(m[2]) });
+		}
+		if (hasChildren(node)) {
+			for (const child of node.children) walk(child);
+		}
+	};
+	walk(document);
+
 	const weekStart = new Date(`${weekStartDateIso}T00:00:00+05:00`);
 	const fallback = Array.from({ length: 6 }, (_, i) => {
 		const date = new Date(weekStart);
@@ -153,12 +206,10 @@ function parseDayDates(html: string, weekStartDateIso: string): string[] {
 		return date.toISOString().slice(0, 10);
 	});
 
-	if (match.length < 6) return fallback;
+	if (matches.length < 6) return fallback;
 
-	const year = parseFooterYear(html, weekStart.getUTCFullYear());
-	return match.slice(0, 6).map((entry) => {
-		const day = Number(entry[1]);
-		const month = Number(entry[2]);
+	const year = parseFooterYear(document, weekStart.getUTCFullYear());
+	return matches.slice(0, 6).map(({ day, month }) => {
 		return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 	});
 }
@@ -210,30 +261,15 @@ function extractCellLines(cell: ParsedCell): string[] {
 	return fallback ? [fallback] : [];
 }
 
-function isElementNode(node: ChildNode): node is Element {
-	return node.type === 'tag' || node.type === 'script' || node.type === 'style';
-}
-
-function hasChildren(node: ChildNode | Element): node is ChildNode & { children: ChildNode[] } {
-	return 'children' in node && Array.isArray(node.children);
-}
-
-function collectText(node: ChildNode): string {
-	if (node.type === 'text') return node.data;
-	if (!hasChildren(node)) return '';
-	let out = '';
-	for (const child of node.children) out += collectText(child);
-	return out;
-}
-
 function collectTextWithoutNestedTables(node: ChildNode, insideTable: boolean): string {
 	if (node.type === 'text') return insideTable ? '' : node.data;
 	if (!hasChildren(node)) return '';
 
 	const nextInsideTable = insideTable || (isElementNode(node) && node.name === 'table');
-	let out = '';
-	for (const child of node.children) out += collectTextWithoutNestedTables(child, nextInsideTable);
-	return out;
+	const parts: string[] = [];
+	for (const child of node.children)
+		parts.push(collectTextWithoutNestedTables(child, nextInsideTable));
+	return parts.join('');
 }
 
 function findFirstDescendantTable(node: Element): Element | null {
@@ -358,8 +394,7 @@ function findFirstMainTable(node: ChildNode): Element | null {
 	return null;
 }
 
-function collectMainTableRows(html: string): { rows: ParsedRow[]; foundMainTable: boolean } {
-	const document = parseDocument(html);
+function collectMainTableRows(document: Document): { rows: ParsedRow[]; foundMainTable: boolean } {
 	const mainTable = findFirstMainTable(document);
 	if (!mainTable) return { rows: [], foundMainTable: false };
 
@@ -404,18 +439,16 @@ function stableEventId(input: string): string {
 	return `e${fnv1aHex(input)}`;
 }
 
-export function hasEvents(html: string): boolean {
-	return parseLegendEntries(html, 'Дисциплины').length > 0;
+export function hasEvents(document: Document): boolean {
+	return parseLegendEntries(document, 'Дисциплины').length > 0;
 }
 
 export function parseTimetablePage(
-	html: string,
+	document: Document,
 	group: GroupOption,
 	week: WeekOption
 ): Pick<GroupWeekSchedule, 'events' | 'cohorts'> {
-	if (!/<center\b/i.test(html)) throw new Error('Timetable center container not found');
-
-	const { rows, foundMainTable } = collectMainTableRows(html);
+	const { rows, foundMainTable } = collectMainTableRows(document);
 	if (!foundMainTable) throw new Error('Main timetable table not found');
 	if (rows.length === 0) throw new Error('No rows in timetable table');
 
@@ -426,9 +459,9 @@ export function parseTimetablePage(
 
 	const occupancy = new Array<number>(Math.max(colCount, 1)).fill(0);
 	const rowTimes: Array<TimeRange | null> = new Array(rows.length).fill(null);
-	const dayDates = parseDayDates(html, week.startDateIso);
+	const dayDates = parseDayDates(document, week.startDateIso);
 
-	const subjectResolver = makeLegendResolver(parseLegendEntries(html, 'Дисциплины'));
+	const subjectResolver = makeLegendResolver(parseLegendEntries(document, 'Дисциплины'));
 
 	// Defer event creation until all rowTimes are populated so that
 	// multi-period cells (rowspan > 2) can be split correctly

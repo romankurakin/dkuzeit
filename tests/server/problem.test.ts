@@ -18,7 +18,7 @@ async function readProblem(response: Response) {
 }
 
 describe('problem responses', () => {
-	it('build not-found problem response', async () => {
+	it('builds not-found problem response', async () => {
 		const response = notFoundProblem('missing resource', '/api/schedule');
 		expect(response.status).toBe(404);
 		expect(response.headers.get('content-type')).toContain('application/problem+json');
@@ -31,7 +31,7 @@ describe('problem responses', () => {
 		});
 	});
 
-	it('build bad-request problem response with defaults', async () => {
+	it('builds bad-request problem response with defaults', async () => {
 		const response = badRequestProblem();
 		expect(response.status).toBe(400);
 		expect(await readProblem(response)).toEqual({
@@ -42,7 +42,7 @@ describe('problem responses', () => {
 		});
 	});
 
-	it('build forbidden problem response', async () => {
+	it('builds forbidden problem response', async () => {
 		const response = forbiddenProblem('Invalid token', '/api/calendar');
 		expect(response.status).toBe(403);
 		expect(response.headers.get('content-type')).toContain('application/problem+json');
@@ -55,7 +55,7 @@ describe('problem responses', () => {
 		});
 	});
 
-	it('build internal-error problem response', async () => {
+	it('builds internal-error problem response', async () => {
 		const response = internalErrorProblem('Server misconfigured', '/api/token');
 		expect(response.status).toBe(500);
 		expect(response.headers.get('content-type')).toContain('application/problem+json');
@@ -68,7 +68,7 @@ describe('problem responses', () => {
 		});
 	});
 
-	it('build service-unavailable problem response', async () => {
+	it('builds service-unavailable problem response', async () => {
 		const response = serviceUnavailableProblem('upstream failed', '/api/calendar');
 		expect(response.status).toBe(503);
 		expect(await readProblem(response)).toEqual({

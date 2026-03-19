@@ -3,7 +3,7 @@ import { formatDateLabel } from '../../src/lib/scheduler/date-format';
 
 const originalTz = process.env.TZ;
 
-describe('date format format date label', () => {
+describe('formatDateLabel', () => {
 	afterEach(() => {
 		if (originalTz === undefined) {
 			delete process.env.TZ;
@@ -12,7 +12,7 @@ describe('date format format date label', () => {
 		}
 	});
 
-	it('format dates in almaty timezone even when runtime tz is utc', () => {
+	it('formats dates in almaty timezone even when runtime tz is utc', () => {
 		process.env.TZ = 'UTC';
 		const label = formatDateLabel('2026-02-10', 'ru').toLowerCase();
 		expect(label).toContain('10');

@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { parseNavHtml } from '../../src/lib/server/parser';
+import { parseDocument } from 'htmlparser2';
+import { hasEvents, parseNavHtml } from '../../src/lib/server/parser';
 
 describe('parseNavHtml', () => {
-	it('skip non-date week options from navbar', () => {
+	it('skips non-date week options from navbar', () => {
 		const html = `
 		<html>
 			<body>
@@ -17,7 +18,7 @@ describe('parseNavHtml', () => {
 		</html>
 		`;
 
-		const parsed = parseNavHtml(html);
+		const parsed = parseNavHtml(parseDocument(html));
 		expect(parsed.weeks).toEqual([
 			{
 				value: '10',
@@ -27,7 +28,15 @@ describe('parseNavHtml', () => {
 		]);
 	});
 
-	it('keep parenthesized suffix when stripped labels would collide', () => {
+	it('throws when select exists but name is not week', () => {
+		const html = `
+		<html><body>
+			<select name="other"><option value="1">x</option></select>
+		</body></html>`;
+		expect(() => parseNavHtml(parseDocument(html))).toThrow('Week select not found in navbar');
+	});
+
+	it('keeps parenthesized suffix when stripped labels would collide', () => {
 		const html = `
 		<html>
 			<body>
@@ -41,7 +50,7 @@ describe('parseNavHtml', () => {
 		</html>
 		`;
 
-		const parsed = parseNavHtml(html);
+		const parsed = parseNavHtml(parseDocument(html));
 		expect(parsed.groups).toEqual([
 			{
 				id: 1,
@@ -56,5 +65,20 @@ describe('parseNavHtml', () => {
 				codeDe: '2-Man'
 			}
 		]);
+	});
+});
+
+describe('hasEvents', () => {
+	it('returns true when legend has disciplines', () => {
+		const html = `<html><body>
+			<b>Дисциплины</b>
+			<table><tr><td>МАТ</td><td>Математика</td></tr></table>
+		</body></html>`;
+		expect(hasEvents(parseDocument(html))).toBe(true);
+	});
+
+	it('returns false when no disciplines legend', () => {
+		const html = '<html><body><p>empty</p></body></html>';
+		expect(hasEvents(parseDocument(html))).toBe(false);
 	});
 });

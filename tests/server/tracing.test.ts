@@ -11,7 +11,7 @@ vi.mock('@sentry/sveltekit', () => ({
 import { traceCacheGet, traceFn, traceSerialize } from '../../src/lib/server/tracing';
 
 describe('tracing wrappers', () => {
-	it('trace function wrapper via sentry span', async () => {
+	it('wraps function call with sentry span', async () => {
 		startSpanMock.mockImplementation((_ctx, fn: () => Promise<string>) => fn());
 		await expect(traceFn('work', { size: 1 }, async () => 'ok')).resolves.toBe('ok');
 		expect(startSpanMock).toHaveBeenCalledWith(
@@ -20,7 +20,7 @@ describe('tracing wrappers', () => {
 		);
 	});
 
-	it('trace serialize wrapper via sentry span', () => {
+	it('wraps serialize call with sentry span', () => {
 		startSpanMock.mockImplementation((_ctx, fn: () => string) => fn());
 		expect(traceSerialize('serialize', { count: 2 }, () => 'payload')).toBe('payload');
 		expect(startSpanMock).toHaveBeenCalledWith(
@@ -29,7 +29,7 @@ describe('tracing wrappers', () => {
 		);
 	});
 
-	it('trace cache get sets cache hit attribute through callback', async () => {
+	it('sets cache hit attribute through callback', async () => {
 		const setAttribute = vi.fn();
 		startSpanMock.mockImplementation(
 			(_ctx, fn: (span: { setAttribute: typeof setAttribute }) => Promise<string>) =>

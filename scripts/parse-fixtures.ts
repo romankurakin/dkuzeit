@@ -1,11 +1,12 @@
 import { readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
+import { parseDocument } from 'htmlparser2';
 import { parseNavHtml, parseTimetablePage } from '../src/lib/server/parser';
 
 const root = 'tests/fixtures/live';
 const manifest = JSON.parse(readFileSync(path.join(root, 'manifest.json'), 'utf8'));
 const navbar = readFileSync(path.join(root, 'frames/navbar.htm'), 'utf8');
-const meta = parseNavHtml(navbar);
+const meta = parseNavHtml(parseDocument(navbar));
 
 const groupArg = process.argv[2] ?? '';
 const weekArg = process.argv[3] ?? '';
@@ -63,7 +64,7 @@ async function run() {
 			continue;
 		}
 		const html = readFileSync(fp, 'utf8');
-		const result = await parseTimetablePage(html, group, week);
+		const result = await parseTimetablePage(parseDocument(html), group, week);
 
 		const output = {
 			group: { id: group.id, codeRaw: group.codeRaw, codeRu: group.codeRu, codeDe: group.codeDe },

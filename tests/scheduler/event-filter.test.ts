@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	filterDisplayEvents,
 	extractTimeSlots,
+	groupEventsByDate,
 	eventTitleLabel,
 	buildCohortGroups
 } from '../../src/lib/scheduler/event-filter';
@@ -38,14 +39,23 @@ const categoryLabels: Record<string, string> = {
 	pe: 'PE'
 };
 
-describe('event filter filter display events', () => {
-	it('always pass core fixed events', () => {
+describe('filterDisplayEvents', () => {
+	it('always passes core fixed events', () => {
 		const events = [makeEvent({ scope: 'core_fixed' })];
 		const result = filterDisplayEvents(events, [], [], categoryLabels);
 		expect(result).toHaveLength(1);
 	});
 
-	it('filter by cohort selection', () => {
+	it('passes cohort events with unknown category directly', () => {
+		const events = [
+			makeEvent({ id: 'e1', cohortCode: 'UNKNOWN', scope: 'cohort_shared', track: 'pe' })
+		];
+		const result = filterDisplayEvents(events, [], [], categoryLabels);
+		expect(result).toHaveLength(1);
+		expect(result[0]!.id).toBe('e1');
+	});
+
+	it('filters by cohort selection', () => {
 		const cohorts: Cohort[] = [
 			{ code: 'DE1', track: 'de', label: 'German 1', sourceGroups: ['GRP1'] },
 			{ code: 'DE2', track: 'de', label: 'German 2', sourceGroups: ['GRP1'] }
@@ -59,7 +69,7 @@ describe('event filter filter display events', () => {
 		expect(result.find((e) => e.id === 'e1')).toBeDefined();
 	});
 
-	it('collapse unselected categories into merged events', () => {
+	it('collapses unselected categories into merged events', () => {
 		const cohorts: Cohort[] = [
 			{ code: 'EN1', track: 'en', label: 'English 1', sourceGroups: ['GRP1'] },
 			{ code: 'EN2', track: 'en', label: 'English 2', sourceGroups: ['GRP1'] }
@@ -74,7 +84,7 @@ describe('event filter filter display events', () => {
 		expect(merged[0]!.subjectFullRu).toBe('English');
 	});
 
-	it('return all events when url cohorts is empty core merged', () => {
+	it('returns all events when url cohorts is empty core merged', () => {
 		const cohorts: Cohort[] = [
 			{ code: 'DE1', track: 'de', label: 'German 1', sourceGroups: ['GRP1'] }
 		];
@@ -87,8 +97,26 @@ describe('event filter filter display events', () => {
 	});
 });
 
-describe('event filter extract time slots', () => {
-	it('deduplicate and sort time slots', () => {
+describe('groupEventsByDate', () => {
+	it('groups events by dateIso', () => {
+		const events = [
+			makeEvent({ id: 'e1', dateIso: '2025-01-06' }),
+			makeEvent({ id: 'e2', dateIso: '2025-01-07' }),
+			makeEvent({ id: 'e3', dateIso: '2025-01-06' })
+		];
+		const grouped = groupEventsByDate(events);
+		expect(Object.keys(grouped)).toHaveLength(2);
+		expect(grouped['2025-01-06']).toHaveLength(2);
+		expect(grouped['2025-01-07']).toHaveLength(1);
+	});
+
+	it('returns empty object for empty events', () => {
+		expect(groupEventsByDate([])).toEqual({});
+	});
+});
+
+describe('extractTimeSlots', () => {
+	it('deduplicates and sorts time slots', () => {
 		const events = [
 			makeEvent({ startTime: '11:00', endTime: '12:30' }),
 			makeEvent({ startTime: '09:00', endTime: '10:30' }),
@@ -101,25 +129,25 @@ describe('event filter extract time slots', () => {
 	});
 });
 
-describe('event filter event title label', () => {
-	it('prefer subject full ru for ru locale', () => {
+describe('eventTitleLabel', () => {
+	it('prefers subject full ru for ru locale', () => {
 		const event = makeEvent({ subjectFullRu: 'Математика', subjectFullDe: 'Mathematik' });
 		expect(eventTitleLabel(event, 'ru')).toBe('Математика');
 	});
 
-	it('prefer subject full de for de locale', () => {
+	it('prefers subject full de for de locale', () => {
 		const event = makeEvent({ subjectFullRu: 'Математика', subjectFullDe: 'Mathematik' });
 		expect(eventTitleLabel(event, 'de')).toBe('Mathematik');
 	});
 
-	it('append cohort code when present', () => {
+	it('appends cohort code when present', () => {
 		const event = makeEvent({ subjectFullRu: 'Немецкий', cohortCode: 'DE1' });
 		expect(eventTitleLabel(event, 'ru')).toBe('Немецкий DE1');
 	});
 });
 
-describe('event filter build cohort groups', () => {
-	it('group cohorts by track', () => {
+describe('buildCohortGroups', () => {
+	it('groups cohorts by track', () => {
 		const cohorts: Cohort[] = [
 			{ code: 'DE1', track: 'de', label: 'German 1', sourceGroups: ['GRP1'] },
 			{ code: 'DE2', track: 'de', label: 'German 2', sourceGroups: ['GRP1'] },
@@ -131,7 +159,7 @@ describe('event filter build cohort groups', () => {
 		expect(deGroup?.items).toHaveLength(2);
 	});
 
-	it('track selected value', () => {
+	it('tracks selected value', () => {
 		const cohorts: Cohort[] = [
 			{ code: 'DE1', track: 'de', label: 'German 1', sourceGroups: ['GRP1'] },
 			{ code: 'DE2', track: 'de', label: 'German 2', sourceGroups: ['GRP1'] }

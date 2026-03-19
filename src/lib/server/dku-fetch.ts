@@ -1,3 +1,5 @@
+import { DomHandler, type Document } from 'domhandler';
+import { WebWritableStream } from 'htmlparser2/WebWritableStream';
 import { traceCacheGet } from './tracing';
 
 export const BASE_URL = 'https://timetable.dku.kz';
@@ -85,7 +87,7 @@ export async function cached<T>(
 	return value;
 }
 
-export async function fetchText(path: string): Promise<string> {
+export async function fetchDocument(path: string): Promise<Document> {
 	const url = `${BASE_URL}/${path}`;
 	try {
 		const res = await fetch(url, {
@@ -93,7 +95,11 @@ export async function fetchText(path: string): Promise<string> {
 			headers: { 'cache-control': 'no-cache' }
 		});
 		if (!res.ok) throw new Error(`Failed to fetch ${url} (${res.status})`);
-		return await res.text();
+		if (!res.body) throw new Error(`Response body is null for ${url}`);
+		const handler = new DomHandler();
+		const ws = new WebWritableStream(handler);
+		await res.body.pipeTo(ws);
+		return handler.root;
 	} catch (err) {
 		if (err instanceof Error && (err.name === 'AbortError' || err.name === 'TimeoutError')) {
 			throw new Error(`Request to ${url} was aborted`, { cause: err });

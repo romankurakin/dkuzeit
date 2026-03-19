@@ -3,14 +3,14 @@ import type { LessonEvent, MetaPayload, WeekOption } from '../../src/lib/server/
 
 const {
 	cachedMock,
-	fetchTextMock,
+	fetchDocumentMock,
 	parseNavHtmlMock,
 	parseTimetablePageMock,
 	traceFnMock,
 	todayInAlmatyMock
 } = vi.hoisted(() => ({
 	cachedMock: vi.fn(),
-	fetchTextMock: vi.fn(),
+	fetchDocumentMock: vi.fn(),
 	parseNavHtmlMock: vi.fn(),
 	parseTimetablePageMock: vi.fn(),
 	traceFnMock: vi.fn(),
@@ -30,7 +30,7 @@ vi.mock('../../src/lib/server/dku-fetch', () => ({
 	},
 	API_RESPONSE_CACHE_HEADER: 'no-store',
 	cached: cachedMock,
-	fetchText: fetchTextMock
+	fetchDocument: fetchDocumentMock
 }));
 
 vi.mock('../../src/lib/server/parser', () => ({
@@ -85,19 +85,19 @@ describe('dku helpers', () => {
 		todayInAlmatyMock.mockReturnValue('2026-02-10');
 	});
 
-	it('detect unknown entity errors', () => {
+	it('detects unknown entity errors', () => {
 		expect(isUnknownEntityError(new Error('Unknown group: X'))).toBe(true);
 		expect(isUnknownEntityError(new Error('Unknown week: 11'))).toBe(true);
 		expect(isUnknownEntityError(new Error('Other error'))).toBe(false);
 		expect(isUnknownEntityError('Unknown group: X')).toBe(false);
 	});
 
-	it('read and parse meta through cache', async () => {
+	it('reads and parses meta through cache', async () => {
 		const meta: MetaPayload = {
 			weeks: [{ value: '05', label: 'w5', startDateIso: '2026-02-09' }],
 			groups: [{ id: 1, codeRaw: '1-CS', codeRu: '1-КС', codeDe: '1-KS' }]
 		};
-		fetchTextMock.mockResolvedValue('<html>nav</html>');
+		fetchDocumentMock.mockResolvedValue('<html>nav</html>');
 		parseNavHtmlMock.mockReturnValue(meta);
 
 		await expect(getMeta()).resolves.toEqual(meta);
@@ -111,16 +111,16 @@ describe('dku helpers', () => {
 				staleWhileRevalidateSeconds: 18_000
 			})
 		);
-		expect(fetchTextMock).toHaveBeenCalledWith('frames/navbar.htm');
+		expect(fetchDocumentMock).toHaveBeenCalledWith('frames/navbar.htm');
 		expect(parseNavHtmlMock).toHaveBeenCalledWith('<html>nav</html>');
 	});
 
-	it('build merged schedule and keep selected cohorts plus assessments', async () => {
+	it('builds merged schedule and keeps selected cohorts plus assessments', async () => {
 		const meta: MetaPayload = {
 			weeks: [{ value: '05', label: 'w5', startDateIso: '2026-02-09' }],
 			groups: [{ id: 1, codeRaw: '1-CS', codeRu: '1-КС', codeDe: '1-KS' }]
 		};
-		fetchTextMock.mockResolvedValue('<html>schedule</html>');
+		fetchDocumentMock.mockResolvedValue('<html>schedule</html>');
 		parseTimetablePageMock.mockResolvedValue({
 			events: [
 				event({ id: 'core', scope: 'core_fixed' }),
@@ -140,12 +140,12 @@ describe('dku helpers', () => {
 		});
 
 		const merged = await buildMergedSchedule('1-CS', '05', [' WPM1 '], { meta });
-		expect(fetchTextMock).toHaveBeenCalledWith('05/c/c00001.htm');
+		expect(fetchDocumentMock).toHaveBeenCalledWith('05/c/c00001.htm');
 		expect(merged.events.map((item) => item.id)).toEqual(['core', 'selected', 'assess']);
 		expect(merged.cohorts.map((item) => item.code)).toEqual(['A1', 'WPM2']);
 	});
 
-	it('throw unknown week and group when schedule cannot be resolved', async () => {
+	it('throws unknown week and group when schedule cannot be resolved', async () => {
 		const meta: MetaPayload = {
 			weeks: [{ value: '05', label: 'w5', startDateIso: '2026-02-09' }],
 			groups: [{ id: 1, codeRaw: '1-CS', codeRu: '1-КС', codeDe: '1-KS' }]
@@ -159,7 +159,7 @@ describe('dku helpers', () => {
 		);
 	});
 
-	it('build calendar title and pick rolling weeks', () => {
+	it('builds calendar title and picks rolling weeks', () => {
 		expect(buildCalendarTitle('2-CS')).toBe('DKU 2-CS');
 
 		const weeks: WeekOption[] = [

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { parseDocument } from 'htmlparser2';
 import { parseTimetablePage } from '../../src/lib/server/parser';
 import type { GroupOption, WeekOption } from '../../src/lib/server/types';
 
@@ -26,23 +27,23 @@ function wrapTimetable(innerTableRows: string, legendRows: string): string {
 						</tbody>
 					</table>
 				</center>
-				<B>Пн 01.09.</B>
-				<B>Вт 02.09.</B>
-				<B>Ср 03.09.</B>
-				<B>Чт 04.09.</B>
-				<B>Пт 05.09.</B>
-				<B>Сб 06.09.</B>
-				<B>Дисциплины</B>
-				<TABLE>
+				<b>Пн 01.09.</b>
+				<b>Вт 02.09.</b>
+				<b>Ср 03.09.</b>
+				<b>Чт 04.09.</b>
+				<b>Пт 05.09.</b>
+				<b>Сб 06.09.</b>
+				<b>Дисциплины</b>
+				<table>
 					${legendRows}
-				</TABLE>
+				</table>
 			</body>
 		</html>
 	`;
 }
 
-describe('parser parse timetable page html rewriter state machine', () => {
-	it('extract only first level nested table lines from a schedule cell', async () => {
+describe('parseTimetablePage', () => {
+	it('extracts only first-level nested table lines from a schedule cell', async () => {
 		const html = wrapTimetable(
 			`
 				<tr>
@@ -64,7 +65,7 @@ describe('parser parse timetable page html rewriter state machine', () => {
 			`<tr><td>MATH</td><td>Математика/Mathematik лекция</td></tr>`
 		);
 
-		const parsed = await parseTimetablePage(html, group, week);
+		const parsed = await parseTimetablePage(parseDocument(html), group, week);
 		expect(parsed.events).toHaveLength(1);
 
 		const event = parsed.events[0]!;
@@ -76,7 +77,7 @@ describe('parser parse timetable page html rewriter state machine', () => {
 		expect(event.dayIndex).toBe(0);
 	});
 
-	it('support rowspan timing and fallback text extraction without nested table', async () => {
+	it('supports rowspan timing and fallback text extraction without nested table', async () => {
 		const html = wrapTimetable(
 			`
 				<tr>
@@ -90,7 +91,7 @@ describe('parser parse timetable page html rewriter state machine', () => {
 			`<tr><td>ENG</td><td>Английский/Englisch лекция</td></tr>`
 		);
 
-		const parsed = await parseTimetablePage(html, group, week);
+		const parsed = await parseTimetablePage(parseDocument(html), group, week);
 		expect(parsed.events).toHaveLength(1);
 
 		const event = parsed.events[0]!;
@@ -101,7 +102,7 @@ describe('parser parse timetable page html rewriter state machine', () => {
 		expect(event.dayIndex).toBe(0);
 	});
 
-	it('split a double period cell rowspan 4 into two separate events', async () => {
+	it('splits a double period cell rowspan 4 into two separate events', async () => {
 		// Each period occupies 2 table rows (time cell rowspan=2),
 		// so a double-period event has rowspan=4 on the content cell
 		const html = wrapTimetable(
@@ -125,7 +126,7 @@ describe('parser parse timetable page html rewriter state machine', () => {
 			`<tr><td>Мат2.л</td><td>Математика 2/Mathematik 2 лекция</td></tr>`
 		);
 
-		const parsed = await parseTimetablePage(html, group, week);
+		const parsed = await parseTimetablePage(parseDocument(html), group, week);
 		expect(parsed.events).toHaveLength(2);
 
 		const [first, second] = parsed.events;
@@ -145,7 +146,7 @@ describe('parser parse timetable page html rewriter state machine', () => {
 		expect(first!.id).not.toBe(second!.id);
 	});
 
-	it('produce one event for single period cell rowspan 2', async () => {
+	it('produces one event for single period cell rowspan 2', async () => {
 		const html = wrapTimetable(
 			`
 				<tr>
@@ -163,13 +164,13 @@ describe('parser parse timetable page html rewriter state machine', () => {
 			`<tr><td>PHYS</td><td>Физика/Physik лекция</td></tr>`
 		);
 
-		const parsed = await parseTimetablePage(html, group, week);
+		const parsed = await parseTimetablePage(parseDocument(html), group, week);
 		expect(parsed.events).toHaveLength(1);
 		expect(parsed.events[0]!.startTime).toBe('08:00');
 		expect(parsed.events[0]!.endTime).toBe('09:40');
 	});
 
-	it('skip day range marker cells', async () => {
+	it('skips day range marker cells', async () => {
 		const html = wrapTimetable(
 			`
 				<tr>
@@ -181,11 +182,11 @@ describe('parser parse timetable page html rewriter state machine', () => {
 			``
 		);
 
-		const parsed = await parseTimetablePage(html, group, week);
+		const parsed = await parseTimetablePage(parseDocument(html), group, week);
 		expect(parsed.events).toHaveLength(0);
 	});
 
-	it('deduplicate identical event seeds emitted from split columns of one day', async () => {
+	it('deduplicates identical event seeds emitted from split columns of one day', async () => {
 		const html = wrapTimetable(
 			`
 				<tr>
@@ -198,7 +199,7 @@ describe('parser parse timetable page html rewriter state machine', () => {
 			`<tr><td>DUP</td><td>Дублирование/Duplizierung лекция</td></tr>`
 		);
 
-		const parsed = await parseTimetablePage(html, group, week);
+		const parsed = await parseTimetablePage(parseDocument(html), group, week);
 		expect(parsed.events).toHaveLength(1);
 		expect(parsed.events[0]!.subjectShortRaw).toBe('DUP');
 		expect(parsed.events[0]!.startTime).toBe('08:00');
@@ -206,7 +207,7 @@ describe('parser parse timetable page html rewriter state machine', () => {
 		expect(parsed.events[0]!.dayIndex).toBe(0);
 	});
 
-	it('skip unknown placeholder subject when legend has no mapping', async () => {
+	it('skips unknown placeholder subject when legend has no mapping', async () => {
 		const html = wrapTimetable(
 			`
 				<tr>
@@ -218,11 +219,11 @@ describe('parser parse timetable page html rewriter state machine', () => {
 			``
 		);
 
-		const parsed = await parseTimetablePage(html, group, week);
+		const parsed = await parseTimetablePage(parseDocument(html), group, week);
 		expect(parsed.events).toHaveLength(0);
 	});
 
-	it('fall back to cleaned short label when full legend name is missing', async () => {
+	it('falls back to cleaned short label when full legend name is missing', async () => {
 		const html = wrapTimetable(
 			`
 				<tr>
@@ -234,7 +235,7 @@ describe('parser parse timetable page html rewriter state machine', () => {
 			``
 		);
 
-		const parsed = await parseTimetablePage(html, group, week);
+		const parsed = await parseTimetablePage(parseDocument(html), group, week);
 		expect(parsed.events).toHaveLength(1);
 		const event = parsed.events[0]!;
 		expect(event.subjectShortRu).toBe('СПУРП2');
@@ -243,9 +244,9 @@ describe('parser parse timetable page html rewriter state machine', () => {
 		expect(event.subjectFullRaw).toBe('СПУРП2');
 	});
 
-	it('throw a clear error when center container is absent', () => {
+	it('throws a clear error when center container is absent', () => {
 		expect(() =>
-			parseTimetablePage('<html><body><table></table></body></html>', group, week)
-		).toThrow('Timetable center container not found');
+			parseTimetablePage(parseDocument('<html><body><table></table></body></html>'), group, week)
+		).toThrow('Main timetable table not found');
 	});
 });
