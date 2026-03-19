@@ -66,11 +66,11 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ env.PLAYWRIGHT_VERSION }}
 
-      - run: pnpm exec playwright install --with-deps chromium webkit
+      - run: pnpm exec playwright install --with-deps chromium firefox webkit
         if: steps.playwright-cache.outputs.cache-hit != 'true'
         name: Install Playwright browsers
 
-      - run: pnpm exec playwright install-deps chromium webkit
+      - run: pnpm exec playwright install-deps chromium firefox webkit
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         name: Install Playwright system dependencies
 
