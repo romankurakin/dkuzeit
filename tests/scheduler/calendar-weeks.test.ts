@@ -9,8 +9,8 @@ const weeks: WeekOption[] = [
 	{ value: '09', label: 'Week 9', startDateIso: '2026-03-02' }
 ];
 
-describe('dku pick rolling weeks for calendar', () => {
-	it('use current week when anchor week is in the past', () => {
+describe('pickRollingWeeksForCalendar', () => {
+	it('uses current week when anchor week is in the past', () => {
 		const selected = pickRollingWeeksForCalendar(weeks, '06', {
 			now: new Date('2026-02-19T12:00:00Z'),
 			windowSize: 2
@@ -19,7 +19,7 @@ describe('dku pick rolling weeks for calendar', () => {
 		expect(selected.map((item) => item.value)).toEqual(['07', '08']);
 	});
 
-	it('respect a future anchor week', () => {
+	it('respects a future anchor week', () => {
 		const selected = pickRollingWeeksForCalendar(weeks, '09', {
 			now: new Date('2026-02-19T12:00:00Z'),
 			windowSize: 2
@@ -28,7 +28,7 @@ describe('dku pick rolling weeks for calendar', () => {
 		expect(selected.map((item) => item.value)).toEqual(['09']);
 	});
 
-	it('fall back to earliest week when current and anchor are unknown', () => {
+	it('falls back to earliest week when current and anchor are unknown', () => {
 		const selected = pickRollingWeeksForCalendar(weeks, '99', {
 			now: new Date('2026-01-01T00:00:00Z'),
 			windowSize: 2

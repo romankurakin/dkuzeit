@@ -54,16 +54,16 @@ const SCHEDULE_HTML = `
 				</tbody>
 			</table>
 		</center>
-		<B>Пн 05.02.</B>
-		<B>Вт 06.02.</B>
-		<B>Ср 07.02.</B>
-		<B>Чт 08.02.</B>
-		<B>Пт 09.02.</B>
-		<B>Сб 10.02.</B>
-		<B>Дисциплины</B>
-		<TABLE>
+		<b>Пн 05.02.</b>
+		<b>Вт 06.02.</b>
+		<b>Ср 07.02.</b>
+		<b>Чт 08.02.</b>
+		<b>Пт 09.02.</b>
+		<b>Сб 10.02.</b>
+		<b>Дисциплины</b>
+		<table>
 			<tr><td>MATH</td><td>Математика/Mathematik лекция</td></tr>
-		</TABLE>
+		</table>
 	</body>
 </html>
 `;
@@ -96,7 +96,7 @@ function useNavbarAbort() {
 }
 
 describe('routes via msw', () => {
-	it('serve meta and schedule from real parsing pipeline', async () => {
+	it('serves meta and schedule from real parsing pipeline', async () => {
 		useUpstreamStubs();
 
 		const metaResponse = await getMeta({} as never);
@@ -121,7 +121,7 @@ describe('routes via msw', () => {
 		expect(schedule.events[0]).toMatchObject({ subjectShortRaw: 'MATH', room: 'A101' });
 	});
 
-	it('handle schedule endpoint error branches', async () => {
+	it('handles schedule endpoint error branches', async () => {
 		useUpstreamStubs();
 
 		const missingGroup = await getSchedule({
@@ -147,7 +147,7 @@ describe('routes via msw', () => {
 		expect(upstreamFailure.status).toBe(503);
 	});
 
-	it('issue and validate token from real token route', async () => {
+	it('issues and validates token from real token route', async () => {
 		useUpstreamStubs();
 
 		const request = new Request('http://localhost/api/token', {
@@ -177,7 +177,7 @@ describe('routes via msw', () => {
 		});
 	});
 
-	it('handle token endpoint error branches', async () => {
+	it('handles token endpoint error branches', async () => {
 		useUpstreamStubs();
 
 		const invalidJson = await postToken({
@@ -232,7 +232,7 @@ describe('routes via msw', () => {
 		expect(noSourceWeek.status).toBe(400);
 	});
 
-	it('build calendar and load server page through real server stack', async () => {
+	it('builds calendar and loads server page through real server stack', async () => {
 		useUpstreamStubs();
 
 		const token = await signToken(
@@ -280,7 +280,7 @@ describe('routes via msw', () => {
 		);
 	});
 
-	it('avoid rewriting group cookie when already up to date', async () => {
+	it('avoids rewriting group cookie when already up to date', async () => {
 		useUpstreamStubs();
 
 		const setHeaders = vi.fn();
@@ -304,7 +304,7 @@ describe('routes via msw', () => {
 		expect(cookies.set).not.toHaveBeenCalled();
 	});
 
-	it('ignore invalid remembered group cookie and continue with default group', async () => {
+	it('ignores invalid remembered group cookie and continues with default group', async () => {
 		useUpstreamStubs();
 
 		const setHeaders = vi.fn();
@@ -326,7 +326,7 @@ describe('routes via msw', () => {
 		expect(cookies.set).not.toHaveBeenCalled();
 	});
 
-	it('repair invalid remembered week cookie by falling back to automatic week', async () => {
+	it('repairs invalid remembered week cookie by falling back to automatic week', async () => {
 		useUpstreamStubs();
 
 		const cookies = {
@@ -357,7 +357,7 @@ describe('routes via msw', () => {
 		);
 	});
 
-	it('preserve valid past week cookie without overwriting it', async () => {
+	it('preserves valid past week cookie without overwriting it', async () => {
 		const twoWeekNavbar = `
 <html>
 	<body>
@@ -396,7 +396,7 @@ describe('routes via msw', () => {
 		expect(cookies.set).not.toHaveBeenCalledWith('dku_week', expect.anything(), expect.anything());
 	});
 
-	it('ignore invalid remembered cohorts cookie and continue rendering', async () => {
+	it('ignores invalid remembered cohorts cookie and continues rendering', async () => {
 		useUpstreamStubs();
 
 		const cookies = {
@@ -422,7 +422,7 @@ describe('routes via msw', () => {
 		expect(pageData.schedule.selectedCohortsCsv).toContain('UNKNOWN');
 	});
 
-	it('strip state query params from incoming requests', async () => {
+	it('strips state query params from incoming requests', async () => {
 		useUpstreamStubs();
 
 		const redirectResult = loadPage({
@@ -440,7 +440,7 @@ describe('routes via msw', () => {
 		});
 	});
 
-	it('restore remembered group and keep state params out of redirected URL', async () => {
+	it('restores remembered group and keeps state params out of redirected URL', async () => {
 		useUpstreamStubs();
 
 		const rememberedGroupResult = loadPage({
@@ -463,7 +463,7 @@ describe('routes via msw', () => {
 		});
 	});
 
-	it('handle calendar and page redirect branches', async () => {
+	it('handles calendar and page redirect branches', async () => {
 		useUpstreamStubs();
 
 		const missingToken = await getCalendar({
@@ -558,7 +558,7 @@ describe('routes via msw', () => {
 		});
 	});
 
-	it('degrade gracefully when loading metadata aborts upstream', async () => {
+	it('degrades gracefully when loading metadata aborts upstream', async () => {
 		useNavbarAbort();
 
 		const token = await signToken(

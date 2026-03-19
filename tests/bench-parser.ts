@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { parseDocument } from 'htmlparser2';
 import { parseNavHtml, parseTimetablePage } from '../src/lib/server/parser';
 
 interface Manifest {
@@ -25,7 +26,7 @@ async function run() {
 
 	// Bench parseNavHtml
 	const navStart = performance.now();
-	const meta = parseNavHtml(navbarHtml);
+	const meta = parseNavHtml(parseDocument(navbarHtml));
 	const navMs = performance.now() - navStart;
 	console.log(
 		`parseNavHtml: ${navMs.toFixed(2)}ms (${meta.groups.length} groups, ${meta.weeks.length} weeks)`
@@ -57,7 +58,7 @@ async function run() {
 	const parseStart = performance.now();
 	for (const { html, group, week } of pages) {
 		try {
-			const parsed = await parseTimetablePage(html, group, week);
+			const parsed = await parseTimetablePage(parseDocument(html), group, week);
 			totalEvents += parsed.events.length;
 		} catch {
 			failures += 1;

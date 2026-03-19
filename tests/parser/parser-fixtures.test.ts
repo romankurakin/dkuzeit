@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { parseDocument } from 'htmlparser2';
 import { parseNavHtml, parseTimetablePage } from '../../src/lib/server/parser';
 
 interface Manifest {
@@ -18,20 +19,20 @@ const fixtureReady = existsSync(manifestPath);
 
 const suite = fixtureReady ? describe : describe.skip;
 
-suite('parser fixtures', () => {
-	it('parse navbar fixture and validate shape', async () => {
+suite('parseNavHtml / parseTimetablePage fixtures', () => {
+	it('parses navbar fixture and validates shape', async () => {
 		const navbarHtml = await readFile(path.join(fixtureRoot, 'frames/navbar.htm'), 'utf8');
-		const meta = parseNavHtml(navbarHtml);
+		const meta = parseNavHtml(parseDocument(navbarHtml));
 
 		expect(meta.weeks.length).toBeGreaterThan(0);
 		expect(meta.groups.length).toBeGreaterThan(10);
 		expect(meta.groups[0]?.id).toBe(1);
 	});
 
-	it('parse all downloaded class week pages with zero hard failures', async () => {
+	it('parses all downloaded class week pages with zero hard failures', async () => {
 		const manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as Manifest;
 		const navbarHtml = await readFile(path.join(fixtureRoot, 'frames/navbar.htm'), 'utf8');
-		const meta = parseNavHtml(navbarHtml);
+		const meta = parseNavHtml(parseDocument(navbarHtml));
 
 		expect(meta.groups.length).toBe(manifest.classCount);
 		expect(manifest.downloadedPages).toBeGreaterThan(0);
@@ -53,7 +54,7 @@ suite('parser fixtures', () => {
 
 				try {
 					const html = await readFile(filePath, 'utf8');
-					const parsed = await parseTimetablePage(html, group, week);
+					const parsed = await parseTimetablePage(parseDocument(html), group, week);
 					parsedPages += 1;
 					totalEvents += parsed.events.length;
 					kzTracks += parsed.events.filter((event) => event.track === 'kz').length;
@@ -84,7 +85,7 @@ suite('parser fixtures', () => {
 
 if (!fixtureReady) {
 	describe('parser prerequisites', () => {
-		it('require fixture snapshot for parser fixtures', () => {
+		it('requires fixture snapshot for parser fixtures', () => {
 			expect(`Fixture snapshot missing at ${manifestPath}. Run: npm run fixtures:sync`).toBeTypeOf(
 				'string'
 			);

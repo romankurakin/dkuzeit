@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { parseDocument } from 'htmlparser2';
 import { parseNavHtml, parseTimetablePage } from '../../src/lib/server/parser';
 import { toSlug } from '../../src/lib/url-slug';
 
@@ -20,7 +21,7 @@ const suite = fixtureReady ? describe : describe.skip;
 
 async function loadMeta() {
 	const navbar = await readFile(path.join(fixtureRoot, 'frames/navbar.htm'), 'utf8');
-	return parseNavHtml(navbar);
+	return parseNavHtml(parseDocument(navbar));
 }
 
 async function loadManifest(): Promise<Manifest> {
@@ -38,11 +39,11 @@ async function loadSchedule(groupCode: string, weekValue?: string) {
 	if (week === undefined) throw new Error('Week not found');
 	const rel = path.join(fixtureRoot, week.value, 'c', `c${String(group.id).padStart(5, '0')}.htm`);
 	const html = await readFile(rel, 'utf8');
-	return { ...(await parseTimetablePage(html, group, week)), group, week };
+	return { ...(await parseTimetablePage(parseDocument(html), group, week)), group, week };
 }
 
-suite('parser parse nav html', () => {
-	it('keep group labels without leading dashes', async () => {
+suite('parseNavHtml', () => {
+	it('keeps group labels without leading dashes', async () => {
 		const meta = await loadMeta();
 		for (const group of meta.groups) {
 			expect(group.codeRu).not.toMatch(/^-/);
@@ -50,7 +51,7 @@ suite('parser parse nav html', () => {
 		}
 	});
 
-	it('keep group labels without trailing slashes', async () => {
+	it('keeps group labels without trailing slashes', async () => {
 		const meta = await loadMeta();
 		for (const group of meta.groups) {
 			expect(group.codeRu).not.toMatch(/\/$/);
@@ -58,13 +59,13 @@ suite('parser parse nav html', () => {
 		}
 	});
 
-	it('keep year prefix and strip leading dash for 2 tl german label', async () => {
+	it('keeps year prefix and strips leading dash for 2-TL German label', async () => {
 		const meta = await loadMeta();
 		const tl = meta.groups.find((g) => g.codeRaw === '2-ТЛ/-TL');
 		expect(tl?.codeDe).toBe('2-TL');
 	});
 
-	it('german group labels keep year prefix when russian label has it', async () => {
+	it('keeps year prefix on German group labels when Russian label has it', async () => {
 		const meta = await loadMeta();
 		for (const group of meta.groups) {
 			if (!/^\d/.test(group.codeRu)) continue;
@@ -72,7 +73,7 @@ suite('parser parse nav html', () => {
 		}
 	});
 
-	it('keep parenthesized suffixes for colliding management groups', async () => {
+	it('keeps parenthesized suffixes for colliding management groups', async () => {
 		const meta = await loadMeta();
 		const ma = meta.groups.find((group) => group.codeRaw === '2-Мен(МА)/2-Man(MA)');
 		const main = meta.groups.find((group) => group.codeRaw === '2-Мен/Man');
@@ -80,15 +81,15 @@ suite('parser parse nav html', () => {
 		expect(main?.codeRu).toBe('2-Мен');
 	});
 
-	it('build unique slugs for group labels', async () => {
+	it('builds unique slugs for group labels', async () => {
 		const meta = await loadMeta();
 		const slugs = meta.groups.map((group) => toSlug(group.codeRu));
 		expect(new Set(slugs).size).toBe(slugs.length);
 	});
 });
 
-suite('parser parse timetable page label quality', () => {
-	it('keep event labels without trailing slashes for all groups and weeks', async () => {
+suite('parseTimetablePage label quality', () => {
+	it('keeps event labels without trailing slashes for all groups and weeks', async () => {
 		const meta = await loadMeta();
 		const manifest = await loadManifest();
 
@@ -103,7 +104,7 @@ suite('parser parse timetable page label quality', () => {
 				);
 				if (existsSync(rel) === false) continue;
 				const html = await readFile(rel, 'utf8');
-				const { events } = await parseTimetablePage(html, group, week);
+				const { events } = await parseTimetablePage(parseDocument(html), group, week);
 
 				for (const e of events) {
 					expect(e.subjectShortRu).not.toMatch(/\/$/);
@@ -115,7 +116,7 @@ suite('parser parse timetable page label quality', () => {
 		}
 	});
 
-	it('keep event labels without leading dashes', async () => {
+	it('keeps event labels without leading dashes', async () => {
 		const meta = await loadMeta();
 		const manifest = await loadManifest();
 
@@ -130,7 +131,7 @@ suite('parser parse timetable page label quality', () => {
 				);
 				if (existsSync(rel) === false) continue;
 				const html = await readFile(rel, 'utf8');
-				const { events } = await parseTimetablePage(html, group, week);
+				const { events } = await parseTimetablePage(parseDocument(html), group, week);
 
 				for (const e of events) {
 					expect(e.subjectShortRu).not.toMatch(/^-/);
@@ -142,7 +143,7 @@ suite('parser parse timetable page label quality', () => {
 		}
 	});
 
-	it('keep lesson type without kazakh specific characters', async () => {
+	it('keeps lesson type without Kazakh-specific characters', async () => {
 		const meta = await loadMeta();
 		const manifest = await loadManifest();
 
@@ -157,7 +158,7 @@ suite('parser parse timetable page label quality', () => {
 				);
 				if (existsSync(rel) === false) continue;
 				const html = await readFile(rel, 'utf8');
-				const { events } = await parseTimetablePage(html, group, week);
+				const { events } = await parseTimetablePage(parseDocument(html), group, week);
 
 				for (const e of events) {
 					expect(e.lessonType).not.toMatch(/[ҚқӘәҒғҢңӨөҰұҮүІіҺһ]/);
@@ -166,7 +167,7 @@ suite('parser parse timetable page label quality', () => {
 		}
 	});
 
-	it('keep each event within one standard period', async () => {
+	it('keeps each event within one standard period', async () => {
 		const meta = await loadMeta();
 		const manifest = await loadManifest();
 
@@ -187,7 +188,7 @@ suite('parser parse timetable page label quality', () => {
 				);
 				if (existsSync(rel) === false) continue;
 				const html = await readFile(rel, 'utf8');
-				const { events } = await parseTimetablePage(html, group, week);
+				const { events } = await parseTimetablePage(parseDocument(html), group, week);
 
 				for (const e of events) {
 					const duration = minutesDuration(e.startTime, e.endTime);
@@ -200,7 +201,7 @@ suite('parser parse timetable page label quality', () => {
 		}
 	});
 
-	it('keep full de not cyrillic only when different from full ru', async () => {
+	it('keeps fullDe non-Cyrillic when different from fullRu', async () => {
 		const meta = await loadMeta();
 		const manifest = await loadManifest();
 
@@ -215,7 +216,7 @@ suite('parser parse timetable page label quality', () => {
 				);
 				if (existsSync(rel) === false) continue;
 				const html = await readFile(rel, 'utf8');
-				const { events } = await parseTimetablePage(html, group, week);
+				const { events } = await parseTimetablePage(parseDocument(html), group, week);
 
 				for (const e of events) {
 					expect(
@@ -228,8 +229,8 @@ suite('parser parse timetable page label quality', () => {
 	});
 });
 
-suite('parser parse timetable page specific groups', () => {
-	it('set lesson type for wirtschaftstheorie', async () => {
+suite('parseTimetablePage specific groups', () => {
+	it('sets lesson type for Wirtschaftstheorie', async () => {
 		const { events } = await loadSchedule('3А-ТЛ');
 		const econ = events.find((e) => e.subjectFullRaw.includes('Экономическая теория'));
 		expect(econ).toBeDefined();
@@ -238,7 +239,7 @@ suite('parser parse timetable page specific groups', () => {
 		expect(econ?.subjectFullDe).toBe('Wirtschaftstheorie');
 	});
 
-	it('set lesson type for kasachisch', async () => {
+	it('sets lesson type for Kasachisch', async () => {
 		const { events } = await loadSchedule('3А-ТЛ');
 		const kaz = events.find((e) => e.subjectFullRaw.includes('Kasachisch'));
 		expect(kaz).toBeDefined();
@@ -246,7 +247,7 @@ suite('parser parse timetable page specific groups', () => {
 		expect(kaz?.subjectFullDe).toBe('Kasachisch');
 	});
 
-	it('keep empty lesson type and russian fallback for german', async () => {
+	it('keeps empty lesson type and Russian fallback for German', async () => {
 		const { events } = await loadSchedule('3-Мен');
 		const biz = events.find((e) => e.subjectFullRaw.includes('қазақ'));
 		if (biz === undefined) return; // not every week has this subject
@@ -254,7 +255,7 @@ suite('parser parse timetable page specific groups', () => {
 		expect(biz.subjectFullDe).toBe(biz.subjectFullRu);
 	});
 
-	it('detect kz cohort codes correctly', async () => {
+	it('detects kz cohort codes correctly', async () => {
 		const { events, cohorts } = await loadSchedule('3А-ТЛ');
 		const kazCohorts = cohorts.filter((c) => c.track === 'kz');
 		expect(kazCohorts.length).toBeGreaterThan(0);
@@ -268,7 +269,7 @@ suite('parser parse timetable page specific groups', () => {
 		}
 	});
 
-	it('keep no cohort code on core fixed events', async () => {
+	it('keeps no cohort code on core_fixed events', async () => {
 		const { events } = await loadSchedule('3А-ТЛ');
 		const core = events.filter((e) => e.scope === 'core_fixed');
 		expect(core.length).toBeGreaterThan(0);
@@ -277,7 +278,7 @@ suite('parser parse timetable page specific groups', () => {
 		}
 	});
 
-	it('extract lesson type from no slash legend entry for business and soft skills', async () => {
+	it('extracts lesson type from no-slash legend entry for Business and Soft Skills', async () => {
 		const { events } = await loadSchedule('2А-МО');
 		const bs = events.find((e) => e.subjectFullRaw.includes('Business'));
 		if (bs === undefined) return; // not every week has this subject
@@ -288,7 +289,7 @@ suite('parser parse timetable page specific groups', () => {
 
 if (fixtureReady === false) {
 	describe('parser prerequisites', () => {
-		it('require fixture snapshot for parser quality tests', () => {
+		it('requires fixture snapshot for parser quality tests', () => {
 			expect('Fixture snapshot missing. Run: npm run fixtures:sync').toBeTypeOf('string');
 		});
 	});

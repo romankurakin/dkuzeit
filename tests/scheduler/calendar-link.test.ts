@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { openCalendarSubscription, toWebcalLink } from '../../src/lib/scheduler/calendar-link';
 
 describe('calendar link helpers', () => {
-	it('convert http and https links to webcal', () => {
+	it('converts http and https links to webcal', () => {
 		expect(toWebcalLink('https://example.com/api/calendar?token=1')).toBe(
 			'webcal://example.com/api/calendar?token=1'
 		);
@@ -11,7 +11,7 @@ describe('calendar link helpers', () => {
 		);
 	});
 
-	it('attempt opening calendar subscription through provided assign function', () => {
+	it('attempts opening calendar subscription through provided assign function', () => {
 		const assign = vi.fn();
 		const ok = openCalendarSubscription('webcal://example.com/calendar', assign);
 
@@ -20,7 +20,7 @@ describe('calendar link helpers', () => {
 		expect(assign).toHaveBeenCalledWith('webcal://example.com/calendar');
 	});
 
-	it('report failed opening when assign throws', () => {
+	it('reports failed opening when assign throws', () => {
 		const assign = vi.fn(() => {
 			throw new Error('blocked');
 		});

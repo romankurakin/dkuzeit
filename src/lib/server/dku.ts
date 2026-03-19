@@ -4,7 +4,7 @@ import type { GroupWeekSchedule, LessonEvent, MetaPayload, WeekOption } from './
 import { todayInAlmaty } from './time';
 import {
 	cached,
-	fetchText,
+	fetchDocument,
 	META_CACHE_POLICY,
 	SCHEDULE_CACHE_POLICY,
 	type DkuRequestContext
@@ -27,8 +27,8 @@ export async function getMeta(request?: DkuRequestContext): Promise<MetaPayload>
 	return cached(
 		'meta',
 		async () => {
-			const html = await fetchText('frames/navbar.htm');
-			return parseNavHtml(html);
+			const document = await fetchDocument('frames/navbar.htm');
+			return parseNavHtml(document);
 		},
 		request,
 		META_CACHE_POLICY
@@ -50,11 +50,11 @@ async function getSchedule(
 		`schedule:${week.value}:${group.id}`,
 		async () => {
 			const path = `${week.value}/c/c${String(group.id).padStart(5, '0')}.htm`;
-			const html = await fetchText(path);
+			const document = await fetchDocument(path);
 			const parsed = await traceFn(
 				'parseTimetablePage',
 				{ group: group.codeRaw, week: week.value },
-				() => parseTimetablePage(html, group, week)
+				() => parseTimetablePage(document, group, week)
 			);
 			return { group, week, events: parsed.events, cohorts: parsed.cohorts };
 		},

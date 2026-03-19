@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { ChildNode, Element, Text } from 'domhandler';
 
 const { traceCacheGetMock } = vi.hoisted(() => ({
 	traceCacheGetMock: vi.fn()
@@ -15,7 +16,7 @@ import {
 	SCHEDULE_CACHE_POLICY,
 	cached,
 	createDkuRequestContext,
-	fetchText
+	fetchDocument
 } from '../../src/lib/server/dku-fetch';
 
 type CacheApi = {
@@ -33,7 +34,7 @@ describe('dku fetch cache helpers', () => {
 		delete (globalThis as unknown as { caches?: unknown }).caches;
 	});
 
-	it('return cache hit without running compute', async () => {
+	it('returns cache hit without running compute', async () => {
 		const match = vi.fn().mockResolvedValue(new Response(JSON.stringify({ ok: true })));
 		const put = vi.fn().mockResolvedValue(undefined);
 		(globalThis as unknown as { caches?: CacheApi }).caches = { default: { match, put } };
@@ -50,7 +51,7 @@ describe('dku fetch cache helpers', () => {
 		expect(put).not.toHaveBeenCalled();
 	});
 
-	it('deduplicate inflight calls for same key and write cache on miss', async () => {
+	it('deduplicates inflight calls for same key and writes cache on miss', async () => {
 		const match = vi.fn().mockResolvedValue(null);
 		const put = vi.fn().mockResolvedValue(undefined);
 		(globalThis as unknown as { caches?: CacheApi }).caches = { default: { match, put } };
@@ -79,7 +80,7 @@ describe('dku fetch cache helpers', () => {
 		);
 	});
 
-	it('use explicit cache policy when provided', async () => {
+	it('uses explicit cache policy when provided', async () => {
 		const match = vi.fn().mockResolvedValue(null);
 		const put = vi.fn().mockResolvedValue(undefined);
 		(globalThis as unknown as { caches?: CacheApi }).caches = { default: { match, put } };
@@ -97,7 +98,7 @@ describe('dku fetch cache helpers', () => {
 		);
 	});
 
-	it('wrap AbortError with descriptive message on timeout', async () => {
+	it('wraps AbortError with descriptive message on timeout', async () => {
 		vi.useFakeTimers();
 		const fetchMock = vi.fn().mockImplementation((_url: string, init?: RequestInit) => {
 			return new Promise<Response>((_resolve, reject) => {
@@ -109,37 +110,135 @@ describe('dku fetch cache helpers', () => {
 		(globalThis as unknown as { fetch?: typeof fetch }).fetch =
 			fetchMock as unknown as typeof fetch;
 
-		const promise = fetchText('slow/endpoint.htm');
+		const promise = fetchDocument('slow/endpoint.htm');
 		promise.catch(() => {});
 		await vi.advanceTimersByTimeAsync(15_000);
 		await expect(promise).rejects.toThrow(`Request to ${BASE_URL}/slow/endpoint.htm was aborted`);
 		vi.useRealTimers();
 	});
 
-	it('re-throw non-AbortError network failures unchanged', async () => {
+	it('re-throws non-AbortError network failures unchanged', async () => {
 		const fetchMock = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'));
 		(globalThis as unknown as { fetch?: typeof fetch }).fetch =
 			fetchMock as unknown as typeof fetch;
 
-		await expect(fetchText('broken/path.htm')).rejects.toThrow('Failed to fetch');
+		await expect(fetchDocument('broken/path.htm')).rejects.toThrow('Failed to fetch');
 	});
 
-	it('fetch text with no-cache header and fail on non-ok response', async () => {
+	it('fetches document with no-cache header and fails on non-ok response', async () => {
 		const fetchMock = vi
 			.fn()
-			.mockResolvedValueOnce(new Response('hello', { status: 200 }))
+			.mockResolvedValueOnce(new Response('<html><body>hello</body></html>', { status: 200 }))
 			.mockResolvedValueOnce(new Response('nope', { status: 503 }));
 		(globalThis as unknown as { fetch?: typeof fetch }).fetch =
 			fetchMock as unknown as typeof fetch;
 
-		await expect(fetchText('frames/navbar.htm')).resolves.toBe('hello');
+		const doc = await fetchDocument('frames/navbar.htm');
+		expect(doc.type).toBe('root');
 		expect(fetchMock).toHaveBeenNthCalledWith(
 			1,
 			`${BASE_URL}/frames/navbar.htm`,
 			expect.objectContaining({ headers: { 'cache-control': 'no-cache' } })
 		);
-		await expect(fetchText('bad/path.htm')).rejects.toThrow(
+		await expect(fetchDocument('bad/path.htm')).rejects.toThrow(
 			`Failed to fetch ${BASE_URL}/bad/path.htm (503)`
+		);
+	});
+});
+
+describe('fetchDocument streaming', () => {
+	function collectText(node: ChildNode): string {
+		if (node.type === 'text') return (node as Text).data;
+		if (!('children' in node)) return '';
+		return node.children.map(collectText).join('');
+	}
+
+	function findByTag(node: ChildNode, name: string): Element | null {
+		if (node.type === 'tag' && (node as Element).name === name) return node as Element;
+		if (!('children' in node)) return null;
+		for (const child of node.children) {
+			const found = findByTag(child, name);
+			if (found) return found;
+		}
+		return null;
+	}
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it('pipes HTML chunks through WebWritableStream and gets walkable Document', async () => {
+		const html =
+			'<html><body><select name="week"><option value="01">1.1.2026</option></select></body></html>';
+		const chunks = [html.slice(0, 20), html.slice(20, 50), html.slice(50)];
+		const encoder = new TextEncoder();
+
+		(globalThis as unknown as { fetch?: typeof fetch }).fetch = vi.fn().mockResolvedValue(
+			new Response(
+				new ReadableStream({
+					start(controller) {
+						for (const chunk of chunks) controller.enqueue(encoder.encode(chunk));
+						controller.close();
+					}
+				})
+			)
+		);
+
+		const doc = await fetchDocument('frames/navbar.htm');
+		expect(doc.type).toBe('root');
+		const select = findByTag(doc, 'select');
+		expect(select).not.toBeNull();
+		expect(select!.attribs.name).toBe('week');
+		const option = findByTag(doc, 'option');
+		expect(option).not.toBeNull();
+		expect(option!.attribs.value).toBe('01');
+		expect(collectText(option!).trim()).toBe('1.1.2026');
+	});
+
+	it('decodes fragmented UTF-8 multi-byte characters across chunk boundaries', async () => {
+		const text = 'Казахский язык';
+		const bytes = new TextEncoder().encode(text);
+		const mid = 5;
+		const chunks = [bytes.slice(0, mid), bytes.slice(mid)];
+
+		(globalThis as unknown as { fetch?: typeof fetch }).fetch = vi.fn().mockResolvedValue(
+			new Response(
+				new ReadableStream({
+					start(controller) {
+						for (const chunk of chunks) controller.enqueue(chunk);
+						controller.close();
+					}
+				})
+			)
+		);
+
+		const doc = await fetchDocument('test.htm');
+		expect(collectText(doc).trim()).toBe(text);
+	});
+
+	it('parses empty stream without error', async () => {
+		(globalThis as unknown as { fetch?: typeof fetch }).fetch = vi.fn().mockResolvedValue(
+			new Response(
+				new ReadableStream({
+					start(controller) {
+						controller.close();
+					}
+				})
+			)
+		);
+
+		const doc = await fetchDocument('empty.htm');
+		expect(doc.type).toBe('root');
+		expect(doc.children).toHaveLength(0);
+	});
+
+	it('throws when response body is null', async () => {
+		(globalThis as unknown as { fetch?: typeof fetch }).fetch = vi
+			.fn()
+			.mockResolvedValue(new Response(null));
+
+		await expect(fetchDocument('no-body.htm')).rejects.toThrow(
+			`Response body is null for ${BASE_URL}/no-body.htm`
 		);
 	});
 });
