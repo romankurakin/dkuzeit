@@ -62,7 +62,7 @@ importers:
         version: 2.15.0
       '@inlang/plugin-m-function-matcher':
         specifier: ^2.2.2
-        version: 2.2.2
+        version: 2.2.4
       '@inlang/plugin-message-format':
         specifier: ^4.4.0
         version: 4.4.0
@@ -1194,8 +1194,8 @@ packages:
     resolution: {integrity: sha512-2ZOa9nssVn4tjkKskqb88KP5A7cTIjo8AiM9xnPvH+vBhRIRenO+ftAbVOHhHcHjcFxy2QFcOfBAH/Cw1LIsUg==}
     hasBin: true
 
-  '@inlang/plugin-m-function-matcher@2.2.2':
-    resolution: {integrity: sha512-DfUTUts80gtZahK8mfVNX0BXpHh2QO0pTfiSy7JceQzcJNEIOTcvXalKG093HgWJOIJwpJ4ULXeJfRlX+64UEg==}
+  '@inlang/plugin-m-function-matcher@2.2.4':
+    resolution: {integrity: sha512-VA2O7XqUnyFIXY4aPQoygzwpGiV2vVyY8JiJMsPkNfor81m2wS89QMaDj+XCof7r5Wrkdh49He7RgsAX+19HfQ==}
 
   '@inlang/plugin-message-format@4.4.0':
     resolution: {integrity: sha512-n4aXt6XVg5kxhKoLAhi9nMgZtCA9iS0QOaXte56VqxWHcfj9O4c4gOkyVQZH7H9D8h7OZufCrO1sZGYOypPwEA==}
@@ -1206,6 +1206,10 @@ packages:
   '@inlang/sdk@2.8.0':
     resolution: {integrity: sha512-w1jysvUDTMgCaONklIgOJAp9dUDl0UhLbsdqfWEwY/GIqoc9IwpuHsrP3pzC+h3DfOpkMMDnDkTpPv8kIZ98iA==}
     engines: {node: '>=18.0.0'}
+
+  '@inlang/sdk@2.9.1':
+    resolution: {integrity: sha512-y0C3xaKo6pSGDr3p5OdreRVT3THJpgKVe1lLvG3BE4v9lskp3UfI9cPCbN8X2dpfLt/4ljtehMb5SykpMfJrMg==}
+    engines: {node: '>=20.0.0'}
 
   '@inquirer/ansi@1.0.2':
     resolution: {integrity: sha512-S8qNSZiYzFd0wAcyG5AXCvUHC5Sr7xpZ9wZ2py9XR88jUz8wooStVx5M6dRzczbBWjic9NP7+rY0Xi7qqK/aMQ==}
@@ -1278,6 +1282,10 @@ packages:
 
   '@lix-js/sdk@0.4.7':
     resolution: {integrity: sha512-pRbW+joG12L0ULfMiWYosIW0plmW4AsUdiPCp+Z8rAsElJ+wJ6in58zhD3UwUcd4BNcpldEGjg6PdA7e0RgsDQ==}
+    engines: {node: '>=18'}
+
+  '@lix-js/sdk@0.4.9':
+    resolution: {integrity: sha512-30mDkXpx704359oRrJI42bjfCspCiaMItngVBbPkiTGypS7xX4jYbHWQkXI8XuJ7VDB69D0MsVU6xfrBAIrM4A==}
     engines: {node: '>=18'}
 
   '@lix-js/server-protocol-schema@0.1.1':
@@ -3351,6 +3359,10 @@ packages:
   kysely@0.27.6:
     resolution: {integrity: sha512-FIyV/64EkKhJmjgC0g2hygpBv5RNWVPyNCqSAD7eTCv6eFWNIi4PN1UvdSJGicN/o35bnevgis4Y0UDC0qi8jQ==}
     engines: {node: '>=14.0.0'}
+
+  kysely@0.28.14:
+    resolution: {integrity: sha512-SU3lgh0rPvq7upc6vvdVrCsSMUG1h3ChvHVOY7wJ2fw4C9QEB7X3d5eyYEyULUX7UQtxZJtZXGuT6U2US72UYA==}
+    engines: {node: '>=20.0.0'}
 
   leven@3.1.0:
     resolution: {integrity: sha512-qsda+H8jTaUaN/x5vzW2rzc+8Rw4TAQ/4KjB46IwK5VH+IlVeeeje/EoZRpiXvIqjFgK84QffqPztGI3VBLG1A==}
@@ -5747,9 +5759,9 @@ snapshots:
     transitivePeerDependencies:
       - babel-plugin-macros
 
-  '@inlang/plugin-m-function-matcher@2.2.2':
+  '@inlang/plugin-m-function-matcher@2.2.4':
     dependencies:
-      '@inlang/sdk': 2.8.0
+      '@inlang/sdk': 2.9.1
     transitivePeerDependencies:
       - babel-plugin-macros
 
@@ -5767,6 +5779,16 @@ snapshots:
       '@sinclair/typebox': 0.31.28
       kysely: 0.27.6
       sqlite-wasm-kysely: 0.3.0(kysely@0.27.6)
+      uuid: 13.0.0
+    transitivePeerDependencies:
+      - babel-plugin-macros
+
+  '@inlang/sdk@2.9.1':
+    dependencies:
+      '@lix-js/sdk': 0.4.9
+      '@sinclair/typebox': 0.31.28
+      kysely: 0.28.14
+      sqlite-wasm-kysely: 0.3.0(kysely@0.28.14)
       uuid: 13.0.0
     transitivePeerDependencies:
       - babel-plugin-macros
@@ -5852,6 +5874,18 @@ snapshots:
       js-sha256: 0.11.1
       kysely: 0.27.6
       sqlite-wasm-kysely: 0.3.0(kysely@0.27.6)
+      uuid: 10.0.0
+    transitivePeerDependencies:
+      - babel-plugin-macros
+
+  '@lix-js/sdk@0.4.9':
+    dependencies:
+      '@lix-js/server-protocol-schema': 0.1.1
+      dedent: 1.5.1
+      human-id: 4.1.3
+      js-sha256: 0.11.1
+      kysely: 0.28.14
+      sqlite-wasm-kysely: 0.3.0(kysely@0.28.14)
       uuid: 10.0.0
     transitivePeerDependencies:
       - babel-plugin-macros
@@ -7996,6 +8030,8 @@ snapshots:
 
   kysely@0.27.6: {}
 
+  kysely@0.28.14: {}
+
   leven@3.1.0: {}
 
   levn@0.4.1:
@@ -8673,6 +8709,11 @@ snapshots:
     dependencies:
       '@sqlite.org/sqlite-wasm': 3.48.0-build4
       kysely: 0.27.6
+
+  sqlite-wasm-kysely@0.3.0(kysely@0.28.14):
+    dependencies:
+      '@sqlite.org/sqlite-wasm': 3.48.0-build4
+      kysely: 0.28.14
 
   stackback@0.0.2: {}
 
