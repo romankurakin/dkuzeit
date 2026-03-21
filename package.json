@@ -35,7 +35,7 @@
 		"@sentry/sveltekit": "^10.45.0",
 		"bits-ui": "^2.16.3",
 		"domhandler": "^6.0.1",
-		"htmlparser2": "^11.0.0",
+		"htmlparser2": "^12.0.0",
 		"runed": "^0.37.1",
 		"slugify": "^1.6.8",
 		"svelte-sonner": "^1.1.0",
