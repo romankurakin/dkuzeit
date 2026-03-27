@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { startSpanMock } = vi.hoisted(() => ({
 	startSpanMock: vi.fn()
@@ -8,23 +8,22 @@ vi.mock('@sentry/sveltekit', () => ({
 	startSpan: startSpanMock
 }));
 
-import { traceCacheGet, traceFn, traceSerialize } from '../../src/lib/server/tracing';
+import { traceCacheGet, traceSpan } from '../../src/lib/server/tracing';
 
 describe('tracing wrappers', () => {
-	it('wraps function call with sentry span', async () => {
-		startSpanMock.mockImplementation((_ctx, fn: () => Promise<string>) => fn());
-		await expect(traceFn('work', { size: 1 }, async () => 'ok')).resolves.toBe('ok');
-		expect(startSpanMock).toHaveBeenCalledWith(
-			{ name: 'work', op: 'function', attributes: { size: 1 } },
-			expect.any(Function)
-		);
+	beforeEach(() => {
+		vi.clearAllMocks();
 	});
 
-	it('wraps serialize call with sentry span', () => {
-		startSpanMock.mockImplementation((_ctx, fn: () => string) => fn());
-		expect(traceSerialize('serialize', { count: 2 }, () => 'payload')).toBe('payload');
+	it('wraps generic spans', async () => {
+		startSpanMock.mockImplementation((_ctx, fn: () => Promise<string>) => fn());
+
+		await expect(
+			traceSpan('parse timetable page', 'html.parse', { week: '13' }, async () => 'ok')
+		).resolves.toBe('ok');
+
 		expect(startSpanMock).toHaveBeenCalledWith(
-			{ name: 'serialize', op: 'serialize', attributes: { count: 2 } },
+			{ name: 'parse timetable page', op: 'html.parse', attributes: { week: '13' } },
 			expect.any(Function)
 		);
 	});
@@ -44,7 +43,7 @@ describe('tracing wrappers', () => {
 		).resolves.toBe('cached');
 
 		expect(startSpanMock).toHaveBeenCalledWith(
-			{ name: 'meta', op: 'cache.get', attributes: { 'cache.key': ['meta'] } },
+			{ name: 'meta cache', op: 'cache.get', attributes: { 'cache.key': ['meta'] } },
 			expect.any(Function)
 		);
 		expect(setAttribute).toHaveBeenCalledWith('cache.hit', true);
