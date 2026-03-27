@@ -249,4 +249,37 @@ describe('parseTimetablePage', () => {
 			parseTimetablePage(parseDocument('<html><body><table></table></body></html>'), group, week)
 		).toThrow('Main timetable table not found');
 	});
+
+	it('keeps language subgroup codes with leading zero distinct from plain numbers', async () => {
+		const html = wrapTimetable(
+			`
+				<tr>
+					<td rowspan="2">08:00 - 09:40</td>
+					<td colspan="12" rowspan="2">D01</td>
+				</tr>
+				<tr></tr>
+				<tr>
+					<td rowspan="2">09:50 - 11:30</td>
+					<td colspan="12" rowspan="2">D1</td>
+				</tr>
+				<tr></tr>
+				<tr>
+					<td rowspan="2">11:40 - 13:20</td>
+					<td colspan="12" rowspan="2">E01</td>
+				</tr>
+				<tr></tr>
+				<tr>
+					<td rowspan="2">13:30 - 15:10</td>
+					<td colspan="12" rowspan="2">E1</td>
+				</tr>
+				<tr></tr>
+			`,
+			``
+		);
+
+		const parsed = await parseTimetablePage(parseDocument(html), group, week);
+
+		expect(parsed.events.map((event) => event.cohortCode)).toEqual(['D01', 'D1', 'E01', 'E1']);
+		expect(parsed.cohorts.map((cohort) => cohort.code)).toEqual(['D01', 'D1', 'E01', 'E1']);
+	});
 });

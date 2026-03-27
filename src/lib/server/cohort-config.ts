@@ -22,8 +22,9 @@ export const trackRules: TrackRule[] = [
 ];
 
 export const cohortCodeRules: CohortCodeRule[] = [
-	{ track: 'de', codePattern: /^D0?(\d{1,2})$/i, code: 'D$1' },
-	{ track: 'en', codePattern: /^E0?(\d{1,2})$/i, code: 'E$1' },
+	// Preserve subgroup digits exactly: 01 and 1 are distinct language groups.
+	{ track: 'de', codePattern: /^D(\d{1,2})$/i, code: 'D$1' },
+	{ track: 'en', codePattern: /^E(\d{1,2})$/i, code: 'E$1' },
 	{ track: 'kz', codePattern: /^Каз\.?(\d+)\/Б/i, code: 'Каз.$1/Б' },
 	{ track: 'kz', codePattern: /^Каз\.?(\d+)/i, code: 'Каз.$1' },
 	{ track: 'en', codePattern: /^BSг\.?(\d+)/i, code: 'BS$1' },

@@ -428,7 +428,7 @@ function extractCohortCode(subjectCodeRaw: string): { code: string; track: Cohor
 	for (const rule of cohortCodeRules) {
 		const m = rule.codePattern.exec(normalized);
 		if (m) {
-			const code = m[1] ? rule.code.replace('$1', String(Number(m[1]))) : rule.code;
+			const code = m[1] ? rule.code.replace('$1', m[1]) : rule.code;
 			return { code, track: rule.track };
 		}
 	}
