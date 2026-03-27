@@ -6,14 +6,14 @@ const {
 	fetchDocumentMock,
 	parseNavHtmlMock,
 	parseTimetablePageMock,
-	traceFnMock,
+	traceSpanMock,
 	todayInAlmatyMock
 } = vi.hoisted(() => ({
 	cachedMock: vi.fn(),
 	fetchDocumentMock: vi.fn(),
 	parseNavHtmlMock: vi.fn(),
 	parseTimetablePageMock: vi.fn(),
-	traceFnMock: vi.fn(),
+	traceSpanMock: vi.fn(),
 	todayInAlmatyMock: vi.fn()
 }));
 
@@ -39,7 +39,7 @@ vi.mock('../../src/lib/server/parser', () => ({
 }));
 
 vi.mock('../../src/lib/server/tracing', () => ({
-	traceFn: traceFnMock
+	traceSpan: traceSpanMock
 }));
 
 vi.mock('../../src/lib/server/time', () => ({
@@ -81,7 +81,7 @@ describe('dku helpers', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		cachedMock.mockImplementation(async (_key, compute) => compute());
-		traceFnMock.mockImplementation(async (_name, _attrs, fn) => fn());
+		traceSpanMock.mockImplementation(async (_name, _op, _attrs, fn) => fn());
 		todayInAlmatyMock.mockReturnValue('2026-02-10');
 	});
 

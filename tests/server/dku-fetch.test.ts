@@ -1,12 +1,14 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ChildNode, Element, Text } from 'domhandler';
 
-const { traceCacheGetMock } = vi.hoisted(() => ({
-	traceCacheGetMock: vi.fn()
+const { traceCacheGetMock, traceSpanMock } = vi.hoisted(() => ({
+	traceCacheGetMock: vi.fn(),
+	traceSpanMock: vi.fn()
 }));
 
 vi.mock('../../src/lib/server/tracing', () => ({
-	traceCacheGet: traceCacheGetMock
+	traceCacheGet: traceCacheGetMock,
+	traceSpan: traceSpanMock
 }));
 
 import {
@@ -29,6 +31,10 @@ type CacheApi = {
 const TEST_BUILD_ID = 'current-build';
 
 describe('dku fetch cache helpers', () => {
+	beforeEach(() => {
+		traceSpanMock.mockImplementation(async (_name, _op, _attributes, fn) => fn());
+	});
+
 	afterEach(() => {
 		vi.restoreAllMocks();
 		delete (globalThis as unknown as { caches?: unknown }).caches;
@@ -147,6 +153,10 @@ describe('dku fetch cache helpers', () => {
 });
 
 describe('fetchDocument streaming', () => {
+	beforeEach(() => {
+		traceSpanMock.mockImplementation(async (_name, _op, _attributes, fn) => fn());
+	});
+
 	function collectText(node: ChildNode): string {
 		if (node.type === 'text') return (node as Text).data;
 		if (!('children' in node)) return '';

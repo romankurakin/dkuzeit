@@ -13,7 +13,7 @@ import {
 	notFoundProblem,
 	serviceUnavailableProblem
 } from '$lib/server/problem';
-import { traceSerialize } from '$lib/server/tracing';
+import { traceSpan } from '$lib/server/tracing';
 import { verifyToken } from '$lib/server/token';
 import type { GroupWeekSchedule } from '$lib/server/types';
 import type { RequestHandler } from './$types';
@@ -61,8 +61,11 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
 	const events = schedules.flatMap((s) => s.events);
 	const group = meta.groups.find((g) => g.codeRaw === payload.g);
 	const calendarTitle = buildCalendarTitle(group?.codeRu ?? payload.g);
-	const calendar = traceSerialize('buildIcsCalendar', { eventCount: events.length }, () =>
-		buildIcsCalendar(calendarTitle, events, lang)
+	const calendar = await traceSpan(
+		'serialize ics calendar',
+		'calendar.serialize',
+		{ eventCount: events.length },
+		async () => buildIcsCalendar(calendarTitle, events, lang)
 	);
 
 	return new Response(calendar, {

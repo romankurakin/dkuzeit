@@ -1,6 +1,6 @@
 import { DomHandler, type Document } from 'domhandler';
 import { WebWritableStream } from 'htmlparser2/WebWritableStream';
-import { traceCacheGet } from './tracing';
+import { traceCacheGet, traceSpan } from './tracing';
 
 export const BASE_URL = 'https://timetable.dku.kz';
 export const CACHE_NAMESPACE_VERSION = 'v2';
@@ -96,9 +96,21 @@ export async function fetchDocument(path: string): Promise<Document> {
 		});
 		if (!res.ok) throw new Error(`Failed to fetch ${url} (${res.status})`);
 		if (!res.body) throw new Error(`Response body is null for ${url}`);
+		const body = res.body;
 		const handler = new DomHandler();
 		const ws = new WebWritableStream(handler);
-		await res.body.pipeTo(ws);
+		const contentLength = Number(res.headers.get('content-length'));
+		await traceSpan(
+			'build html document',
+			'html.build',
+			{
+				'html.path': path,
+				...(Number.isFinite(contentLength) && contentLength > 0
+					? { 'html.content_length': contentLength }
+					: {})
+			},
+			() => body.pipeTo(ws)
+		);
 		return handler.root;
 	} catch (err) {
 		if (err instanceof Error && (err.name === 'AbortError' || err.name === 'TimeoutError')) {

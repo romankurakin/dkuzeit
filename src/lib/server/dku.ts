@@ -9,7 +9,7 @@ import {
 	SCHEDULE_CACHE_POLICY,
 	type DkuRequestContext
 } from './dku-fetch';
-import { traceFn } from './tracing';
+import { traceSpan } from './tracing';
 
 export { API_RESPONSE_CACHE_HEADER } from './dku-fetch';
 
@@ -26,10 +26,21 @@ export interface DkuRequestOptions {
 export async function getMeta(request?: DkuRequestContext): Promise<MetaPayload> {
 	return cached(
 		'meta',
-		async () => {
-			const document = await fetchDocument('frames/navbar.htm');
-			return parseNavHtml(document);
-		},
+		() =>
+			traceSpan(
+				'resolve source page',
+				'source.resolve',
+				{ 'source.kind': 'meta', 'html.path': 'frames/navbar.htm' },
+				async () => {
+					const document = await fetchDocument('frames/navbar.htm');
+					return traceSpan(
+						'parse nav html',
+						'html.parse',
+						{ 'html.path': 'frames/navbar.htm' },
+						async () => parseNavHtml(document)
+					);
+				}
+			),
 		request,
 		META_CACHE_POLICY
 	);
@@ -48,15 +59,23 @@ async function getSchedule(
 
 	return cached(
 		`schedule:${week.value}:${group.id}`,
-		async () => {
+		() => {
 			const path = `${week.value}/c/c${String(group.id).padStart(5, '0')}.htm`;
-			const document = await fetchDocument(path);
-			const parsed = await traceFn(
-				'parseTimetablePage',
-				{ group: group.codeRaw, week: week.value },
-				() => parseTimetablePage(document, group, week)
+			return traceSpan(
+				'resolve source page',
+				'source.resolve',
+				{ 'source.kind': 'schedule', 'html.path': path, group: group.codeRaw, week: week.value },
+				async () => {
+					const document = await fetchDocument(path);
+					const parsed = await traceSpan(
+						'parse timetable page',
+						'html.parse',
+						{ group: group.codeRaw, week: week.value, 'html.path': path },
+						async () => parseTimetablePage(document, group, week)
+					);
+					return { group, week, events: parsed.events, cohorts: parsed.cohorts };
+				}
 			);
-			return { group, week, events: parsed.events, cohorts: parsed.cohorts };
 		},
 		request,
 		SCHEDULE_CACHE_POLICY
