@@ -55,20 +55,8 @@ jobs:
       - run: pnpm exec tsx tests/bench-parser.ts
         name: Parser benchmark
 
-      - name: Cache Playwright browsers
-        uses: actions/cache@v5
-        id: playwright-cache
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('node_modules/playwright-core/browsers.json') }}
-
       - run: pnpm exec playwright install --with-deps chromium firefox webkit
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
         name: Install Playwright browsers
-
-      - run: pnpm exec playwright install-deps chromium firefox webkit
-        if: steps.playwright-cache.outputs.cache-hit == 'true'
-        name: Install Playwright system dependencies
 
       - run: pnpm test:e2e
         name: E2E smoke tests
