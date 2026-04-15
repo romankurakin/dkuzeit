@@ -174,10 +174,6 @@
 		githubArmed = false;
 	}
 
-	function throwBoundaryError(message: string): never {
-		throw new Error(message);
-	}
-
 	function scrollIntoViewWhenActive(node: HTMLElement, args: AutoScrollArgs) {
 		let lastSignature = '';
 
@@ -249,7 +245,17 @@
 
 <svelte:boundary>
 	{#if data.schedule.error}
-		{throwBoundaryError(m.upstream_down_body())}
+		<main
+			id="main-content"
+			class="bg-foreground text-background flex min-h-[calc(100dvh-8rem)] flex-col items-center justify-center p-8 text-center"
+		>
+			<h2 class="brutal-heading">
+				{m.upstream_down_title()}
+			</h2>
+			<p class="brutal-micro mt-section max-w-md">
+				{m.upstream_down_body()}
+			</p>
+		</main>
 	{:else}
 		<div class="min-h-[calc(100dvh-8rem)]">
 			<BrutalSchedulerView
