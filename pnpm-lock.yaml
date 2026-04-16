@@ -13,7 +13,7 @@ importers:
         version: 1.4.0
       '@hackernoon/pixel-icon-library':
         specifier: ^1.0.6
-        version: 1.0.6
+        version: 1.1.0
       '@sentry/core':
         specifier: ^10.47.0
         version: 10.47.0
@@ -1016,8 +1016,8 @@ packages:
   '@floating-ui/utils@0.2.11':
     resolution: {integrity: sha512-RiB/yIh78pcIxl6lLMG0CgBXAZ2Y0eVHqMPYugu+9U0AeT6YBeiJpf7lbdJNIugFP5SIjwNRgo4DhR1Qxi26Gg==}
 
-  '@hackernoon/pixel-icon-library@1.0.6':
-    resolution: {integrity: sha512-WCkDFAJq6Xyp2rdVV7qcmx/vlixoScikEv2DpWUNtzWchDOyeTFrU3GTvd0jD/DGYJomLy2tKwkl13wycaO3Ng==}
+  '@hackernoon/pixel-icon-library@1.1.0':
+    resolution: {integrity: sha512-VEdDskTYRc37quKh3LFt65nMtriJlxuov/ifOmlomAyfK2hty4IPdL6IIXNvATOaQwZYjlfyxJTCGO+JgWbgIw==}
 
   '@humanfs/core@0.19.1':
     resolution: {integrity: sha512-5DyQ4+1JEUzejeK1JGICcideyfUbGixgS9jNgex5nqkW+cY7WZhxBigmieN5Qnw9ZosSNVC9KQKyb+GUaGyKUA==}
@@ -5719,7 +5719,7 @@ snapshots:
 
   '@floating-ui/utils@0.2.11': {}
 
-  '@hackernoon/pixel-icon-library@1.0.6': {}
+  '@hackernoon/pixel-icon-library@1.1.0': {}
 
   '@humanfs/core@0.19.1': {}
 
