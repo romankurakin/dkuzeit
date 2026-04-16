@@ -11,6 +11,7 @@ export default defineConfig({
 		}
 	},
 	test: {
+		execArgv: [`--localstorage-file=${path.resolve(rootDir, '.vitest-localstorage.json')}`],
 		environment: 'node',
 		include: ['tests/**/*.test.ts'],
 		setupFiles: ['tests/vitest.setup.ts'],

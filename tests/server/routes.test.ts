@@ -87,11 +87,12 @@ function useUpstreamStubs(
 	);
 }
 
-function useNavbarAbort() {
+function useNavbarUpstreamFailure() {
 	server.use(
-		http.get('https://timetable.dku.kz/frames/navbar.htm', () => {
-			throw new DOMException('The operation was aborted.', 'AbortError');
-		})
+		http.get(
+			'https://timetable.dku.kz/frames/navbar.htm',
+			() => new HttpResponse(null, { status: 503 })
+		)
 	);
 }
 
@@ -558,8 +559,8 @@ describe('routes via msw', () => {
 		});
 	});
 
-	it('degrades gracefully when loading metadata aborts upstream', async () => {
-		useNavbarAbort();
+	it('degrades gracefully when loading metadata fails upstream', async () => {
+		useNavbarUpstreamFailure();
 
 		const token = await signToken(
 			{

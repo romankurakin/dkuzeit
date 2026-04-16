@@ -18,3 +18,6 @@ test-results/
 
 # Downloaded parser fixtures
 tests/fixtures/live/
+
+# Vitest localStorage backing file
+.vitest-localstorage.json*
