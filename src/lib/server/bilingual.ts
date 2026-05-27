@@ -1,7 +1,7 @@
 const CYRILLIC_START_AFTER_SLASH = /^[А-Яа-яЁёҚқӘәҒғҢңӨөҰұҮүІіҺһ]/;
 const GERMAN_NAME_PREFIX_RE = /^(.*?)\s+[А-Яа-яЁёҚқӘәҒғҢңӨөҰұҮүІіҺһ]/;
 const LESSON_TYPE_SUFFIX_RE = /\s+([А-Яа-яЁёҚқӘәҒғҢңӨөҰұҮүІіҺһ].*)$/;
-const KNOWN_LESSON_TYPE_RE = /\s+(пр\.|лек\.|лекция|практика|семинар)$/;
+const KNOWN_LESSON_TYPE_RE = /\s+(пр\.|лек\.|лекция|практика|семинар|экзамен)$/;
 
 // True when text after "/" is Kazakh not German
 export function isMissingGermanName(subjectFullRaw: string): boolean {
