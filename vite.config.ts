@@ -3,7 +3,6 @@ import { sentrySvelteKit } from '@sentry/sveltekit';
 import { defineConfig } from 'vite';
 import { paraglideVitePlugin } from '@inlang/paraglide-js';
 import tailwindcss from '@tailwindcss/vite';
-import devtoolsJson from 'vite-plugin-devtools-json';
 import { SvelteKitPWA } from '@vite-pwa/sveltekit';
 
 export default defineConfig({
@@ -27,7 +26,6 @@ export default defineConfig({
 			},
 			manifest: false
 		}),
-		devtoolsJson(),
 		paraglideVitePlugin({
 			project: './project.inlang',
 			outdir: './src/lib/paraglide',

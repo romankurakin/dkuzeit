@@ -230,20 +230,20 @@ suite('parseTimetablePage label quality', () => {
 });
 
 suite('parseTimetablePage specific groups', () => {
-	it('sets lesson type for Wirtschaftstheorie', async () => {
+	it('sets exam lesson type for Wirtschaftstheorie', async () => {
 		const { events } = await loadSchedule('3А-ТЛ');
 		const econ = events.find((e) => e.subjectFullRaw.includes('Экономическая теория'));
 		expect(econ).toBeDefined();
-		expect(econ?.lessonType).toBe('лекция');
+		expect(econ?.lessonType).toBe('экзамен');
 		expect(econ?.subjectFullRu).toBe('Экономическая теория');
 		expect(econ?.subjectFullDe).toBe('Wirtschaftstheorie');
 	});
 
-	it('sets lesson type for Kasachisch', async () => {
+	it('sets exam lesson type for Kasachisch', async () => {
 		const { events } = await loadSchedule('3А-ТЛ');
 		const kaz = events.find((e) => e.subjectFullRaw.includes('Kasachisch'));
 		expect(kaz).toBeDefined();
-		expect(kaz?.lessonType).toBe('пр.');
+		expect(kaz?.lessonType).toBe('экзамен');
 		expect(kaz?.subjectFullDe).toBe('Kasachisch');
 	});
 
@@ -255,17 +255,15 @@ suite('parseTimetablePage specific groups', () => {
 		expect(biz.subjectFullDe).toBe(biz.subjectFullRu);
 	});
 
-	it('detects kz cohort codes correctly', async () => {
+	it('keeps generic Kazakh exam entries out of cohort filters', async () => {
 		const { events, cohorts } = await loadSchedule('3А-ТЛ');
 		const kazCohorts = cohorts.filter((c) => c.track === 'kz');
-		expect(kazCohorts.length).toBeGreaterThan(0);
-		for (const c of kazCohorts) {
-			expect(c.code).toMatch(/^Каз/);
-		}
+		expect(kazCohorts.length).toBe(0);
 		const kazEvents = events.filter((e) => e.track === 'kz');
+		expect(kazEvents.length).toBeGreaterThan(0);
 		for (const e of kazEvents) {
-			expect(e.cohortCode).toMatch(/^Каз/);
-			expect(e.scope).toBe('cohort_shared');
+			expect(e.cohortCode).toBeNull();
+			expect(e.scope).toBe('core_fixed');
 		}
 	});
 
@@ -282,8 +280,8 @@ suite('parseTimetablePage specific groups', () => {
 		const { events } = await loadSchedule('2А-МО');
 		const bs = events.find((e) => e.subjectFullRaw.includes('Business'));
 		if (bs === undefined) return; // not every week has this subject
-		expect(bs.lessonType).toBe('пр.');
-		expect(bs.subjectFullRu).not.toContain('пр.');
+		expect(bs.lessonType).toBe('экзамен');
+		expect(bs.subjectFullRu).not.toContain('экзамен');
 	});
 });
 
