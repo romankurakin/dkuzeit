@@ -5,7 +5,7 @@
 	"license": "MIT",
 	"author": "Roman Kurakin",
 	"type": "module",
-	"packageManager": "pnpm@11.3.0",
+	"packageManager": "pnpm@11.5.0",
 	"scripts": {
 		"dev": "vite dev",
 		"preview": "vite build && wrangler dev",
