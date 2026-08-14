@@ -9,6 +9,8 @@
 	"scripts": {
 		"dev": "vite dev",
 		"preview": "vite build && wrangler dev",
+		"preview:e2e": "vite build && wrangler dev --env e2e",
+		"fixtures:serve": "tsx scripts/serve-fixtures.ts",
 		"build": "svelte-kit sync && vite build",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.check.json && eslint .",
 		"fixtures:sync": "tsx scripts/download-fixtures.ts",

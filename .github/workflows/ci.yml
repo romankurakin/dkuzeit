@@ -35,18 +35,10 @@ jobs:
       - run: pnpm check
         name: Type check
 
-      - uses: actions/cache@v5
-        id: fixtures-cache
-        with:
-          path: tests/fixtures/live
-          key: dku-fixtures-${{ hashFiles('scripts/download-fixtures.ts') }}-week-${{ github.run_number }}
-          restore-keys: |
-            dku-fixtures-${{ hashFiles('scripts/download-fixtures.ts') }}-
-
-      - run: pnpm fixtures:sync
-        if: steps.fixtures-cache.outputs.cache-hit != 'true'
-        name: Download fixtures
-
+      # The fixture snapshot (tests/fixtures/live) is committed to the repo, so
+      # tests and the parser benchmark run against identical data every time and
+      # CI never contacts the live scheduler. Refresh it deliberately with:
+      # pnpm fixtures:sync
       - run: pnpm test
         name: Unit tests
 

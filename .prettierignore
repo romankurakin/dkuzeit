@@ -2,3 +2,4 @@
 build
 node_modules
 pnpm-lock.yaml
+tests/fixtures/live

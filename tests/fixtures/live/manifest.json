@@ -1,0 +1,21 @@
+{
+  "generatedAt": "2026-05-27T11:14:56.780Z",
+  "baseUrl": "https://timetable.dku.kz",
+  "weeks": [
+    "19",
+    "20",
+    "21",
+    "22",
+    "23",
+    "24",
+    "25",
+    "26",
+    "27",
+    "28",
+    "29"
+  ],
+  "classCount": 52,
+  "expectedPages": 572,
+  "downloadedPages": 572,
+  "failures": []
+}

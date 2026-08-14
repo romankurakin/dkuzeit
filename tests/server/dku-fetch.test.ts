@@ -12,14 +12,17 @@ vi.mock('../../src/lib/server/tracing', () => ({
 }));
 
 import {
-	BASE_URL,
 	CACHE_NAMESPACE_VERSION,
 	META_CACHE_POLICY,
 	SCHEDULE_CACHE_POLICY,
 	cached,
 	createDkuRequestContext,
-	fetchDocument
+	fetchDocument,
+	upstreamBaseUrl
 } from '../../src/lib/server/dku-fetch';
+
+// DKU_BASE_URL is unset under vitest, so this is the production default
+const BASE_URL = upstreamBaseUrl();
 
 type CacheApi = {
 	default: {

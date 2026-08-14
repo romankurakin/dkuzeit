@@ -1,5 +1,5 @@
 import { toSlug } from '$lib/url-slug';
-import { todayInAlmaty, isSundayInAlmaty } from './time';
+import { todayInAlmaty, isSundayInAlmaty, nowDate } from './time';
 import type { GroupOption, WeekOption } from './types';
 
 export function resolveGroup(groups: GroupOption[], param: string): string {
@@ -20,7 +20,7 @@ export function resolveGroup(groups: GroupOption[], param: string): string {
 
 export function resolveWeekByDate(weeks: WeekOption[]): string {
 	if (weeks.length === 0) return '';
-	const now = new Date();
+	const now = nowDate();
 	let target = todayInAlmaty(now);
 	// On Sunday, start looking from Monday (next week)
 	if (isSundayInAlmaty(now)) {

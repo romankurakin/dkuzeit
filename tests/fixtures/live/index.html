@@ -1,0 +1,33 @@
+<HTML>
+<HEAD>
+<TITLE>Untis 2024 ����������� ����������� ��� �������� ���������� </TITLE>
+<META NAME="Generator" CONTENT="Untis 2024">
+<META NAME="Author" CONTENT="Gruber&Petters GmbH">
+<META NAME="Keywords" CONTENT="Untis - ��������� ��� ����������� ����������,stundenplan,www.grupet.at">
+<meta http-equiv="expires" content="0">
+</HEAD>
+
+<script>
+   window.addEventListener("message", receiveMessage, false);
+   function receiveMessage(event) {
+      var urlPath = document.location.pathname;
+	  urlPath = urlPath.substr(1, urlPath.lastIndexOf('/')) + event.data;
+      main.location.href = document.location.protocol + '//' + document.location.host + '/' + urlPath;
+   }
+</script>
+<frameset rows="72,*" framespacing="0" border=0 frameborder="0">
+   <frame src="frames/title.htm" scrolling=no name=titel>
+   <frameset cols="120,*" border=0 framespacing=0 frameborder="0">
+      <frame src="frames/navbar.htm" scrolling=auto>
+	  <frameset rows="*,30" framespacing="0" border=0 frameborder="0">
+         <frame src="welcome.htm" scrolling=auto name="main">
+		 <frame src="frames/fuss.htm" scrolling=no>
+	  </frameset>
+   </frameset>
+</frameset>
+
+<body>
+<noframes><p>This page uses frames but your Browser does not support them.</noframes>
+</body>
+
+</HTML>
