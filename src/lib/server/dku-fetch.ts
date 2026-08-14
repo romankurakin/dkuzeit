@@ -2,7 +2,13 @@ import { DomHandler, type Document } from 'domhandler';
 import { WebWritableStream } from 'htmlparser2/WebWritableStream';
 import { traceCacheGet, traceSpan } from './tracing';
 
-export const BASE_URL = 'https://timetable.dku.kz';
+const DEFAULT_BASE_URL = 'https://timetable.dku.kz';
+
+// Runtime configuration: e2e points this at the committed fixture snapshot
+// via wrangler.toml [env.e2e]; unset everywhere else.
+export function upstreamBaseUrl(): string {
+	return process.env.DKU_BASE_URL || DEFAULT_BASE_URL;
+}
 export const CACHE_NAMESPACE_VERSION = 'v2';
 
 export interface CachePolicy {
@@ -48,7 +54,7 @@ export async function cached<T>(
 	policy: CachePolicy = SCHEDULE_CACHE_POLICY
 ): Promise<T> {
 	const cache = typeof caches !== 'undefined' ? caches.default : null;
-	const url = `${BASE_URL}/_cache/${request?.cacheNamespace ?? CACHE_NAMESPACE_VERSION}/${encodeURIComponent(key)}`;
+	const url = `${upstreamBaseUrl()}/_cache/${request?.cacheNamespace ?? CACHE_NAMESPACE_VERSION}/${encodeURIComponent(key)}`;
 
 	if (cache) {
 		const hit = await traceCacheGet(key, async (setHit) => {
@@ -88,7 +94,7 @@ export async function cached<T>(
 }
 
 export async function fetchDocument(path: string): Promise<Document> {
-	const url = `${BASE_URL}/${path}`;
+	const url = `${upstreamBaseUrl()}/${path}`;
 	try {
 		const res = await fetch(url, {
 			signal: AbortSignal.timeout(15_000),

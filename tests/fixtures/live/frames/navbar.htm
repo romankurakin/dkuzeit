@@ -1,0 +1,227 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta http-equiv="expires" content="0">
+<meta name="GENERATOR" content="gp-Untis 2024">
+<title>Navigation</title>
+<script language="JavaScript" src="../untisscripts.js"></script>
+<link rel="stylesheet" href="../untisinfo.css" type="text/css">
+
+<script LANGUAGE="JavaScript">
+var topDir = "w";
+
+function PopulateElementOption(Form, entries, flag)
+{
+ var idx = 0;
+ if (flag & 1)
+ {
+   Form.element[0] = new Option("- Все -", 0);
+   idx++;
+ }
+ if (flag == 0 || flag & 2)
+ {
+  for (i = 0; i < entries.length; i++, idx++)
+  {
+    Form.element[idx] = new Option(entries[i], i+1);
+  }
+ }
+ if (idx > 0)
+ {
+	Form.element.selectedIndex = 0;
+	doDisplayTimetable(Form, topDir);
+ }
+}
+
+ var classes = ["1-CS","1-IM","1-IM-IBE/IBE гр.1(MA)","1-IM-IBE/IBE гр.2(MA)","1-ИИвЭ/WI","1-Л (МА)/L (MA)","1-Марк/Mark","1-Мен/Man","1-ТЛ/TL","1-УВР(MA)/1-IWM(MA)","1-ЭЭТ/EUT","1А-МО/A-IB","1А-Фин/A-Fin","1Б-МО/B-IB","1Б-Фин/B-Fin","2-IM-IBE/IBE(MA)","2-ЗФ(МА)/2--GF(MA)","2-ИИвЭ/WI","2-Л (МА)/L (MA)","2-Марк/Mark","2-Мен(МА)/2-Man(MA)","2-Мен/Man","2-СМВЭЭ(МА)/2-SMREEE(MA)","2-ТЛ/-TL","2-ТМ/Tel","2-УВР(MA)/2-IWM(MA)","2-Фин/A-Fin","2-ЭЭТ/EUT","2А-МО/A-IB","2Б-МО/B-IB","3-ИИвЭ/A-WI","3-Мар/Mark","3-Мен/Man","3-ТМ/Tel","3-Фин/A-Fin","3-ЭЭТ/EUT","3А-МО/A-IB","3А-ТЛ/A-VL","3Б-МО/B-IB","3Б-ТЛ/B-VL","4-ИИвЭ/-WI","4-МО/IB","4-Мар/Mark","4-Мен/Man","4-ПЛ/PL","4-ТЛ/VL","4-ТМ/Tel","4-Фин/Fin","4-ЭЭТ/EUT","Адм","Курсы","Подгот.курсы"];
+ var teachers = ["Abdullaev Iskander","Carola Alefeld","Achim Albrecht","Andreas M. Bock","Jana Böhm","Dietmar Benndorf","Prof. Dr. Arthur Dietmar Beyer","Andreas Chetkowski","Stefan Dilfer","Prof.Dr.Leef Dierks","Bianca  Diermayer","Madlen Fröbrich","Lucas Grebenstein","Prof. Dr. Hans-Christian Brauweiler","Dr. J.Hobohm","Dr. B.Janusz-Pawletta","Olga Kreider","Dr. Gernot Kayser","Olga Kusnezov","Dr.Denis Krutov","Martin Lochmüller,Dipl.-Kfm.","Dr. Hans-Joahim Lucke","Prof.Dr. Jakob Lempp","Sebastian Lang","Frau Hamburg-Madani","Lutz Mez","Dipl.-Kaufmann Michael Müller","Prof.Dr. V.Meister","Prof. Juriy Plotkin","Dr. Tobias Reggelin","Dr. Dagmar Rokita","Linda Rommel","Dr. Tilman Rost","Prof. Andreas  Schmalfuss","Sehring J.","Katrin Smif","David Sauer","Prof Dr. Reinhard Sawatzki","Jörg Vogt","Prof. Dr. Sergé Velesco","Prof. Dr. Harald Wehnes","Maria Wilk","Dr.Michael Walther","Prof. Dr. Jürgen Wunderlich","Pr.Dr. A.Werner","Dr.Sebastian Zips","Абдунурова Асем Абдунуровна","Агадин Меруерт","Ажибаева Асель Ауэзовна","Акимжанова Камилла","Акшалаков Абай Серікүлы","Альмереков Нурлан Алтынбекович","Алипова Алима Нурлановна","Асмус Елена","Аримбекова Перизат Мадениетовна","Арыстангалиева Динара","Асылбекова Баян Сыргабаевна","Асемханова Загираш Шаменовна","Аутинова Марина Сейткамзиновна","Бакирова Гульназ Сайлауовна","Балгаев Нуржан Ергенович","Бейменбетов Серик Туруспекович","Басанова Сандугаш","Бурбаев Илья","Брекалова Татьяна Витальевна","Бердали Санжар","Бурнашев Рустам Ренатович","Брославская Наталья Александровна","Басанов Азамат Вахидович","Беспаев Руслан Газизович","Бахытжан Арайлым Бахытжанкызы","Бачурка Мария Сергеевна","Выскребенцева Марина Михайловна","Генина Мария","Дадаева Ирина Георгиевна","Джайкбаева Куляш Калкановна","Джумашева Сулушаш Махсотовна","Ергешова Нигара Джунисметовна","Ефремова Юлия Муратовна","Желтобрюх Наталья Николаевна","Жанбырбаева Умит Бегалиевна","Жарновник Татьяна Владимировна","Жантлеуова Асель Канатовна","Зиябеков Бейсенбек Зиябекович","Закржевская Ольга Георгиевна","Ибрагимова Найля Ахтановна","Иванов Игорь Павлович","Имангалиева Тогжан Кибатовна","Иманбекова Альфия Амангельдиевна","Игисиновой Амангуль","Кабаканова Юлия  Олеговна","Кашкинбаева Куляш Богембаевна","Кобзев Алексей Петрович","Кегенбеков Жандос Кадырханович","Каленова Жан Абдразаховна","Кулымбаева Маржан Шолпанкуловна","Куценко Илья","Кораблин Андрей Юрьевич","Карыбаева Аида Досумжановна","Круглик Татьяна Петровна","Королев Василий Валентинович","Кислова Алла Александровна","Киселева Ольга Владимировна","Кучербаева Д.","Луданова Вероника","Мезенцева Елена Владимировна","Маликова Р.Р.","Мямешева Галия Хамзеевна","Матвеенко Инна Григорьевна","Митрофанова Инна Валерьевна","Мустафин Рустем Нурболатұлы","Мухамеджанова Сауле Бекетовна","Николенко Алексей Борисович","Нарибаев Марат Купжасарович","Нуржанова Актоты Аскаровна","Нурсеит Нурлан Айткалиевич","Нефедова Ольга Николаевна","Орынбасарова Ирина Толеповна","Оспанов Тауекель Тлеубекович","Першина Ирина Борисовна","Петренко Светлана Юрьевна","Путинцева Виктория","Раисов Даулет Раисович","Савельева Елена Анатольевна","Садыкова Гульнара Муратпековна","Сайлаубеков Нурлан Турсынбекович","Сулейменов Жан","Солтанбекова Галия Алибековна","Солтангазина Айнур Талгатбековна","Саматова Гульнара Бахытовна","Сухачева Анна","Токбергенова Бахытгуль Убайдакызы","Тюлюбаева Динара Муратбековна","Тулегенова Гульмира","Тлеппаев Арсен Молдагалиевич","Туманова А.А.","Темиралиева Гульнара","Тен Александр Андреевич","Турсынбек Ерлан Нуржанулы","Тусеева Ирина Хусаиновна","Тайсаринова Айслу Сайыновна","Тихомиров Сергей Леонидович","Урозбаева Гульмайдан Аманжоловна","Хасенов Азамат Бахитович","Хасанов Адиль Болатович","Хусаинова Алма Кадыровна","Цецурина Татьяна Борисовна","Чертищев Артём","Черных Ирина Александровна","Чухрий Владилен Викторович","Шавдинова Мадина Джалалдиновна","Шкапяк Оксана Николаевна","Шенгелбай М.","Шарипов Рашид Жапарович","Щуклина Л.А."];
+ var rooms = ["10","16","17а","21","25","26","27","30","33","7","12 Labor IT","23 Labor Physik","24 Labor Chemie","32 Labor Logistik","201","207","209","301","303","304","305","308","309","401","405","409","410","501","502","503","504","509","510","511","512","202 Labor (angewandte Forschung)","Конференц зал","читальный зал","Спортзал 1","Спортзал 2","Плавательный бассейн","онлайн №1","онлайн №10","онлайн №11","онлайн №12","онлайн №13","онлайн №14","онлайн №15","онлайн №2","онлайн №3","онлайн №4","онлайн №5","онлайн №6","онлайн №7","онлайн №8","онлайн №9"];
+ var flcl = 1; var flte = 1;
+function ChangeStudentOptions(Form)
+{
+ var type = Form.type[Form.type.selectedIndex].value;
+ if (type != "s")
+    return;
+ var nr = Form.classes[Form.classes.selectedIndex].value;
+ Form.element.length = 0;
+ var idx = 0;
+ for (i = 0; i < students.length; i++)
+ {
+   if (nr == 0 || studtable[i] == nr)
+   {
+      Form.element[idx] = new Option(students[i], i+1);
+      idx++;
+   }
+ }
+ doDisplayTimetable(Form, topDir);
+}
+
+function ChangeElementOptions(Form)
+{
+ setselclass("empty");
+ Form.element.length = 0;
+ var type = Form.type[Form.type.selectedIndex].value;
+ switch(type)
+ {
+	case "c": PopulateElementOption(Form, classes, 0); break;
+	case "w": PopulateElementOption(Form, classes, flcl); break;
+	case "t": PopulateElementOption(Form, teachers, 0); break;
+	case "v": PopulateElementOption(Form, teachers, flte); break;
+	case "r": PopulateElementOption(Form, rooms, 0); break;
+	case "f": PopulateElementOption(Form, subjects, 0); break;
+	case "g": PopulateElementOption(Form, corridors, 0); break;
+	case "s": 
+	{
+        setselclass("restore");
+        PopulateElementOption(Form, students, 0); 
+        break;
+    }
+ }
+
+ return;
+}
+
+function SelectElement(Form, name)
+{
+	var art = getParameter(parent.location.href, "art");
+	if (art != "")
+	{
+		for (var i = 0; i < Form.type.length; i++)
+		{
+			if (Form.type[i].value == art)
+			{
+				Form.type.selectedIndex = i;
+				break;
+			}
+		}
+	}
+	ChangeElementOptions(Form);
+	for (var i = 0; i < Form.element.length; i++)
+	{
+		if (Form.element[i].text == name)
+		{
+			Form.element.selectedIndex = i;
+			break;
+		}
+	}
+}
+
+function OnLoad(Form)
+{
+    setselclass("save");
+    
+	var weeknr = WeekOfYear(new Date);
+	for (var i = 0; i < Form.week.options.length; i++)
+	{
+		if (Form.week.options[i].value == weeknr)
+			Form.week.options[i].selected = true;
+	}
+
+	var name = "";
+	try 
+	{
+		name = getParameter(parent.location.href, "name");
+	}
+	catch (e) {};
+	if (name == "")
+	{
+		ChangeElementOptions(Form);
+		Form.element.selectedIndex = -1;
+		parent.postMessage("welcome.htm", '*');	}
+	else
+	{
+		SelectElement(Form, name);
+		doDisplayTimetable(Form, topDir);
+	}
+}
+
+</script>
+</head>
+
+<body class="nav" onload="OnLoad(document.forms[0]);">
+
+<table width="100%" border="0" cellspacing="0" cellpadding="0" align="left">
+
+<form name="NavBar" method="post">
+  <tr><td height="10"></td></tr>
+
+  <tr>
+
+     <!-- week selection -->
+     <td align="left" class="tabelle">
+      <span class="selection">
+       <nobr>
+        Календарная неделя<br>
+        <span class="absatz">
+         &nbsp;<br>
+        </span>
+        <select name="week" class="selectbox" style='width:104' onChange="doDisplayTimetable(NavBar, topDir);">
+<option value="19">4.5.2026</option>
+<option value="20">11.5.2026</option>
+<option value="21">18.5.2026</option>
+<option value="22">25.5.2026</option>
+<option value="23">1.6.2026</option>
+<option value="24">8.6.2026</option>
+<option value="25">15.6.2026</option>
+<option value="26">22.6.2026</option>
+<option value="27">29.6.2026</option>
+<option value="28">6.7.2026</option>
+<option value="29">13.7.2026</option>
+        </select>
+       </nobr>
+      </span>
+     </td>
+  </tr>
+
+  <tr><td height="10"></td></tr>
+
+  <tr>
+
+     <!-- type selection -->
+     <td align="left" class="tabelle">
+      <span class="selection">
+       <nobr>
+        Тип<br>
+        <span class="absatz">
+         &nbsp;<br>
+        </span>
+        <select name="type" class="selectbox" style='width:104' onChange="ChangeElementOptions(NavBar);">
+<option value="c">Классы</option>
+<option value="t">Преподаватели</option>
+<option value="r">Помещения</option>
+        </select>
+       </nobr>
+      </span>
+     </td>
+ </tr>
+
+
+
+  <tr><td height="10"></td></tr>
+
+  <tr>
+     <!-- element selection -->
+     <td align="left" class="tabelle">
+      <span class="selection">
+       <nobr>
+        Элемент<br>
+        <span class="absatz">
+         &nbsp;<br>
+        </span>
+        <select name="element" class="selectbox" style="width:104" size="12" onChange="doDisplayTimetable(NavBar, topDir);">
+		<option value="1">
+____________________
+		</option>
+        </select>
+       </nobr>
+      </span>
+     </td>
+ </tr>
+
+  <tr><td height="10"></td></tr>
+
+</form>
+
+</table>
+
+</body>
+</html>

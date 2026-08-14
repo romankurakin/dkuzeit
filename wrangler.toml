@@ -23,3 +23,9 @@ port = 8787
 [assets]
 directory = ".svelte-kit/cloudflare"
 binding = "ASSETS"
+
+# Upstream is the committed fixture snapshot served locally,
+# and the clock is pinned inside the snapshot's week range.
+[env.e2e.vars]
+DKU_BASE_URL = "http://127.0.0.1:8788"
+DKU_NOW = "2026-05-06T09:00:00+05:00"
