@@ -250,6 +250,196 @@ describe('parseTimetablePage', () => {
 		).toThrow('Main timetable table not found');
 	});
 
+	it('emits both lessons from a cell stacking two different subjects', async () => {
+		const html = wrapTimetable(
+			`
+				<tr>
+					<td rowspan="2">08:00 - 09:40</td>
+					<td colspan="12" rowspan="2">
+						<table>
+							<tr><td>.D4</td></tr>
+							<tr><td>Тлг/Tl</td></tr>
+							<tr><td>502</td></tr>
+							<tr><td>D2</td></tr>
+							<tr><td>Хсн/Kh</td></tr>
+							<tr><td>503</td></tr>
+						</table>
+					</td>
+				</tr>
+				<tr></tr>
+			`,
+			``
+		);
+
+		const parsed = await parseTimetablePage(parseDocument(html), group, week);
+		expect(parsed.events).toHaveLength(2);
+
+		const d4 = parsed.events.find((event) => event.subjectShortRaw === '.D4');
+		const d2 = parsed.events.find((event) => event.subjectShortRaw === 'D2');
+		expect(d4?.room).toBe('502');
+		expect(d4?.cohortCode).toBe('D4');
+		expect(d2?.room).toBe('503');
+		expect(d2?.cohortCode).toBe('D2');
+	});
+
+	it('collapses stacked same-subject same-room lessons into one event', async () => {
+		const html = wrapTimetable(
+			`
+				<tr>
+					<td rowspan="2">08:00 - 09:40</td>
+					<td colspan="12" rowspan="2">
+						<table>
+							<tr><td>.*Анг.э/</td></tr>
+							<tr><td>Нрж/Nr</td></tr>
+							<tr><td>502</td></tr>
+							<tr><td>*Анг.э/</td></tr>
+							<tr><td>Млк/Mk</td></tr>
+							<tr><td>502</td></tr>
+						</table>
+					</td>
+				</tr>
+				<tr></tr>
+			`,
+			``
+		);
+
+		const parsed = await parseTimetablePage(parseDocument(html), group, week);
+		expect(parsed.events).toHaveLength(1);
+		expect(parsed.events[0]!.room).toBe('502');
+	});
+
+	it('keeps stacked same-subject lessons in different rooms as separate events', async () => {
+		const html = wrapTimetable(
+			`
+				<tr>
+					<td rowspan="2">08:00 - 09:40</td>
+					<td colspan="12" rowspan="2">
+						<table>
+							<tr><td>.Каз.э/</td></tr>
+							<tr><td>Агн/Ag</td></tr>
+							<tr><td>401</td></tr>
+							<tr><td>Каз.э/</td></tr>
+							<tr><td>Слт/Cl</td></tr>
+							<tr><td>509</td></tr>
+						</table>
+					</td>
+				</tr>
+				<tr></tr>
+			`,
+			``
+		);
+
+		const parsed = await parseTimetablePage(parseDocument(html), group, week);
+		expect(parsed.events).toHaveLength(2);
+		expect(parsed.events.map((event) => event.room).sort()).toEqual(['401', '509']);
+	});
+
+	it('ignores an incomplete trailing triple in a stacked cell', async () => {
+		const html = wrapTimetable(
+			`
+				<tr>
+					<td rowspan="2">08:00 - 09:40</td>
+					<td colspan="12" rowspan="2">
+						<table>
+							<tr><td>Grb</td></tr>
+							<tr><td>309</td></tr>
+							<tr><td>Grb</td></tr>
+							<tr><td>304</td></tr>
+						</table>
+					</td>
+				</tr>
+				<tr></tr>
+			`,
+			``
+		);
+
+		const parsed = await parseTimetablePage(parseDocument(html), group, week);
+		expect(parsed.events).toHaveLength(1);
+		expect(parsed.events[0]!.subjectShortRaw).toBe('Grb');
+	});
+
+	it('extracts cohort code from star-prefixed subject codes', async () => {
+		const html = wrapTimetable(
+			`
+				<tr>
+					<td rowspan="2">08:00 - 09:40</td>
+					<td colspan="12" rowspan="2">*D5</td>
+				</tr>
+				<tr></tr>
+			`,
+			``
+		);
+
+		const parsed = await parseTimetablePage(parseDocument(html), group, week);
+		expect(parsed.events).toHaveLength(1);
+		expect(parsed.events[0]!.cohortCode).toBe('D5');
+	});
+
+	it('dates events from the week start when day headers are missing', async () => {
+		const html = `
+			<html>
+				<body>
+					<center>
+						<table>
+							<tbody>
+								<tr>
+									<td rowspan="2">08:00 - 09:40</td>
+									<td colspan="12" rowspan="2">MATH</td>
+								</tr>
+								<tr></tr>
+							</tbody>
+						</table>
+					</center>
+				</body>
+			</html>
+		`;
+
+		const parsed = await parseTimetablePage(parseDocument(html), group, week);
+		expect(parsed.events).toHaveLength(1);
+		// week.startDateIso is 2026-09-01; the +05:00/UTC mixup used to yield 2026-08-31
+		expect(parsed.events[0]!.dateIso).toBe('2026-09-01');
+	});
+
+	it('dates January days of a New Year week with the next year', async () => {
+		const newYearWeek: WeekOption = {
+			value: '52',
+			label: '28.12.2026',
+			startDateIso: '2026-12-28'
+		};
+		const html = `
+			<html>
+				<body>
+					<center>
+						<table>
+							<tbody>
+								<tr>
+									<td rowspan="2">08:00 - 09:40</td>
+									<td colspan="12" rowspan="2">MON</td>
+									<td colspan="36" rowspan="2"></td>
+									<td colspan="12" rowspan="2">FRI</td>
+								</tr>
+								<tr></tr>
+							</tbody>
+						</table>
+					</center>
+					<b>Пн 28.12.</b>
+					<b>Вт 29.12.</b>
+					<b>Ср 30.12.</b>
+					<b>Чт 31.12.</b>
+					<b>Пт 1.1.</b>
+					<b>Сб 2.1.</b>
+				</body>
+			</html>
+		`;
+
+		const parsed = await parseTimetablePage(parseDocument(html), group, newYearWeek);
+		expect(parsed.events).toHaveLength(2);
+		const monday = parsed.events.find((event) => event.subjectShortRaw === 'MON');
+		const friday = parsed.events.find((event) => event.subjectShortRaw === 'FRI');
+		expect(monday?.dateIso).toBe('2026-12-28');
+		expect(friday?.dateIso).toBe('2027-01-01');
+	});
+
 	it('keeps language subgroup codes with leading zero distinct from plain numbers', async () => {
 		const html = wrapTimetable(
 			`

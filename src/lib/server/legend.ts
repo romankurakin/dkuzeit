@@ -117,13 +117,32 @@ export function makeLegendResolver(
 ): (code: string) => string {
 	const byFull = new Map<string, string>();
 	const byLeft = new Map<string, string>();
+	const leftKeyed: Array<{ key: string; value: string }> = [];
 
 	for (const entry of entries) {
 		byFull.set(fastCodeKey(entry.code), entry.value);
-		byLeft.set(fastLeftKey(entry.code), entry.value);
+		const leftKey = fastLeftKey(entry.code);
+		byLeft.set(leftKey, entry.value);
+		leftKeyed.push({ key: leftKey, value: entry.value });
 	}
 
+	// Cell codes are truncated to the source table's column width while legend
+	// codes are complete (e.g. cell "ННРТПР" vs legend "ННРТПР.л/WA"), so on an
+	// exact miss fall back to a prefix match — but only when every matching
+	// legend entry agrees on one full name
+	const byPrefix = (code: string): string => {
+		const key = fastLeftKey(code);
+		if (key.length < 2) return '';
+		let found = '';
+		for (const entry of leftKeyed) {
+			if (!entry.key.startsWith(key)) continue;
+			if (found && found !== entry.value) return '';
+			found = entry.value;
+		}
+		return found;
+	};
+
 	return (code: string): string => {
-		return byFull.get(fastCodeKey(code)) ?? byLeft.get(fastLeftKey(code)) ?? '';
+		return byFull.get(fastCodeKey(code)) ?? byLeft.get(fastLeftKey(code)) ?? byPrefix(code);
 	};
 }
