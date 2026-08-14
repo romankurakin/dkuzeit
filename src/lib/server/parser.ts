@@ -8,7 +8,7 @@ import type {
 	MetaPayload,
 	WeekOption
 } from './types';
-import { trackRules, cohortCodeRules, genericCodes } from './cohort-config';
+import { trackRules, cohortCodeRules } from './cohort-config';
 import { fnv1aHex } from './hash';
 import { makeLegendResolver, parseLegendEntries } from './legend';
 import { isMissingGermanName, sanitizeLabel, splitBilingualLabel } from './bilingual';
@@ -162,25 +162,6 @@ export function parseNavHtml(document: Document): MetaPayload {
 	return { weeks: weekOptions, groups };
 }
 
-function parseFooterYear(document: Document, fallbackYear: number): number {
-	let result: number | null = null;
-	const walk = (node: ChildNode) => {
-		if (result !== null) return;
-		if (node.type === 'text') {
-			const m = node.data.match(/ЛС\/SS\s+\d{1,2}\.\d{1,2}\.(\d{4})/i);
-			if (m) {
-				result = Number(m[1]);
-				return;
-			}
-		}
-		if (hasChildren(node)) {
-			for (const child of node.children) walk(child);
-		}
-	};
-	walk(document);
-	return result ?? fallbackYear;
-}
-
 function parseDayDates(document: Document, weekStartDateIso: string): string[] {
 	const matches: Array<{ day: number; month: number }> = [];
 	const walk = (node: ChildNode) => {
@@ -199,17 +180,21 @@ function parseDayDates(document: Document, weekStartDateIso: string): string[] {
 	};
 	walk(document);
 
-	const weekStart = new Date(`${weekStartDateIso}T00:00:00+05:00`);
-	const fallback = Array.from({ length: 6 }, (_, i) => {
-		const date = new Date(weekStart);
-		date.setUTCDate(date.getUTCDate() + i);
-		return date.toISOString().slice(0, 10);
-	});
+	// Calendar arithmetic in UTC only: building the date at +05:00 and reading
+	// it back via toISOString would shift every date one day earlier
+	const [weekYear, weekMonth, weekDay] = weekStartDateIso.split('-').map(Number);
+	if (matches.length < 6) {
+		return Array.from({ length: 6 }, (_, i) => {
+			return new Date(Date.UTC(weekYear!, weekMonth! - 1, weekDay! + i)).toISOString().slice(0, 10);
+		});
+	}
 
-	if (matches.length < 6) return fallback;
-
-	const year = parseFooterYear(document, weekStart.getUTCFullYear());
+	// Day headers carry no year. Anchor to the navbar week-start year and
+	// correct for month wrap-around so New Year weeks date January days right
 	return matches.slice(0, 6).map(({ day, month }) => {
+		let year = weekYear!;
+		if (month < weekMonth! - 6) year += 1;
+		else if (month > weekMonth! + 6) year -= 1;
 		return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 	});
 }
@@ -259,6 +244,37 @@ function extractCellLines(cell: ParsedCell): string[] {
 	if (cell.nestedLines.length > 0) return cell.nestedLines;
 	const fallback = collapseSpaces(cell.fallbackText);
 	return fallback ? [fallback] : [];
+}
+
+interface CellLesson {
+	subjectRaw: string;
+	roomRaw: string;
+}
+
+function normalizeStackedKey(subjectRaw: string, roomRaw: string): string {
+	return `${subjectRaw.replace(/^[.*]+/, '')}|${roomRaw}`;
+}
+
+// A cell stacks lessons as consecutive [subject, teacher, room] line triples.
+// The first triple is read permissively (missing lines allowed); further
+// triples are only taken when complete, and same-subject same-room repeats
+// (parallel subgroups differing only by teacher) collapse into one lesson.
+function extractCellLessons(cell: ParsedCell): CellLesson[] {
+	const lines = extractCellLines(cell);
+	if (lines.length === 0) return [];
+
+	const lessons: CellLesson[] = [{ subjectRaw: lines[0]!, roomRaw: lines[2] ?? '' }];
+	const seen = new Set([normalizeStackedKey(lessons[0]!.subjectRaw, lessons[0]!.roomRaw)]);
+
+	for (let base = 3; base + 2 < lines.length; base += 3) {
+		const subjectRaw = lines[base]!;
+		const roomRaw = lines[base + 2]!;
+		const key = normalizeStackedKey(subjectRaw, roomRaw);
+		if (seen.has(key)) continue;
+		seen.add(key);
+		lessons.push({ subjectRaw, roomRaw });
+	}
+	return lessons;
 }
 
 function collectTextWithoutNestedTables(node: ChildNode, insideTable: boolean): string {
@@ -424,7 +440,7 @@ function detectTrack(subjectFullRaw: string): CohortTrack {
 }
 
 function extractCohortCode(subjectCodeRaw: string): { code: string; track: CohortTrack } | null {
-	const normalized = subjectCodeRaw.replace(/^\.+/, '');
+	const normalized = subjectCodeRaw.replace(/^[.*]+/, '');
 	for (const rule of cohortCodeRules) {
 		const m = rule.codePattern.exec(normalized);
 		if (m) {
@@ -494,16 +510,19 @@ export function parseTimetablePage(
 					}
 				}
 			} else {
-				const lines = extractCellLines(cell);
-				const subjectRaw = lines[0] ?? '';
-				const roomRaw = lines[2] ?? '';
-
-				// Skip empty cells, placeholder underscores, and holiday date-only cells
-				// (e.g. "23.3.2026" or "23.3.2026-23.3.2026" spanning the day column)
-				if (isRenderableSubject(subjectRaw)) {
+				for (const lesson of extractCellLessons(cell)) {
+					// Skip empty cells, placeholder underscores, and holiday date-only cells
+					// (e.g. "23.3.2026" or "23.3.2026-23.3.2026" spanning the day column)
+					if (!isRenderableSubject(lesson.subjectRaw)) continue;
 					const dayIndex = Math.floor((col - 1) / 12);
 					if (dayIndex >= 0 && dayIndex < dayDates.length) {
-						deferred.push({ dayIndex, subjectRaw, roomRaw, rowIndex, rowSpan });
+						deferred.push({
+							dayIndex,
+							subjectRaw: lesson.subjectRaw,
+							roomRaw: lesson.roomRaw,
+							rowIndex,
+							rowSpan
+						});
 					}
 				}
 			}
@@ -538,7 +557,7 @@ export function parseTimetablePage(
 		const cohort = extractCohortCode(d.subjectRaw);
 		const nameTrack = detectTrack(subjectFullRaw);
 		const track = nameTrack !== 'none' ? nameTrack : (cohort?.track ?? 'none');
-		const cohortCode = cohort && !genericCodes.has(cohort.code) ? cohort.code : null;
+		const cohortCode = cohort?.code ?? null;
 		const scope = cohortCode ? 'cohort_shared' : 'core_fixed';
 		const dateIso = dayDates[d.dayIndex]!;
 

@@ -115,4 +115,34 @@ describe('makeLegendResolver', () => {
 	it('returns empty string on miss', () => {
 		expect(resolve('UNKNOWN')).toBe('');
 	});
+
+	it('resolves truncated cell codes by unique legend prefix', () => {
+		const truncated = makeLegendResolver([
+			{ code: 'ННРТПР.л/WA', value: 'Научные направления/WA лекция' },
+			{ code: 'ФИЗ', value: 'Физика/Physik' }
+		]);
+		expect(truncated('ННРТПР')).toBe('Научные направления/WA лекция');
+	});
+
+	it('resolves prefix when all matching entries share one full name', () => {
+		const shared = makeLegendResolver([
+			{ code: 'TestDaF/TestAs', value: 'TestDaF' },
+			{ code: 'TestDaF/TestAs', value: 'TestDaF' }
+		]);
+		expect(shared('TestDa')).toBe('TestDaF');
+	});
+
+	it('keeps prefix matches unresolved when full names disagree', () => {
+		const ambiguous = makeLegendResolver([
+			{ code: 'СПУРП2.л/ERP2', value: 'Система планирования/ERP2 лекция' },
+			{ code: 'СПУРП2.с/ERP2', value: 'Система планирования/ERP2 семинар' }
+		]);
+		expect(ambiguous('СПУРП2')).toBe('');
+		expect(ambiguous('СПУРП2.л')).toBe('Система планирования/ERP2 лекция');
+	});
+
+	it('never prefix-matches single-character codes', () => {
+		const single = makeLegendResolver([{ code: 'ФИЗ', value: 'Физика/Physik' }]);
+		expect(single('Ф')).toBe('');
+	});
 });

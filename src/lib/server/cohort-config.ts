@@ -31,5 +31,3 @@ export const cohortCodeRules: CohortCodeRule[] = [
 	{ track: 'pe', codePattern: /^ФК\(д\)/i, code: 'ФК(д)' },
 	{ track: 'pe', codePattern: /^ФК\(ю\)/i, code: 'ФК(ю)' }
 ];
-
-export const genericCodes = new Set(['DE', 'EN', 'KAZ', 'KAZ-B']);
