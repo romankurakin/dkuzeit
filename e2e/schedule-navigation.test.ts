@@ -202,7 +202,11 @@ test.describe('schedule navigation', () => {
 			week: initialWeek!.value
 		});
 		await page.goto(`/${slug}`);
-		await expect(page.getByRole('table')).toBeVisible({ timeout: 15_000 });
+		// The first listed week can be free of lessons (semester start), so wait
+		// for the toolbar rather than a schedule table
+		await expect(page.getByRole('toolbar').getByRole('button').first()).toBeVisible({
+			timeout: 15_000
+		});
 
 		const pageErrors: string[] = [];
 		page.on('pageerror', (error) => {
