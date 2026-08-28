@@ -137,6 +137,53 @@ async function findScenarioWithRequiredCohorts(
 	return null;
 }
 
+type CalendarCopySnapshot = { disabled: boolean; pending: boolean; status: string };
+
+// The copy button stays pending only for the length of the token request and
+// the success state clears itself after BUTTON_ACTIVATION_DURATION_MS, so
+// polling for either from Node races the clock on a loaded runner. Record every
+// transition inside the page and assert on that history instead.
+async function recordCalendarCopyStates(page: Page): Promise<void> {
+	await page.evaluate(() => {
+		const status = document.querySelector('[role="status"]');
+		const container = status?.parentElement;
+		const button = container?.querySelector('button');
+		if (!status || !container || !button) throw new Error('Calendar copy controls not found');
+
+		const history: CalendarCopySnapshot[] = [];
+		const snapshot = () => {
+			const entry = {
+				disabled: button.disabled,
+				pending: button.classList.contains('calendar-copy-shell-pending'),
+				status: (status.textContent ?? '').trim()
+			};
+			const last = history.at(-1);
+			if (
+				last &&
+				last.disabled === entry.disabled &&
+				last.pending === entry.pending &&
+				last.status === entry.status
+			) {
+				return;
+			}
+			history.push(entry);
+		};
+
+		window.__calendarCopyHistory = history;
+		snapshot();
+		new MutationObserver(snapshot).observe(container, {
+			attributes: true,
+			childList: true,
+			subtree: true,
+			characterData: true
+		});
+	});
+}
+
+async function readCalendarCopyStates(page: Page): Promise<CalendarCopySnapshot[]> {
+	return page.evaluate(() => window.__calendarCopyHistory ?? []);
+}
+
 function buildScheduleUrl(meta: MetaPayload, group: string): string {
 	return `/${groupSlug(meta, group)}`;
 }
@@ -243,12 +290,21 @@ test.describe('calendar export', () => {
 			.getByRole('button', { name: exportButtonNameRe });
 		const exportStatus = page.getByRole('status');
 
+		await recordCalendarCopyStates(page);
 		await exportButton.click();
-		await expect(exportButton).toBeDisabled({ timeout: 500 });
-		await expect(exportButton).toHaveClass(/calendar-copy-shell-pending/, { timeout: 500 });
 
 		await expect(exportButton).toBeEnabled({ timeout: 5000 });
-		await expect(exportStatus).toContainText(copiedStatusRe, { timeout: 5000 });
+		await expect
+			.poll(
+				async () => (await readCalendarCopyStates(page)).some((s) => copiedStatusRe.test(s.status)),
+				{
+					timeout: 5000
+				}
+			)
+			.toBe(true);
+
+		const copyStates = await readCalendarCopyStates(page);
+		expect(copyStates.some((s) => s.disabled && s.pending)).toBe(true);
 		await expect(payload).toBeDefined();
 		expect(payload?.group).toBe(targetGroup);
 		expect(payload?.week).toBe(targetWeek);
