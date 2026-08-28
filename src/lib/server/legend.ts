@@ -1,6 +1,7 @@
 import type { ChildNode, Document, Element } from 'domhandler';
 import { collectTextBuilder, hasChildren, isElementNode } from './dom-utils';
 import { cleanText } from './text';
+import { isMissingGermanName, splitBilingualLabel } from './bilingual';
 
 function findBoldWithText(node: ChildNode, text: string): Element | null {
 	if (isElementNode(node) && node.name === 'b') {
@@ -112,6 +113,22 @@ function fastLeftKey(input: string): string {
 	return fastCodeKey(input.split('/')[0]!);
 }
 
+// A truncated cell code can prefix-match several legend entries that differ only
+// by a subgroup suffix ("Английский язык/Fachsprache Englisch гр1 пр." vs
+// "гр2 пр."). The cell gives no way to tell the subgroups apart, but the subject
+// name they agree on is still safe to show, so keep it and drop the suffix.
+function sharedSubjectName(values: string[]): string {
+	const noGerman = isMissingGermanName(values[0]!);
+	const first = splitBilingualLabel(values[0]!, noGerman);
+	for (const value of values.slice(1)) {
+		if (isMissingGermanName(value) !== noGerman) return '';
+		const other = splitBilingualLabel(value, noGerman);
+		if (other.ru !== first.ru || other.de !== first.de) return '';
+	}
+	if (noGerman || !first.de || first.de === first.ru) return first.ru;
+	return `${first.ru}/${first.de}`;
+}
+
 export function makeLegendResolver(
 	entries: Array<{ code: string; value: string }>
 ): (code: string) => string {
@@ -133,13 +150,14 @@ export function makeLegendResolver(
 	const byPrefix = (code: string): string => {
 		const key = fastLeftKey(code);
 		if (key.length < 2) return '';
-		let found = '';
+		const matches: string[] = [];
 		for (const entry of leftKeyed) {
 			if (!entry.key.startsWith(key)) continue;
-			if (found && found !== entry.value) return '';
-			found = entry.value;
+			if (!matches.includes(entry.value)) matches.push(entry.value);
 		}
-		return found;
+		if (matches.length === 0) return '';
+		if (matches.length === 1) return matches[0]!;
+		return sharedSubjectName(matches);
 	};
 
 	return (code: string): string => {

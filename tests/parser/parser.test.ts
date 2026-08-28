@@ -28,20 +28,6 @@ async function loadManifest(): Promise<Manifest> {
 	return JSON.parse(await readFile(path.join(fixtureRoot, 'manifest.json'), 'utf8')) as Manifest;
 }
 
-async function loadSchedule(groupCode: string, weekValue?: string) {
-	const meta = await loadMeta();
-	const manifest = await loadManifest();
-	const group = meta.groups.find((g) => g.codeRaw.includes(groupCode));
-	if (group === undefined) throw new Error(`Group not found: ${groupCode}`);
-	const week = weekValue
-		? meta.weeks.find((w) => w.value === weekValue)
-		: meta.weeks.find((w) => manifest.weeks.includes(w.value));
-	if (week === undefined) throw new Error('Week not found');
-	const rel = path.join(fixtureRoot, week.value, 'c', `c${String(group.id).padStart(5, '0')}.htm`);
-	const html = await readFile(rel, 'utf8');
-	return { ...(await parseTimetablePage(parseDocument(html), group, week)), group, week };
-}
-
 suite('parseNavHtml', () => {
 	it('keeps group labels without leading dashes', async () => {
 		const meta = await loadMeta();
@@ -71,14 +57,6 @@ suite('parseNavHtml', () => {
 			if (!/^\d/.test(group.codeRu)) continue;
 			expect(group.codeDe).toMatch(/^\d/);
 		}
-	});
-
-	it('keeps parenthesized suffixes for colliding management groups', async () => {
-		const meta = await loadMeta();
-		const ma = meta.groups.find((group) => group.codeRaw === '2-Мен(МА)/2-Man(MA)');
-		const main = meta.groups.find((group) => group.codeRaw === '2-Мен/Man');
-		expect(ma?.codeRu).toBe('2-Мен(МА)');
-		expect(main?.codeRu).toBe('2-Мен');
 	});
 
 	it('builds unique slugs for group labels', async () => {
@@ -229,59 +207,33 @@ suite('parseTimetablePage label quality', () => {
 	});
 });
 
-suite('parseTimetablePage specific groups', () => {
-	it('sets exam lesson type for Wirtschaftstheorie', async () => {
-		const { events } = await loadSchedule('3А-ТЛ');
-		const econ = events.find((e) => e.subjectFullRaw.includes('Экономическая теория'));
-		expect(econ).toBeDefined();
-		expect(econ?.lessonType).toBe('экзамен');
-		expect(econ?.subjectFullRu).toBe('Экономическая теория');
-		expect(econ?.subjectFullDe).toBe('Wirtschaftstheorie');
-	});
-
-	it('sets exam lesson type for Kasachisch', async () => {
-		const { events } = await loadSchedule('3А-ТЛ');
-		const kaz = events.find((e) => e.subjectFullRaw.includes('Kasachisch'));
-		expect(kaz).toBeDefined();
-		expect(kaz?.lessonType).toBe('экзамен');
-		expect(kaz?.subjectFullDe).toBe('Kasachisch');
-	});
-
-	it('keeps empty lesson type and Russian fallback for German', async () => {
-		const { events } = await loadSchedule('3-Мен');
-		const biz = events.find((e) => e.subjectFullRaw.includes('қазақ'));
-		if (biz === undefined) return; // not every week has this subject
-		expect(biz.lessonType).toBe('');
-		expect(biz.subjectFullDe).toBe(biz.subjectFullRu);
-	});
-
-	it('keeps generic Kazakh exam entries out of cohort filters', async () => {
-		const { events, cohorts } = await loadSchedule('3А-ТЛ');
-		const kazCohorts = cohorts.filter((c) => c.track === 'kz');
-		expect(kazCohorts.length).toBe(0);
-		const kazEvents = events.filter((e) => e.track === 'kz');
-		expect(kazEvents.length).toBeGreaterThan(0);
-		for (const e of kazEvents) {
-			expect(e.cohortCode).toBeNull();
-			expect(e.scope).toBe('core_fixed');
-		}
-	});
-
+suite('parseTimetablePage cohort scope', () => {
 	it('keeps no cohort code on core_fixed events', async () => {
-		const { events } = await loadSchedule('3А-ТЛ');
-		const core = events.filter((e) => e.scope === 'core_fixed');
-		expect(core.length).toBeGreaterThan(0);
-		for (const e of core) {
-			expect(e.cohortCode).toBeNull();
-		}
-	});
+		const meta = await loadMeta();
+		const manifest = await loadManifest();
 
-	it('extracts lesson type from no-slash legend entry for Business and Soft Skills', async () => {
-		const { events } = await loadSchedule('2А-МО');
-		const bs = events.find((e) => e.subjectFullRaw.includes('Business'));
-		if (bs === undefined) return; // not every week has this subject
-		expect(bs.lessonType).toBe('экзамен');
-		expect(bs.subjectFullRu).not.toContain('экзамен');
+		let coreEvents = 0;
+		for (const week of meta.weeks) {
+			if (manifest.weeks.indexOf(week.value) === -1) continue;
+			for (const group of meta.groups) {
+				const rel = path.join(
+					fixtureRoot,
+					week.value,
+					'c',
+					`c${String(group.id).padStart(5, '0')}.htm`
+				);
+				if (!existsSync(rel)) continue;
+
+				const html = await readFile(rel, 'utf8');
+				const { events } = await parseTimetablePage(parseDocument(html), group, week);
+				for (const event of events) {
+					if (event.scope !== 'core_fixed') continue;
+					coreEvents += 1;
+					expect(event.cohortCode).toBeNull();
+				}
+			}
+		}
+		expect(coreEvents).toBeGreaterThan(0);
 	});
 });
 

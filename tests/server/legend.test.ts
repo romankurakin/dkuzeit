@@ -132,13 +132,29 @@ describe('makeLegendResolver', () => {
 		expect(shared('TestDa')).toBe('TestDaF');
 	});
 
-	it('keeps prefix matches unresolved when full names disagree', () => {
+	it('drops the lesson type when prefix matches share one subject name', () => {
 		const ambiguous = makeLegendResolver([
 			{ code: 'СПУРП2.л/ERP2', value: 'Система планирования/ERP2 лекция' },
 			{ code: 'СПУРП2.с/ERP2', value: 'Система планирования/ERP2 семинар' }
 		]);
-		expect(ambiguous('СПУРП2')).toBe('');
+		expect(ambiguous('СПУРП2')).toBe('Система планирования/ERP2');
 		expect(ambiguous('СПУРП2.л')).toBe('Система планирования/ERP2 лекция');
+	});
+
+	it('drops the subgroup suffix when prefix matches share one subject name', () => {
+		const subgroups = makeLegendResolver([
+			{ code: 'Анг.спец1/FEng', value: 'Английский язык/Fachsprache Englisch гр1 пр.' },
+			{ code: 'Анг.спец.2/FEng', value: 'Английский язык/Fachsprache Englisch гр2 пр.' }
+		]);
+		expect(subgroups('Анг.сп')).toBe('Английский язык/Fachsprache Englisch');
+	});
+
+	it('keeps prefix matches unresolved when the subject names themselves disagree', () => {
+		const ambiguous = makeLegendResolver([
+			{ code: 'IELTS гр.1', value: 'IELTS Preparation группа 1' },
+			{ code: 'IELTS гр.2', value: 'IELTS Preparation группа 2' }
+		]);
+		expect(ambiguous('IELTS')).toBe('');
 	});
 
 	it('never prefix-matches single-character codes', () => {

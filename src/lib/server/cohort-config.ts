@@ -28,6 +28,9 @@ export const cohortCodeRules: CohortCodeRule[] = [
 	{ track: 'kz', codePattern: /^Каз\.?(\d+)\/Б/i, code: 'Каз.$1/Б' },
 	{ track: 'kz', codePattern: /^Каз\.?(\d+)/i, code: 'Каз.$1' },
 	{ track: 'en', codePattern: /^BSг\.?(\d+)/i, code: 'BS$1' },
+	// Specialised English runs in parallel with the numbered English groups, and
+	// the cell code is truncated past the subgroup digit, so it is one cohort
+	{ track: 'en', codePattern: /^Анг\.сп/i, code: 'Анг.сп' },
 	{ track: 'pe', codePattern: /^ФК\(д\)/i, code: 'ФК(д)' },
 	{ track: 'pe', codePattern: /^ФК\(ю\)/i, code: 'ФК(ю)' }
 ];

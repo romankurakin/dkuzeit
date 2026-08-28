@@ -472,4 +472,123 @@ describe('parseTimetablePage', () => {
 		expect(parsed.events.map((event) => event.cohortCode)).toEqual(['D01', 'D1', 'E01', 'E1']);
 		expect(parsed.cohorts.map((cohort) => cohort.code)).toEqual(['D01', 'D1', 'E01', 'E1']);
 	});
+
+	it('takes exam lesson type and bilingual names from a legend entry', async () => {
+		const html = wrapTimetable(
+			`
+				<tr>
+					<td rowspan="2">08:00 - 09:40</td>
+					<td colspan="12" rowspan="2">
+						<table>
+							<tr><td>.ЭкТ.э</td></tr>
+							<tr><td>Тн/Tn</td></tr>
+							<tr><td>21</td></tr>
+						</table>
+					</td>
+				</tr>
+				<tr></tr>
+			`,
+			`<tr><td>ЭкТ.э/W</td><td>Экономическая теория/Wirtschaftstheorie экзамен</td></tr>`
+		);
+
+		const parsed = await parseTimetablePage(parseDocument(html), group, week);
+		expect(parsed.events).toHaveLength(1);
+
+		const event = parsed.events[0]!;
+		expect(event.lessonType).toBe('экзамен');
+		expect(event.subjectFullRu).toBe('Экономическая теория');
+		expect(event.subjectFullDe).toBe('Wirtschaftstheorie');
+	});
+
+	it('keeps generic Kazakh entries out of cohort filters', async () => {
+		const html = wrapTimetable(
+			`
+				<tr>
+					<td rowspan="2">08:00 - 09:40</td>
+					<td colspan="12" rowspan="2">
+						<table>
+							<tr><td>.Каз.э</td></tr>
+							<tr><td>Тн/Tn</td></tr>
+							<tr><td>21</td></tr>
+						</table>
+					</td>
+				</tr>
+				<tr></tr>
+			`,
+			`<tr><td>Каз.э/Kas</td><td>Казахский язык/Kasachisch экзамен</td></tr>`
+		);
+
+		const parsed = await parseTimetablePage(parseDocument(html), group, week);
+		expect(parsed.events).toHaveLength(1);
+
+		const event = parsed.events[0]!;
+		expect(event.track).toBe('kz');
+		expect(event.cohortCode).toBeNull();
+		expect(event.scope).toBe('core_fixed');
+		expect(event.lessonType).toBe('экзамен');
+		expect(event.subjectFullDe).toBe('Kasachisch');
+		expect(parsed.cohorts).toEqual([]);
+	});
+
+	it('extracts lesson type from a legend entry without a slash', async () => {
+		const html = wrapTimetable(
+			`
+				<tr>
+					<td rowspan="2">08:00 - 09:40</td>
+					<td colspan="12" rowspan="2">
+						<table>
+							<tr><td>.BSг.э</td></tr>
+							<tr><td>Нрж/Nr</td></tr>
+							<tr><td>502</td></tr>
+						</table>
+					</td>
+				</tr>
+				<tr></tr>
+			`,
+			`<tr><td>BSг.э</td><td>Business  and Soft Skills БД(B2.1-C1)  экзамен</td></tr>`
+		);
+
+		const parsed = await parseTimetablePage(parseDocument(html), group, week);
+		expect(parsed.events).toHaveLength(1);
+
+		const event = parsed.events[0]!;
+		expect(event.lessonType).toBe('экзамен');
+		expect(event.subjectFullRu).toBe('Business and Soft Skills БД(B2.1-C1)');
+		expect(event.subjectFullRu).not.toContain('экзамен');
+	});
+
+	it('files specialised English under the English cohort track', async () => {
+		const html = wrapTimetable(
+			`
+				<tr>
+					<td rowspan="2">08:00 - 09:40</td>
+					<td colspan="12" rowspan="2">
+						<table>
+							<tr><td>.Анг.сп</td></tr>
+							<tr><td>Ткб/To</td></tr>
+							<tr><td>509</td></tr>
+						</table>
+					</td>
+				</tr>
+				<tr></tr>
+			`,
+			`<tr><td>Анг.спец1/FEng</td><td>Английский язык/Fachsprache Englisch гр1 пр.</td></tr>
+			 <tr><td>Анг.спец.2/FEng</td><td>Английский язык/Fachsprache Englisch гр2 пр.</td></tr>`
+		);
+
+		const parsed = await parseTimetablePage(parseDocument(html), group, week);
+		expect(parsed.events).toHaveLength(1);
+
+		const event = parsed.events[0]!;
+		expect(event.track).toBe('en');
+		expect(event.cohortCode).toBe('Анг.сп');
+		expect(event.scope).toBe('cohort_shared');
+		// The cell code is truncated past the subgroup digit, so the shared subject
+		// name survives and the disagreeing suffix does not
+		expect(event.subjectFullRu).toBe('Английский язык');
+		expect(event.subjectFullDe).toBe('Fachsprache Englisch');
+		expect(parsed.cohorts).toEqual([
+			{ code: 'Анг.сп', track: 'en', label: 'Английский язык', sourceGroups: ['T-GROUP'] }
+		]);
+	});
 });

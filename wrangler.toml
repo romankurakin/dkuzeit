@@ -28,4 +28,4 @@ binding = "ASSETS"
 # and the clock is pinned inside the snapshot's week range.
 [env.e2e.vars]
 DKU_BASE_URL = "http://127.0.0.1:8788"
-DKU_NOW = "2026-05-06T09:00:00+05:00"
+DKU_NOW = "2026-09-02T09:00:00+05:00"
