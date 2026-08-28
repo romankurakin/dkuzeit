@@ -44,7 +44,7 @@
 		"@inlang/paraglide-js": "^2.23.2",
 		"@inlang/plugin-m-function-matcher": "^2.2.9",
 		"@inlang/plugin-message-format": "^4.4.1",
-		"@j178/prek": "^0.4.13",
+		"@j178/prek": "^0.5.0",
 		"@playwright/test": "^1.62.1",
 		"@sveltejs/adapter-cloudflare": "^7.2.9",
 		"@sveltejs/kit": "^2.70.2",
