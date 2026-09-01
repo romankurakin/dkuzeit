@@ -25,6 +25,9 @@
 	"category_pe": "Физкультура",
 	"upstream_down_title": "Расписание недоступно",
 	"upstream_down_body": "timetable.dku.kz не отвечает",
+	"network_error_title": "Соединение потеряно",
+	"network_error_body": "Проверьте подключение к интернету и попробуйте снова.",
+	"network_error_retry": "Повторить",
 	"not_found_title": "Страница не найдена",
 	"not_found_body": "Такой страницы не существует"
 }

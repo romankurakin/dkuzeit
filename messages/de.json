@@ -25,6 +25,9 @@
 	"category_pe": "Sport",
 	"upstream_down_title": "Stundenplan nicht verfügbar",
 	"upstream_down_body": "timetable.dku.kz antwortet nicht",
+	"network_error_title": "Verbindung unterbrochen",
+	"network_error_body": "Internetverbindung prüfen und erneut versuchen.",
+	"network_error_retry": "Erneut versuchen",
 	"not_found_title": "Seite nicht gefunden",
 	"not_found_body": "Diese Seite existiert nicht"
 }

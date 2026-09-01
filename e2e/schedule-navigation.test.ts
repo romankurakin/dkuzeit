@@ -187,7 +187,7 @@ test.describe('schedule navigation', () => {
 		await expect(weekTrigger).toContainText(laterWeeks[1]!.label, { timeout: 15_000 });
 	});
 
-	test('do not raise an unhandled error when same-route reload fetch fails', async ({ page }) => {
+	test('offer recovery when a same-route reload fetch fails', async ({ page }) => {
 		const metaResponse = await page.request.get('/api/meta');
 		expect(metaResponse.ok()).toBe(true);
 		const meta = (await metaResponse.json()) as MetaPayload;
@@ -230,9 +230,18 @@ test.describe('schedule navigation', () => {
 
 		await expect.poll(() => abortedReload).toBe(true);
 		await expect(page.getByRole('heading', { level: 2 })).toContainText(
-			localizedMessageRegex('upstream_down_title'),
+			localizedMessageRegex('network_error_title'),
 			{ timeout: 15_000 }
 		);
+		await expect(page.getByText(localizedMessageRegex('network_error_body'))).toBeVisible();
+		const retryButton = page.getByRole('button', {
+			name: localizedMessageRegex('network_error_retry')
+		});
+		await expect(retryButton).toBeVisible();
+		await retryButton.click();
+		await expect(page.getByRole('toolbar').getByRole('button').first()).toBeVisible({
+			timeout: 15_000
+		});
 		await page.waitForTimeout(300);
 		expect(pageErrors).toEqual([]);
 	});
