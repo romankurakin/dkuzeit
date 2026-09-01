@@ -68,7 +68,7 @@ importers:
         version: 2.2.13
       '@inlang/plugin-message-format':
         specifier: ^4.4.1
-        version: 4.4.3
+        version: 4.4.4
       '@j178/prek':
         specifier: ^0.5.0
         version: 0.5.1
@@ -1224,8 +1224,8 @@ packages:
   '@inlang/plugin-m-function-matcher@2.2.13':
     resolution: {integrity: sha512-TO6v+nty8ntoeL/3rJ1wGazyfkOHnshmSy+biHdD5mJubopKIxG5Zrl563aEkXjAm/S4jMvenIrVJUPvMDlJfg==}
 
-  '@inlang/plugin-message-format@4.4.3':
-    resolution: {integrity: sha512-jBOT0CKgG49mctJZZ3Ltz4o9xkxbCYM1xXhKXl+1dIRV+IedpS93q1jAdMKGSfexgGxcagFopdNbnLb7wq/OZg==}
+  '@inlang/plugin-message-format@4.4.4':
+    resolution: {integrity: sha512-50tkyH/qMFudcIOZSCRdi+BeCVuJQo3BWbvfRTVKr8pEslBiRaZDTKBC1NkCI3ivmkyqzK8k+ktBci3NtDu3Lg==}
 
   '@inlang/recommend-sherlock@0.2.1':
     resolution: {integrity: sha512-ckv8HvHy/iTqaVAEKrr+gnl+p3XFNwe5D2+6w6wJk2ORV2XkcRkKOJ/XsTUJbPSiyi4PI+p+T3bqbmNx/rDUlg==}
@@ -5691,7 +5691,7 @@ snapshots:
     dependencies:
       '@inlang/sdk': 3.0.3
 
-  '@inlang/plugin-message-format@4.4.3':
+  '@inlang/plugin-message-format@4.4.4':
     dependencies:
       flat: 6.0.1
 
