@@ -16,11 +16,13 @@ function isNetworkFetchError(error: unknown): boolean {
 	);
 }
 
-export const handleError: typeof sentryHandleError = async (input) => {
+export const handleError: typeof sentryHandleError = async (
+	input: Parameters<typeof sentryHandleError>[0]
+) => {
 	if (isNetworkFetchError(input.error)) {
 		return {
 			message: 'Network connection lost — please check your connection and try again.'
 		};
 	}
-	return sentryHandleError(input);
+	return sentryHandleError(input as never);
 };
