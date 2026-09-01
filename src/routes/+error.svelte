@@ -28,7 +28,7 @@
 		</p>
 		<button
 			type="button"
-			class="brutal-control brutal-focus mt-section border-background bg-background p-control text-foreground hover:bg-poison cursor-pointer border-[3px] border-solid"
+			class="brutal-control brutal-hover brutal-focus mt-section border-background bg-background p-control text-foreground cursor-pointer border-[3px] border-solid"
 			onclick={retry}
 		>
 			{m.network_error_retry()}
