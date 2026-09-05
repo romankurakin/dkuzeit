@@ -10,7 +10,7 @@
 	import { formatDateLabel } from '$lib/scheduler/date-format';
 	import { openCalendarSubscription, toWebcalLink } from '$lib/scheduler/calendar-link';
 	import type { SchedulerContext } from '$lib/scheduler/types';
-	import { traceCalendarExport, traceInitialRender } from '$lib/client-tracing';
+	import { recordScheduleView, traceCalendarExport, traceInitialRender } from '$lib/client-tracing';
 	import { BUTTON_ACTIVATION_DURATION_MS } from '$lib/ui-timing';
 	import {
 		filterDisplayEvents,
@@ -55,6 +55,7 @@
 	let calendarClearTimer: ReturnType<typeof setTimeout> | null = null;
 
 	const renderStart = Date.now() / 1000;
+	let lastRecordedScheduleView = '';
 	onMount(() => {
 		let active = true;
 		void tick().then(() => {
@@ -73,6 +74,14 @@
 	});
 
 	const uiLocale = $derived((getLocale() === 'de' ? 'de' : 'ru') as 'ru' | 'de');
+	$effect(() => {
+		const signature = `${resolvedGroup}:${resolvedWeek}`;
+		const locale = uiLocale;
+		if (!resolvedGroup || !resolvedWeek || signature === lastRecordedScheduleView) return;
+		lastRecordedScheduleView = signature;
+		void tick().then(() => recordScheduleView(locale));
+	});
+
 	const categoryLabels = $derived<Record<string, string>>({
 		de: m.category_de(),
 		en: m.category_en(),

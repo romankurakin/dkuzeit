@@ -65,7 +65,8 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
 		'serialize ics calendar',
 		'calendar.serialize',
 		{ eventCount: events.length },
-		async () => buildIcsCalendar(calendarTitle, events, lang)
+		async () => buildIcsCalendar(calendarTitle, events, lang),
+		locals?.dkuRequest?.tracing
 	);
 
 	return new Response(calendar, {

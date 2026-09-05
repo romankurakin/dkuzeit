@@ -1,14 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { startSpanMock } = vi.hoisted(() => ({
+const { countMetricMock, startSpanMock } = vi.hoisted(() => ({
+	countMetricMock: vi.fn(),
 	startSpanMock: vi.fn()
 }));
 
 vi.mock('@sentry/sveltekit', () => ({
+	metrics: { count: countMetricMock },
 	startSpan: startSpanMock
 }));
 
-import { traceNavigate, traceCalendarExport, traceInitialRender } from '../src/lib/client-tracing';
+import {
+	recordScheduleView,
+	traceNavigate,
+	traceCalendarExport,
+	traceInitialRender
+} from '../src/lib/client-tracing';
 
 describe('client tracing wrappers', () => {
 	beforeEach(() => {
@@ -85,6 +92,14 @@ describe('client tracing wrappers', () => {
 			},
 			expect.any(Function)
 		);
+	});
+
+	it('records a schedule view with locale only', () => {
+		recordScheduleView('de');
+
+		expect(countMetricMock).toHaveBeenCalledWith('dku.schedule.view', 1, {
+			attributes: { 'ui.locale': 'de' }
+		});
 	});
 
 	it('propagates callback failures', async () => {

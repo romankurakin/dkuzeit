@@ -1,51 +1,79 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { startSpanMock } = vi.hoisted(() => ({
-	startSpanMock: vi.fn()
+const { cloudflareSetAttribute, countMetricMock, enterSpanMock } = vi.hoisted(() => ({
+	cloudflareSetAttribute: vi.fn(),
+	countMetricMock: vi.fn(),
+	enterSpanMock: vi.fn()
 }));
 
 vi.mock('@sentry/sveltekit', () => ({
-	startSpan: startSpanMock
+	metrics: { count: countMetricMock }
 }));
 
 import { traceCacheGet, traceSpan } from '../../src/lib/server/tracing';
+import type { NativeTracing } from '../../src/lib/server/tracing';
+
+const nativeTracing: NativeTracing = {
+	enterSpan: (name, callback) => enterSpanMock(name, callback)
+};
 
 describe('tracing wrappers', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		enterSpanMock.mockImplementation((_name, fn) =>
+			fn({
+				setAttribute: cloudflareSetAttribute
+			})
+		);
 	});
 
-	it('wraps generic spans', async () => {
-		startSpanMock.mockImplementation((_ctx, fn: () => Promise<string>) => fn());
-
+	it('emits generic spans to Cloudflare native tracing', async () => {
 		await expect(
-			traceSpan('parse timetable page', 'html.parse', { week: '13' }, async () => 'ok')
+			traceSpan(
+				'parse timetable page',
+				'html.parse',
+				{ week: '13' },
+				async () => 'ok',
+				nativeTracing
+			)
 		).resolves.toBe('ok');
 
-		expect(startSpanMock).toHaveBeenCalledWith(
-			{ name: 'parse timetable page', op: 'html.parse', attributes: { week: '13' } },
-			expect.any(Function)
-		);
+		expect(enterSpanMock).toHaveBeenCalledWith('parse timetable page', expect.any(Function));
+		expect(cloudflareSetAttribute).toHaveBeenCalledWith('week', '13');
+		expect(cloudflareSetAttribute).toHaveBeenCalledWith('code.operation', 'html.parse');
+	});
+
+	it('runs normally when Cloudflare tracing is unavailable', async () => {
+		const setAttribute = vi.fn();
+		await expect(
+			traceSpan('local work', 'test.work', {}, async (span) => {
+				span.setAttribute('result', 'ok');
+				setAttribute('completed', true);
+				return 'ok';
+			})
+		).resolves.toBe('ok');
+
+		expect(enterSpanMock).not.toHaveBeenCalled();
+		expect(setAttribute).toHaveBeenCalledWith('completed', true);
 	});
 
 	it('sets cache hit attribute through callback', async () => {
-		const setAttribute = vi.fn();
-		startSpanMock.mockImplementation(
-			(_ctx, fn: (span: { setAttribute: typeof setAttribute }) => Promise<string>) =>
-				fn({ setAttribute })
-		);
-
 		await expect(
-			traceCacheGet('meta', async (setHit) => {
-				setHit(true);
-				return 'cached';
-			})
+			traceCacheGet(
+				'meta',
+				async (setHit) => {
+					setHit(true);
+					return 'cached';
+				},
+				nativeTracing
+			)
 		).resolves.toBe('cached');
 
-		expect(startSpanMock).toHaveBeenCalledWith(
-			{ name: 'meta cache', op: 'cache.get', attributes: { 'cache.key': ['meta'] } },
-			expect.any(Function)
-		);
-		expect(setAttribute).toHaveBeenCalledWith('cache.hit', true);
+		expect(cloudflareSetAttribute).toHaveBeenCalledWith('cache.key', 'meta');
+		expect(cloudflareSetAttribute).toHaveBeenCalledWith('code.operation', 'cache.get');
+		expect(cloudflareSetAttribute).toHaveBeenCalledWith('cache.hit', true);
+		expect(countMetricMock).toHaveBeenCalledWith('dku.cache.access', 1, {
+			attributes: { 'cache.kind': 'meta', 'cache.result': 'hit' }
+		});
 	});
 });

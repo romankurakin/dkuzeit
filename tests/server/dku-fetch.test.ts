@@ -1,9 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ChildNode, Element, Text } from 'domhandler';
 
-const { traceCacheGetMock, traceSpanMock } = vi.hoisted(() => ({
+const { recordHtmlInputBytesMock, traceCacheGetMock, traceSpanMock } = vi.hoisted(() => ({
+	recordHtmlInputBytesMock: vi.fn(),
 	traceCacheGetMock: vi.fn(),
 	traceSpanMock: vi.fn()
+}));
+
+vi.mock('../../src/lib/server/metrics', () => ({
+	recordHtmlInputBytes: recordHtmlInputBytesMock
 }));
 
 vi.mock('../../src/lib/server/tracing', () => ({
@@ -35,7 +40,9 @@ const TEST_BUILD_ID = 'current-build';
 
 describe('dku fetch cache helpers', () => {
 	beforeEach(() => {
-		traceSpanMock.mockImplementation(async (_name, _op, _attributes, fn) => fn());
+		traceSpanMock.mockImplementation(async (_name, _op, _attributes, fn) =>
+			fn({ setAttribute: vi.fn() })
+		);
 	});
 
 	afterEach(() => {
@@ -149,6 +156,10 @@ describe('dku fetch cache helpers', () => {
 			`${BASE_URL}/frames/navbar.htm`,
 			expect.objectContaining({ headers: { 'cache-control': 'no-cache' } })
 		);
+		expect(recordHtmlInputBytesMock).toHaveBeenCalledWith(
+			'frames/navbar.htm',
+			new TextEncoder().encode('<html><body>hello</body></html>').byteLength
+		);
 		await expect(fetchDocument('bad/path.htm')).rejects.toThrow(
 			`Failed to fetch ${BASE_URL}/bad/path.htm (503)`
 		);
@@ -157,7 +168,9 @@ describe('dku fetch cache helpers', () => {
 
 describe('fetchDocument streaming', () => {
 	beforeEach(() => {
-		traceSpanMock.mockImplementation(async (_name, _op, _attributes, fn) => fn());
+		traceSpanMock.mockImplementation(async (_name, _op, _attributes, fn) =>
+			fn({ setAttribute: vi.fn() })
+		);
 	});
 
 	function collectText(node: ChildNode): string {
