@@ -9,6 +9,7 @@ import {
 	SCHEDULE_CACHE_POLICY,
 	type DkuRequestContext
 } from './dku-fetch';
+import { recordTimetableOutput } from './metrics';
 import { traceSpan } from './tracing';
 
 export { API_RESPONSE_CACHE_HEADER } from './dku-fetch';
@@ -32,14 +33,24 @@ export async function getMeta(request?: DkuRequestContext): Promise<MetaPayload>
 				'source.resolve',
 				{ 'source.kind': 'meta', 'html.path': 'frames/navbar.htm' },
 				async () => {
-					const document = await fetchDocument('frames/navbar.htm');
+					const document = await fetchDocument('frames/navbar.htm', request?.tracing);
 					return traceSpan(
-						'parse nav html',
-						'html.parse',
-						{ 'html.path': 'frames/navbar.htm' },
-						async () => parseNavHtml(document)
+						'extract timetable metadata from DOM',
+						'timetable.extract',
+						{
+							'html.path': 'frames/navbar.htm',
+							'html.phase': 'metadata.extract'
+						},
+						async (span) => {
+							const meta = parseNavHtml(document);
+							span.setAttribute('timetable.group_count', meta.groups.length);
+							span.setAttribute('timetable.week_count', meta.weeks.length);
+							return meta;
+						},
+						request?.tracing
 					);
-				}
+				},
+				request?.tracing
 			),
 		request,
 		META_CACHE_POLICY
@@ -66,15 +77,28 @@ async function getSchedule(
 				'source.resolve',
 				{ 'source.kind': 'schedule', 'html.path': path, group: group.codeRaw, week: week.value },
 				async () => {
-					const document = await fetchDocument(path);
+					const document = await fetchDocument(path, request?.tracing);
 					const parsed = await traceSpan(
-						'parse timetable page',
-						'html.parse',
-						{ group: group.codeRaw, week: week.value, 'html.path': path },
-						async () => parseTimetablePage(document, group, week)
+						'extract timetable from DOM',
+						'timetable.extract',
+						{
+							group: group.codeRaw,
+							week: week.value,
+							'html.path': path,
+							'html.phase': 'schedule.extract'
+						},
+						async (span) => {
+							const result = parseTimetablePage(document, group, week);
+							span.setAttribute('timetable.event_count', result.events.length);
+							span.setAttribute('timetable.cohort_count', result.cohorts.length);
+							recordTimetableOutput(result.events.length, result.cohorts.length);
+							return result;
+						},
+						request?.tracing
 					);
 					return { group, week, events: parsed.events, cohorts: parsed.cohorts };
-				}
+				},
+				request?.tracing
 			);
 		},
 		request,

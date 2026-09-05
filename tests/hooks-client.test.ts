@@ -19,7 +19,7 @@ vi.mock('@sentry/sveltekit', () => ({
 }));
 
 vi.mock('$lib/sentry', () => ({
-	sentryConfig: {}
+	clientSentryConfig: {}
 }));
 
 import { handleError } from '../src/hooks.client';

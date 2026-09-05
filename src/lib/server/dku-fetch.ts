@@ -1,6 +1,7 @@
 import { DomHandler, type Document } from 'domhandler';
 import { WebWritableStream } from 'htmlparser2/WebWritableStream';
-import { traceCacheGet, traceSpan } from './tracing';
+import { recordHtmlInputBytes } from './metrics';
+import { traceCacheGet, traceSpan, type NativeTracing } from './tracing';
 
 const DEFAULT_BASE_URL = 'https://timetable.dku.kz';
 
@@ -24,12 +25,14 @@ function buildCacheNamespace(buildId = ''): string {
 export interface DkuRequestContext {
 	cacheNamespace: string;
 	inflight: Map<string, Promise<unknown>>;
+	tracing?: NativeTracing;
 }
 
-export function createDkuRequestContext(buildId = ''): DkuRequestContext {
+export function createDkuRequestContext(buildId = '', tracing?: NativeTracing): DkuRequestContext {
 	return {
 		cacheNamespace: buildCacheNamespace(buildId),
-		inflight: new Map()
+		inflight: new Map(),
+		tracing
 	};
 }
 
@@ -57,19 +60,23 @@ export async function cached<T>(
 	const url = `${upstreamBaseUrl()}/_cache/${request?.cacheNamespace ?? CACHE_NAMESPACE_VERSION}/${encodeURIComponent(key)}`;
 
 	if (cache) {
-		const hit = await traceCacheGet(key, async (setHit) => {
-			try {
-				const res = await cache.match(url);
-				if (res) {
-					setHit(true);
-					return (await res.json()) as T;
+		const hit = await traceCacheGet(
+			key,
+			async (setHit) => {
+				try {
+					const res = await cache.match(url);
+					if (res) {
+						setHit(true);
+						return (await res.json()) as T;
+					}
+				} catch {
+					/* miss */
 				}
-			} catch {
-				/* miss */
-			}
-			setHit(false);
-			return undefined;
-		});
+				setHit(false);
+				return undefined;
+			},
+			request?.tracing
+		);
 		if (hit !== undefined) return hit;
 	}
 
@@ -93,7 +100,10 @@ export async function cached<T>(
 	return value;
 }
 
-export async function fetchDocument(path: string): Promise<Document> {
+export async function fetchDocument(
+	path: string,
+	nativeTracing?: NativeTracing
+): Promise<Document> {
 	const url = `${upstreamBaseUrl()}/${path}`;
 	try {
 		const res = await fetch(url, {
@@ -107,15 +117,29 @@ export async function fetchDocument(path: string): Promise<Document> {
 		const ws = new WebWritableStream(handler);
 		const contentLength = Number(res.headers.get('content-length'));
 		await traceSpan(
-			'build html document',
-			'html.build',
+			'build DOM with htmlparser2',
+			'html.parse',
 			{
 				'html.path': path,
+				'html.phase': 'dom.build',
+				'html.parser': 'htmlparser2',
 				...(Number.isFinite(contentLength) && contentLength > 0
 					? { 'html.content_length': contentLength }
 					: {})
 			},
-			() => body.pipeTo(ws)
+			async (span) => {
+				let inputBytes = 0;
+				const countingStream = new TransformStream<Uint8Array, Uint8Array>({
+					transform(chunk, controller) {
+						inputBytes += chunk.byteLength;
+						controller.enqueue(chunk);
+					}
+				});
+				await body.pipeThrough(countingStream).pipeTo(ws);
+				span.setAttribute('html.input_bytes', inputBytes);
+				recordHtmlInputBytes(path, inputBytes);
+			},
+			nativeTracing
 		);
 		return handler.root;
 	} catch (err) {

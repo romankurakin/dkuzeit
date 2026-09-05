@@ -69,3 +69,9 @@ export function traceInitialRender(startTime: number, context: ScheduleTraceCont
 		() => {}
 	);
 }
+
+export function recordScheduleView(locale: string): void {
+	Sentry.metrics.count('dku.schedule.view', 1, {
+		attributes: attrs({ 'ui.locale': locale })
+	});
+}

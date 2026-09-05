@@ -1,9 +1,9 @@
 import * as Sentry from '@sentry/sveltekit';
 import type { HandleClientError } from '@sveltejs/kit';
 import { isNetworkFetchError, NETWORK_UNAVAILABLE_CODE } from '$lib/client/network-errors';
-import { sentryConfig } from '$lib/sentry';
+import { clientSentryConfig } from '$lib/sentry';
 
-Sentry.init(sentryConfig);
+Sentry.init(clientSentryConfig);
 
 if ('serviceWorker' in navigator) {
 	navigator.serviceWorker.register('/service-worker.js').catch(() => {});

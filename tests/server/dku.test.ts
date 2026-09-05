@@ -6,6 +6,7 @@ const {
 	fetchDocumentMock,
 	parseNavHtmlMock,
 	parseTimetablePageMock,
+	recordTimetableOutputMock,
 	traceSpanMock,
 	todayInAlmatyMock
 } = vi.hoisted(() => ({
@@ -13,6 +14,7 @@ const {
 	fetchDocumentMock: vi.fn(),
 	parseNavHtmlMock: vi.fn(),
 	parseTimetablePageMock: vi.fn(),
+	recordTimetableOutputMock: vi.fn(),
 	traceSpanMock: vi.fn(),
 	todayInAlmatyMock: vi.fn()
 }));
@@ -36,6 +38,10 @@ vi.mock('../../src/lib/server/dku-fetch', () => ({
 vi.mock('../../src/lib/server/parser', () => ({
 	parseNavHtml: parseNavHtmlMock,
 	parseTimetablePage: parseTimetablePageMock
+}));
+
+vi.mock('../../src/lib/server/metrics', () => ({
+	recordTimetableOutput: recordTimetableOutputMock
 }));
 
 vi.mock('../../src/lib/server/tracing', () => ({
@@ -81,7 +87,9 @@ describe('dku helpers', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		cachedMock.mockImplementation(async (_key, compute) => compute());
-		traceSpanMock.mockImplementation(async (_name, _op, _attrs, fn) => fn());
+		traceSpanMock.mockImplementation(async (_name, _op, _attrs, fn) =>
+			fn({ setAttribute: vi.fn() })
+		);
 		todayInAlmatyMock.mockReturnValue('2026-02-10');
 	});
 
@@ -111,7 +119,7 @@ describe('dku helpers', () => {
 				staleWhileRevalidateSeconds: 18_000
 			})
 		);
-		expect(fetchDocumentMock).toHaveBeenCalledWith('frames/navbar.htm');
+		expect(fetchDocumentMock).toHaveBeenCalledWith('frames/navbar.htm', undefined);
 		expect(parseNavHtmlMock).toHaveBeenCalledWith('<html>nav</html>');
 	});
 
@@ -121,7 +129,7 @@ describe('dku helpers', () => {
 			groups: [{ id: 1, codeRaw: '1-CS', codeRu: '1-КС', codeDe: '1-KS' }]
 		};
 		fetchDocumentMock.mockResolvedValue('<html>schedule</html>');
-		parseTimetablePageMock.mockResolvedValue({
+		parseTimetablePageMock.mockReturnValue({
 			events: [
 				event({ id: 'core', scope: 'core_fixed' }),
 				event({ id: 'selected', scope: 'cohort_shared', cohortCode: 'WPM1', track: 'pe' }),
@@ -140,9 +148,10 @@ describe('dku helpers', () => {
 		});
 
 		const merged = await buildMergedSchedule('1-CS', '05', [' WPM1 '], { meta });
-		expect(fetchDocumentMock).toHaveBeenCalledWith('05/c/c00001.htm');
+		expect(fetchDocumentMock).toHaveBeenCalledWith('05/c/c00001.htm', undefined);
 		expect(merged.events.map((item) => item.id)).toEqual(['core', 'selected', 'assess']);
 		expect(merged.cohorts.map((item) => item.code)).toEqual(['A1', 'WPM2']);
+		expect(recordTimetableOutputMock).toHaveBeenCalledWith(4, 2);
 	});
 
 	it('throws unknown week and group when schedule cannot be resolved', async () => {

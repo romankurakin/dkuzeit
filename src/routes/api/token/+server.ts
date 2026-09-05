@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { normalizeCohortList } from '$lib/server/cohorts';
 import { getMeta } from '$lib/server/dku';
+import { recordCalendarSubscription } from '$lib/server/metrics';
 import {
 	badRequestProblem,
 	internalErrorProblem,
@@ -55,6 +56,7 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
 
 	const exp = Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 180;
 	const token = await signToken({ g: body.group, w: week, c: cohorts, l: lang, exp }, secret);
+	recordCalendarSubscription(lang);
 
 	return json({ token });
 };

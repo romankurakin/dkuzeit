@@ -1,5 +1,25 @@
 import { describe, expect, it, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
+
+const {
+	recordCacheAccessMock,
+	recordCalendarSubscriptionMock,
+	recordHtmlInputBytesMock,
+	recordTimetableOutputMock
+} = vi.hoisted(() => ({
+	recordCacheAccessMock: vi.fn(),
+	recordCalendarSubscriptionMock: vi.fn(),
+	recordHtmlInputBytesMock: vi.fn(),
+	recordTimetableOutputMock: vi.fn()
+}));
+
+vi.mock('../../src/lib/server/metrics', () => ({
+	recordCacheAccess: recordCacheAccessMock,
+	recordCalendarSubscription: recordCalendarSubscriptionMock,
+	recordHtmlInputBytes: recordHtmlInputBytesMock,
+	recordTimetableOutput: recordTimetableOutputMock
+}));
+
 import { server } from '../mocks/node';
 import { GET as getMeta } from '../../src/routes/api/meta/+server';
 import { GET as getSchedule } from '../../src/routes/api/schedule/+server';
@@ -150,6 +170,7 @@ describe('routes via msw', () => {
 
 	it('issues and validates token from real token route', async () => {
 		useUpstreamStubs();
+		recordCalendarSubscriptionMock.mockClear();
 
 		const request = new Request('http://localhost/api/token', {
 			method: 'POST',
@@ -176,6 +197,7 @@ describe('routes via msw', () => {
 			c: ['WPM1', 'WPM1'],
 			l: 'de'
 		});
+		expect(recordCalendarSubscriptionMock).toHaveBeenCalledExactlyOnceWith('de');
 	});
 
 	it('handles token endpoint error branches', async () => {

@@ -3,7 +3,7 @@ import { sentryHandle, initCloudflareSentryHandle } from '@sentry/sveltekit';
 import * as Sentry from '@sentry/sveltekit';
 import { sequence } from '@sveltejs/kit/hooks';
 import { paraglideMiddleware } from '$lib/paraglide/server';
-import { sentryConfig } from '$lib/sentry';
+import { serverSentryConfig } from '$lib/sentry';
 import { createDkuRequestContext } from '$lib/server/dku-fetch';
 
 const SECURITY_HEADERS: Record<string, string> = {
@@ -25,7 +25,8 @@ const securityHeadersHandle: Handle = async ({ event, resolve }) => {
 
 const requestContextHandle: Handle = ({ event, resolve }) => {
 	event.locals.dkuRequest = createDkuRequestContext(
-		event.platform?.env?.CF_VERSION_METADATA?.id ?? ''
+		event.platform?.env?.CF_VERSION_METADATA?.id ?? '',
+		event.platform?.context?.tracing
 	);
 	return resolve(event);
 };
@@ -39,7 +40,7 @@ const paraglideHandle: Handle = ({ event, resolve }) =>
 	});
 
 export const handle = sequence(
-	initCloudflareSentryHandle(sentryConfig),
+	initCloudflareSentryHandle(serverSentryConfig),
 	sentryHandle(),
 	requestContextHandle,
 	paraglideHandle,
