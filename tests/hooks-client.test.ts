@@ -41,7 +41,7 @@ describe('client error hook', () => {
 	});
 
 	it('returns a recoverable network error without delegating it to Sentry', async () => {
-		await expect(handleError(clientErrorInput(new TypeError('Load failed')))).resolves.toEqual({
+		await expect(handleError(clientErrorInput(new TypeError('Failed to fetch')))).resolves.toEqual({
 			code: NETWORK_UNAVAILABLE_CODE,
 			message: 'Network unavailable'
 		});
