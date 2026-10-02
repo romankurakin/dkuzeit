@@ -1,4 +1,4 @@
-import { toSlug } from '$lib/url-slug';
+import { toSlug } from '#lib/url-slug.ts';
 import { todayInAlmaty, isSundayInAlmaty, nowDate } from './time';
 import type { GroupOption, WeekOption } from './types';
 

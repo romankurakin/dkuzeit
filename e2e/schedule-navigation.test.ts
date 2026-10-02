@@ -126,10 +126,10 @@ test.describe('schedule navigation', () => {
 			}
 		}
 
-		test.skip(
+		expect(
 			targetGroup === currentGroupValue && targetWeek === currentWeekValue,
 			'No alternative group/week with schedule events in available fixture set'
-		);
+		).toBe(false);
 
 		await setSelectionCookies(page, {
 			group: targetGroup,
@@ -153,14 +153,18 @@ test.describe('schedule navigation', () => {
 		const metaResponse = await page.request.get('/api/meta');
 		expect(metaResponse.ok()).toBe(true);
 		const meta = (await metaResponse.json()) as MetaPayload;
-		const group = meta.groups[0];
-		const initialWeek = meta.weeks[0];
-		const laterWeeks = meta.weeks.slice(1, 3);
-		test.skip(!group || !initialWeek || laterWeeks.length < 2, 'Need at least three weeks');
+		const group = meta.groups[0]!;
+		const weeks: MetaPayload['weeks'] = [];
+		for (const week of meta.weeks) {
+			if (await hasEvents(page, group.codeRaw, week.value)) weeks.push(week);
+			if (weeks.length === 3) break;
+		}
+		expect(weeks.length, 'Need three weeks with schedule events').toBe(3);
+		const [initialWeek, ...laterWeeks] = weeks;
 
-		const slug = groupSlug(meta, group!.codeRaw);
+		const slug = groupSlug(meta, group.codeRaw);
 		await setSelectionCookies(page, {
-			group: group!.codeRaw,
+			group: group.codeRaw,
 			week: initialWeek!.value
 		});
 		await page.goto(`/${slug}`);
@@ -194,7 +198,9 @@ test.describe('schedule navigation', () => {
 		const group = meta.groups[0];
 		const initialWeek = meta.weeks[0];
 		const nextWeek = meta.weeks[1];
-		test.skip(!group || !initialWeek || !nextWeek, 'Need at least one group and two weeks');
+		expect(!group || !initialWeek || !nextWeek, 'Need at least one group and two weeks').toBe(
+			false
+		);
 
 		const slug = groupSlug(meta, group!.codeRaw);
 		await setSelectionCookies(page, {
@@ -278,7 +284,7 @@ test.describe('schedule navigation', () => {
 		const meta = (await metaResponse.json()) as MetaPayload;
 		const group = meta.groups[0];
 		const week = meta.weeks[0];
-		test.skip(!group || !week, 'No groups or weeks available in upstream meta');
+		expect(!group || !week, 'No groups or weeks available in upstream meta').toBe(false);
 
 		const slug = toSlug(group!.codeRu);
 		await setSelectionCookies(page, {

@@ -1,4 +1,4 @@
-import type { LessonEvent } from '$lib/server/types';
+import type { LessonEvent } from '#lib/server/types.ts';
 
 const PALETTE = [
 	{ name: 'rose', shade: 400 },

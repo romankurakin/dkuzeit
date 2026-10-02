@@ -2,8 +2,8 @@
 	import '../app.css';
 	import { tick } from 'svelte';
 	import { Toaster } from 'svelte-sonner';
-	import { m } from '$lib/paraglide/messages';
-	import { getLocale, setLocale } from '$lib/paraglide/runtime';
+	import { m } from '#lib/paraglide/messages.js';
+	import { getLocale, setLocale } from '#lib/paraglide/runtime.js';
 	import { ToggleGroup } from 'bits-ui';
 	let { children } = $props();
 

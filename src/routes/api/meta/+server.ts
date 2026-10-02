@@ -1,6 +1,5 @@
-import { json } from '@sveltejs/kit';
-import { getMeta, API_RESPONSE_CACHE_HEADER } from '$lib/server/dku';
-import { serviceUnavailableProblem } from '$lib/server/problem';
+import { getMeta, API_RESPONSE_CACHE_HEADER } from '#lib/server/dku.ts';
+import { serviceUnavailableProblem } from '#lib/server/problem.ts';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ locals }) => {
@@ -10,5 +9,5 @@ export const GET: RequestHandler = async ({ locals }) => {
 	} catch {
 		return serviceUnavailableProblem('Unable to load schedule metadata', '/api/meta');
 	}
-	return json(meta, { headers: { 'cache-control': API_RESPONSE_CACHE_HEADER } });
+	return Response.json(meta, { headers: { 'cache-control': API_RESPONSE_CACHE_HEADER } });
 };

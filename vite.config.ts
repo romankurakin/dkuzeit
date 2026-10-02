@@ -1,11 +1,15 @@
+import adapter from '@sveltejs/adapter-cloudflare';
 import { sveltekit } from '@sveltejs/kit/vite';
-import { sentrySvelteKit } from '@sentry/sveltekit';
+import { sentrySvelteKit } from '@sentry/sveltekit/vite';
 import { defineConfig } from 'vite';
 import { paraglideVitePlugin } from '@inlang/paraglide-js';
 import tailwindcss from '@tailwindcss/vite';
-import { SvelteKitPWA } from '@vite-pwa/sveltekit';
 
 export default defineConfig({
+	environments: {
+		// SvelteKit rewrites the worker entry without a sourcemap, so an emitted map would be wrong
+		serviceWorker: { build: { sourcemap: false } }
+	},
 	plugins: [
 		tailwindcss(),
 		sentrySvelteKit({
@@ -13,18 +17,9 @@ export default defineConfig({
 			project: 'dkuzeit',
 			authToken: process.env.SENTRY_AUTH_TOKEN
 		}),
-		sveltekit(),
-		SvelteKitPWA({
-			strategies: 'injectManifest',
-			srcDir: 'src',
-			filename: 'service-worker.js',
-			registerType: 'autoUpdate',
-			injectRegister: false,
-			minify: false,
-			kit: {
-				includeVersionFile: true
-			},
-			manifest: false
+		sveltekit({
+			adapter: adapter(),
+			tracing: { server: true }
 		}),
 		paraglideVitePlugin({
 			project: './project.inlang',

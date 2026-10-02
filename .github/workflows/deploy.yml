@@ -30,13 +30,13 @@ jobs:
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
 
-      - run: pnpm exec wrangler deploy
+      - run: pnpm exec wrangler deploy --env=""
         name: Deploy to Cloudflare Workers
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-      - run: echo "$SECRETS_JSON" | pnpm exec wrangler secret bulk
+      - run: echo "$SECRETS_JSON" | pnpm exec wrangler secret bulk --env=""
         name: Sync secrets to Cloudflare Worker
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

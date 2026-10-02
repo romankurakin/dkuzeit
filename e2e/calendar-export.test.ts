@@ -211,10 +211,12 @@ async function setSelectionCookies(
 }
 
 test.describe('calendar export', () => {
+	test.use({ serviceWorkers: 'block' });
+
 	test('change rendered schedule and persist cohorts in cookie', async ({ page }) => {
 		const meta = await fetchMeta(page);
 		const scenario = await findScenarioWithRequiredCohorts(page, meta);
-		test.skip(!scenario, 'No group/week with required cohorts in available fixture set');
+		expect(!scenario, 'No group/week with required cohorts in available fixture set').toBe(false);
 		const { group, week, cohorts } = scenario!;
 
 		await page.context().clearCookies();
@@ -240,10 +242,10 @@ test.describe('calendar export', () => {
 
 		await page.goto('/');
 		const firstEmptyCohort = page.getByRole('toolbar').locator('button[data-cohort-empty]').first();
-		test.skip(
+		expect(
 			(await firstEmptyCohort.count()) === 0,
 			'No required cohort filters on this fixture set'
-		);
+		).toBe(false);
 
 		const exportButton = page
 			.getByRole('contentinfo')
@@ -259,7 +261,7 @@ test.describe('calendar export', () => {
 
 		const meta = await fetchMeta(page);
 		const scenario = await findScenarioWithRequiredCohorts(page, meta);
-		test.skip(!scenario, 'No group/week with required cohorts in available fixture set');
+		expect(!scenario, 'No group/week with required cohorts in available fixture set').toBe(false);
 		const { group: targetGroup, week: targetWeek, cohorts: selectedCohorts } = scenario!;
 
 		let payload: { group: string; week: string; cohorts: string[]; lang: string } | undefined;
@@ -331,7 +333,7 @@ test.describe('calendar export', () => {
 		await installClipboardMock(page, 'write-fails');
 		const meta = await fetchMeta(page);
 		const scenario = await findScenarioWithRequiredCohorts(page, meta);
-		test.skip(!scenario, 'No group/week with required cohorts in available fixture set');
+		expect(!scenario, 'No group/week with required cohorts in available fixture set').toBe(false);
 		const { group, week, cohorts } = scenario!;
 
 		let tokenRequestCount = 0;

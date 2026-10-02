@@ -1,12 +1,15 @@
-import { json } from '@sveltejs/kit';
 import {
 	buildMergedSchedule,
 	getMeta,
 	isUnknownEntityError,
 	API_RESPONSE_CACHE_HEADER
-} from '$lib/server/dku';
-import { parseCohortsCsv } from '$lib/server/cohorts';
-import { badRequestProblem, notFoundProblem, serviceUnavailableProblem } from '$lib/server/problem';
+} from '#lib/server/dku.ts';
+import { parseCohortsCsv } from '#lib/server/cohorts.ts';
+import {
+	badRequestProblem,
+	notFoundProblem,
+	serviceUnavailableProblem
+} from '#lib/server/problem.ts';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ url, locals }) => {
@@ -28,7 +31,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			meta,
 			request: locals?.dkuRequest
 		});
-		return json(
+		return Response.json(
 			{ cohorts: schedule.cohorts, events: schedule.events },
 			{ headers: { 'cache-control': API_RESPONSE_CACHE_HEADER } }
 		);

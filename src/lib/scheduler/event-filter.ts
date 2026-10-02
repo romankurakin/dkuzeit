@@ -1,4 +1,4 @@
-import type { Cohort, LessonEvent } from '$lib/server/types';
+import type { Cohort, LessonEvent } from '#lib/server/types.ts';
 import type { CohortGroup } from './types';
 
 export function filterDisplayEvents(

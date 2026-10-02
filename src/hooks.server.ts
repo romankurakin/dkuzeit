@@ -1,10 +1,10 @@
-import type { Handle } from '@sveltejs/kit';
+import { env, tracing } from 'cloudflare:workers';
 import { sentryHandle, initCloudflareSentryHandle } from '@sentry/sveltekit';
 import * as Sentry from '@sentry/sveltekit';
-import { sequence } from '@sveltejs/kit/hooks';
-import { paraglideMiddleware } from '$lib/paraglide/server';
-import { serverSentryConfig } from '$lib/sentry';
-import { createDkuRequestContext } from '$lib/server/dku-fetch';
+import { sequence, type Handle } from '@sveltejs/kit/hooks';
+import { paraglideMiddleware } from '#lib/paraglide/server.js';
+import { serverSentryConfig } from '#lib/sentry.ts';
+import { createDkuRequestContext } from '#lib/server/dku-fetch.ts';
 
 const SECURITY_HEADERS: Record<string, string> = {
 	'X-Frame-Options': 'DENY',
@@ -24,20 +24,16 @@ const securityHeadersHandle: Handle = async ({ event, resolve }) => {
 };
 
 const requestContextHandle: Handle = ({ event, resolve }) => {
-	event.locals.dkuRequest = createDkuRequestContext(
-		event.platform?.env?.CF_VERSION_METADATA?.id ?? '',
-		event.platform?.context?.tracing
-	);
+	event.locals.dkuRequest = createDkuRequestContext(env.CF_VERSION_METADATA?.id ?? '', tracing);
 	return resolve(event);
 };
 
 const paraglideHandle: Handle = ({ event, resolve }) =>
-	paraglideMiddleware(event.request, ({ request: localizedRequest, locale }) => {
-		event.request = localizedRequest;
-		return resolve(event, {
+	paraglideMiddleware(event.request, ({ locale }) =>
+		resolve(event, {
 			transformPageChunk: ({ html }) => html.replace('%lang%', locale)
-		});
-	});
+		})
+	);
 
 export const handle = sequence(
 	initCloudflareSentryHandle(serverSentryConfig),

@@ -5,11 +5,6 @@ import { defineConfig } from 'vitest/config';
 const rootDir = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
-	resolve: {
-		alias: {
-			$lib: path.resolve(rootDir, 'src/lib')
-		}
-	},
 	test: {
 		execArgv: [`--localstorage-file=${path.resolve(rootDir, '.vitest-localstorage.json')}`],
 		environment: 'node',

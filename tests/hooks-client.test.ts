@@ -1,4 +1,5 @@
-import type { HandleClientError, NavigationEvent } from '@sveltejs/kit';
+import type { HandleClientError } from '@sveltejs/kit/hooks';
+import type { NavigationEvent } from '@sveltejs/kit';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { addBreadcrumbMock, sentryHandleErrorMock, handleErrorWithSentryMock, initMock } =
@@ -18,7 +19,7 @@ vi.mock('@sentry/sveltekit', () => ({
 	init: initMock
 }));
 
-vi.mock('$lib/sentry', () => ({
+vi.mock('#lib/sentry.ts', () => ({
 	clientSentryConfig: {}
 }));
 
@@ -27,10 +28,9 @@ import { NETWORK_UNAVAILABLE_CODE } from '../src/lib/client/network-errors';
 
 function clientErrorInput(error: unknown): Parameters<HandleClientError>[0] {
 	return {
+		kind: 'unknown',
 		error,
-		event: {} as NavigationEvent,
-		message: 'Internal Error',
-		status: 500
+		event: {} as NavigationEvent
 	};
 }
 
@@ -40,8 +40,8 @@ describe('client error hook', () => {
 		sentryHandleErrorMock.mockReturnValue({ message: 'Handled by Sentry' });
 	});
 
-	it('returns a recoverable network error without delegating it to Sentry', async () => {
-		await expect(handleError(clientErrorInput(new TypeError('Failed to fetch')))).resolves.toEqual({
+	it('returns a recoverable network error without delegating it to Sentry', () => {
+		expect(handleError(clientErrorInput(new TypeError('Failed to fetch')))).toEqual({
 			code: NETWORK_UNAVAILABLE_CODE,
 			message: 'Network unavailable'
 		});
@@ -49,10 +49,10 @@ describe('client error hook', () => {
 		expect(sentryHandleErrorMock).not.toHaveBeenCalled();
 	});
 
-	it('delegates unrelated failures to the Sentry handler', async () => {
+	it('delegates unrelated failures to the Sentry handler', () => {
 		const input = clientErrorInput(new TypeError('Application bug'));
 
-		await expect(handleError(input)).resolves.toEqual({ message: 'Handled by Sentry' });
+		expect(handleError(input)).toEqual({ message: 'Handled by Sentry' });
 		expect(sentryHandleErrorMock).toHaveBeenCalledWith(input);
 		expect(addBreadcrumbMock).not.toHaveBeenCalled();
 	});

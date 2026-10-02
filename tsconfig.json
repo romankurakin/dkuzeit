@@ -1,33 +1,13 @@
 {
-	"extends": "./.svelte-kit/tsconfig.json",
+	"extends": "$app/tsconfig",
 	"compilerOptions": {
 		"strict": true,
 		"noUncheckedIndexedAccess": true,
 		"noFallthroughCasesInSwitch": true,
 		"noImplicitOverride": true,
-		"verbatimModuleSyntax": true,
-		"isolatedModules": true,
-		"moduleResolution": "bundler",
-		"resolveJsonModule": true,
-		"rewriteRelativeImportExtensions": true,
-		"allowJs": true,
-		"checkJs": true,
-		"skipLibCheck": true,
 		"sourceMap": true,
-		"types": ["node", "vitest/globals"]
+		"types": ["node", "vitest/globals", "$app/types"]
 	},
-	// Path aliases are handled by https://svelte.dev/docs/kit/configuration#alias
-	// except $lib which is handled by https://svelte.dev/docs/kit/configuration#files
-	//
-	// Generated exclude (from .svelte-kit/tsconfig.json) + vendor test fixtures
-	"exclude": [
-		"node_modules/**",
-		"src/service-worker.js",
-		"src/service-worker/**/*.js",
-		"src/service-worker.ts",
-		"src/service-worker/**/*.ts",
-		"src/service-worker.d.ts",
-		"src/service-worker/**/*.d.ts",
-		"tests/fixtures/**"
-	]
+	"include": ["src", "tests", "*"],
+	"exclude": ["src/service-worker", "tests/fixtures"]
 }

@@ -1,5 +1,5 @@
-import { getMeta } from '$lib/server/dku';
-import { toSlug } from '$lib/url-slug';
+import { getMeta } from '#lib/server/dku.ts';
+import { toSlug } from '#lib/url-slug.ts';
 import type { RequestHandler } from './$types';
 
 const ORIGIN = 'https://dkuzeit.net';
