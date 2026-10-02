@@ -4,7 +4,6 @@ import vitest from '@vitest/eslint-plugin';
 import globals from 'globals';
 import ts from 'typescript-eslint';
 import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended';
-import svelteConfig from './svelte.config.js';
 
 const svelteFiles = ['**/*.svelte', '**/*.svelte.ts', '**/*.svelte.js'];
 const ignoredPaths = [
@@ -36,8 +35,7 @@ export default [
 			parserOptions: {
 				projectService: true,
 				extraFileExtensions: ['.svelte'],
-				parser: ts.parser,
-				svelteConfig
+				parser: ts.parser
 			}
 		}
 	},

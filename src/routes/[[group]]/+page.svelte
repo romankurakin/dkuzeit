@@ -1,16 +1,16 @@
 <script lang="ts">
-	import BrutalSchedulerView from '$lib/components/BrutalSchedulerView.svelte';
-	import BrutalSelect from '$lib/components/BrutalSelect.svelte';
+	import BrutalSchedulerView from '#lib/components/BrutalSchedulerView.svelte';
+	import BrutalSelect from '#lib/components/BrutalSelect.svelte';
 	import type { PageProps } from './$types';
-	import { cv, subjectColorKey } from '$lib/scheduler/subject-colors';
-	import { BUTTON_ACTIVATION_DURATION_MS, NAVIGATE_DEBOUNCE_MS } from '$lib/ui-timing';
-	import { m } from '$lib/paraglide/messages';
-	import { getLocale, localizeHref } from '$lib/paraglide/runtime';
+	import { cv, subjectColorKey } from '#lib/scheduler/subject-colors.ts';
+	import { BUTTON_ACTIVATION_DURATION_MS, NAVIGATE_DEBOUNCE_MS } from '#lib/ui-timing.ts';
+	import { m } from '#lib/paraglide/messages.js';
+	import { getLocale, localizeHref } from '#lib/paraglide/runtime.js';
 	import { fromAction } from 'svelte/attachments';
-	import { traceNavigate } from '$lib/client-tracing';
-	import { toSlug } from '$lib/url-slug';
+	import { traceNavigate } from '#lib/client-tracing.ts';
+	import { toSlug } from '#lib/url-slug.ts';
 	import { navigating, page } from '$app/state';
-	import { afterNavigate, goto, invalidateAll } from '$app/navigation';
+	import { afterNavigate, goto, refreshAll } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { onDestroy } from 'svelte';
 	import {
@@ -18,7 +18,7 @@
 		groupSelectionCookie,
 		setClientCookieIfChanged,
 		weekSelectionCookie
-	} from '$lib/persistence/selection-cookies';
+	} from '#lib/persistence/selection-cookies.ts';
 
 	let { data }: PageProps = $props();
 	let githubArmed = $state(false);
@@ -74,7 +74,7 @@
 				refreshQueued = false;
 				// Transient client fetch failures during reload should not surface as
 				// unhandled promise rejections; the user can retry from the current page.
-				void traceNavigate(target, 'invalidate', () => invalidateAll())
+				void traceNavigate(target, 'invalidate', () => refreshAll())
 					.catch(() => {})
 					.finally(() => {
 						invalidating = false;
@@ -89,9 +89,8 @@
 			}
 			void traceNavigate(target, 'goto', () =>
 				goto(target, {
-					replaceState: true,
-					noScroll: true,
-					keepFocus: true
+					replace: true,
+					reset: false
 				})
 			).catch(() => {});
 		}, NAVIGATE_DEBOUNCE_MS);

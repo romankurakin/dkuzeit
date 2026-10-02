@@ -1,18 +1,17 @@
-import { json } from '@sveltejs/kit';
-import { normalizeCohortList } from '$lib/server/cohorts';
-import { getMeta } from '$lib/server/dku';
-import { recordCalendarSubscription } from '$lib/server/metrics';
+import { normalizeCohortList } from '#lib/server/cohorts.ts';
+import { getMeta } from '#lib/server/dku.ts';
+import { recordCalendarSubscription } from '#lib/server/metrics.ts';
 import {
 	badRequestProblem,
 	internalErrorProblem,
 	notFoundProblem,
 	serviceUnavailableProblem
-} from '$lib/server/problem';
-import { signToken } from '$lib/server/token';
-import type { UiLanguage } from '$lib/server/types';
+} from '#lib/server/problem.ts';
+import { signToken } from '#lib/server/token.ts';
+import type { UiLanguage } from '#lib/server/types.ts';
 import type { RequestHandler } from './$types';
 
-export const POST: RequestHandler = async ({ request, platform, locals }) => {
+export const POST: RequestHandler = async ({ request, locals }) => {
 	let payload: unknown;
 	try {
 		payload = await request.json();
@@ -49,7 +48,7 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
 	const lang: UiLanguage = body.lang === 'de' ? 'de' : 'ru';
 	const cohorts = normalizeCohortList(body.cohorts);
 
-	const secret = platform?.env?.TOKEN_SECRET;
+	const secret = process.env.TOKEN_SECRET;
 	if (!secret) {
 		return internalErrorProblem('Server misconfigured', '/api/token');
 	}
@@ -58,5 +57,5 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
 	const token = await signToken({ g: body.group, w: week, c: cohorts, l: lang, exp }, secret);
 	recordCalendarSubscription(lang);
 
-	return json({ token });
+	return Response.json({ token });
 };

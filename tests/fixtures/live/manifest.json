@@ -1,12 +1,26 @@
 {
-  "generatedAt": "2026-08-28T12:17:56.241Z",
+  "generatedAt": "2026-10-02T08:34:23.930Z",
   "baseUrl": "https://timetable.dku.kz",
   "weeks": [
     "35",
-    "36"
+    "36",
+    "37",
+    "38",
+    "39",
+    "40",
+    "41",
+    "42",
+    "43",
+    "44",
+    "45",
+    "46",
+    "47",
+    "48",
+    "49",
+    "50"
   ],
   "classCount": 56,
-  "expectedPages": 112,
-  "downloadedPages": 112,
+  "expectedPages": 896,
+  "downloadedPages": 896,
   "failures": []
 }

@@ -129,7 +129,7 @@ test.describe('selection persistence', () => {
 			randomItem(meta.groups.slice(1)) ??
 			randomItem(meta.groups);
 		const week = meta.weeks[0];
-		test.skip(!group || !week, 'No groups or weeks available in upstream meta');
+		expect(!group || !week, 'No groups or weeks available in upstream meta').toBe(false);
 
 		await addSelectionCookies(page, { group: group!.codeRaw, week: week!.value });
 		const slug = toSlug(group!.codeRu);
@@ -158,10 +158,10 @@ test.describe('selection persistence', () => {
 			randomItem(meta.groups.slice(2)) ??
 			randomItem(meta.groups.slice(1)) ??
 			randomItem(meta.groups);
-		test.skip(
+		expect(
 			!initialGroup || !week || meta.groups.length < 2,
 			'Need at least two groups and one week'
-		);
+		).toBe(false);
 
 		await addSelectionCookies(page, {
 			group: initialGroup!.codeRaw,
@@ -182,7 +182,7 @@ test.describe('selection persistence', () => {
 
 		const options = page.getByRole('option');
 		const optionCount = await options.count();
-		test.skip(optionCount < 2, 'Need at least two selectable group options');
+		expect(optionCount < 2, 'Need at least two selectable group options').toBe(false);
 
 		let targetIndex: number | undefined;
 		for (let i = 0; i < optionCount; i += 1) {
@@ -191,7 +191,7 @@ test.describe('selection persistence', () => {
 			targetIndex = i;
 			break;
 		}
-		test.skip(targetIndex === undefined, 'No alternative group option found');
+		expect(targetIndex === undefined, 'No alternative group option found').toBe(false);
 
 		const targetOption = options.nth(targetIndex!);
 		await clickOption(targetOption);
@@ -217,7 +217,9 @@ test.describe('selection persistence', () => {
 		expect(metaResponse.ok()).toBe(true);
 		const meta = (await metaResponse.json()) as MetaPayload;
 		const scenario = await findScenarioWithAlternativeCohorts(page, meta);
-		test.skip(!scenario, 'No group/week with at least two selectable cohorts in one track');
+		expect(!scenario, 'No group/week with at least two selectable cohorts in one track').toBe(
+			false
+		);
 
 		const slug = groupSlug(meta, scenario!.group);
 		await addSelectionCookies(page, {
@@ -252,7 +254,9 @@ test.describe('selection persistence', () => {
 		expect(metaResponse.ok()).toBe(true);
 		const meta = (await metaResponse.json()) as MetaPayload;
 		const scenario = await findScenarioWithAlternativeCohorts(page, meta);
-		test.skip(!scenario, 'No group/week with at least two selectable cohorts in one track');
+		expect(!scenario, 'No group/week with at least two selectable cohorts in one track').toBe(
+			false
+		);
 
 		const slug = groupSlug(meta, scenario!.group);
 		await addSelectionCookies(page, {
@@ -265,7 +269,7 @@ test.describe('selection persistence', () => {
 
 		const toolbarButtons = page.getByRole('toolbar').locator('button[data-nav-select]');
 		const buttonCount = await toolbarButtons.count();
-		test.skip(buttonCount < 3, 'No cohort select controls available');
+		expect(buttonCount < 3, 'No cohort select controls available').toBe(false);
 		let cohortTrigger = toolbarButtons.nth(2);
 		for (let i = 2; i < buttonCount; i += 1) {
 			const candidate = toolbarButtons.nth(i);
@@ -280,7 +284,7 @@ test.describe('selection persistence', () => {
 		await cohortTrigger.click();
 		const options = page.getByRole('option');
 		const optionCount = await options.count();
-		test.skip(optionCount < 2, 'Need at least two selectable cohort options');
+		expect(optionCount < 2, 'Need at least two selectable cohort options').toBe(false);
 		let targetIndex: number | undefined;
 		for (let i = 0; i < optionCount; i += 1) {
 			const label = ((await options.nth(i).textContent()) ?? '').trim();
@@ -291,7 +295,7 @@ test.describe('selection persistence', () => {
 			}
 			if (targetIndex === undefined) targetIndex = i;
 		}
-		test.skip(targetIndex === undefined, 'No alternative cohort option found');
+		expect(targetIndex === undefined, 'No alternative cohort option found').toBe(false);
 		const targetOption = options.nth(targetIndex!);
 		await clickOption(targetOption);
 

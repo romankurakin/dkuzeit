@@ -1,17 +1,13 @@
+import type { HandleClientError } from '@sveltejs/kit/hooks';
 import * as Sentry from '@sentry/sveltekit';
-import type { HandleClientError } from '@sveltejs/kit';
-import { isNetworkFetchError, NETWORK_UNAVAILABLE_CODE } from '$lib/client/network-errors';
-import { clientSentryConfig } from '$lib/sentry';
+import { isNetworkFetchError, NETWORK_UNAVAILABLE_CODE } from '#lib/client/network-errors.ts';
+import { clientSentryConfig } from '#lib/sentry.ts';
 
 Sentry.init(clientSentryConfig);
 
-if ('serviceWorker' in navigator) {
-	navigator.serviceWorker.register('/service-worker.js').catch(() => {});
-}
-
 const sentryHandleError = Sentry.handleErrorWithSentry<HandleClientError>();
 
-export const handleError: HandleClientError = async (input) => {
+export const handleError: HandleClientError = (input) => {
 	if (isNetworkFetchError(input.error)) {
 		Sentry.addBreadcrumb({
 			category: 'network',

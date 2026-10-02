@@ -4,29 +4,29 @@ import {
 	getMeta,
 	isUnknownEntityError,
 	pickRollingWeeksForCalendar
-} from '$lib/server/dku';
-import { buildIcsCalendar } from '$lib/server/ics';
+} from '#lib/server/dku.ts';
+import { buildIcsCalendar } from '#lib/server/ics.ts';
 import {
 	badRequestProblem,
 	forbiddenProblem,
 	internalErrorProblem,
 	notFoundProblem,
 	serviceUnavailableProblem
-} from '$lib/server/problem';
-import { traceSpan } from '$lib/server/tracing';
-import { verifyToken } from '$lib/server/token';
-import type { GroupWeekSchedule } from '$lib/server/types';
+} from '#lib/server/problem.ts';
+import { traceSpan } from '#lib/server/tracing.ts';
+import { verifyToken } from '#lib/server/token.ts';
+import type { GroupWeekSchedule } from '#lib/server/types.ts';
 import type { RequestHandler } from './$types';
 
 const CALENDAR_ROLLING_WEEKS = 4;
 
-export const GET: RequestHandler = async ({ url, platform, locals }) => {
+export const GET: RequestHandler = async ({ url, locals }) => {
 	const token = url.searchParams.get('token');
 	if (!token) {
 		return badRequestProblem('Missing token', '/api/calendar');
 	}
 
-	const secret = platform?.env?.TOKEN_SECRET;
+	const secret = process.env.TOKEN_SECRET;
 	if (!secret) {
 		return internalErrorProblem('Server misconfigured', '/api/calendar');
 	}

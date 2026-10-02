@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { NETWORK_UNAVAILABLE_CODE } from '$lib/client/network-errors';
-	import { m } from '$lib/paraglide/messages';
+	import { NETWORK_UNAVAILABLE_CODE } from '#lib/client/network-errors.ts';
+	import { m } from '#lib/paraglide/messages.js';
 
 	function retry(): void {
 		window.location.reload();

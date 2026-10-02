@@ -12,7 +12,7 @@ import { trackRules, cohortCodeRules } from './cohort-config';
 import { fnv1aHex } from './hash';
 import { makeLegendResolver, parseLegendEntries } from './legend';
 import { isMissingGermanName, sanitizeLabel, splitBilingualLabel } from './bilingual';
-import { toSlug } from '$lib/url-slug';
+import { toSlug } from '#lib/url-slug.ts';
 import type { ChildNode, Document, Element } from 'domhandler';
 import { collectText, collectTextBuilder, hasChildren, isElementNode } from './dom-utils';
 

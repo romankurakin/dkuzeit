@@ -1,16 +1,16 @@
 import { error, redirect } from '@sveltejs/kit';
-import { localizeHref } from '$lib/paraglide/runtime';
-import { buildMergedSchedule, getMeta } from '$lib/server/dku';
-import { todayInAlmaty } from '$lib/server/time';
-import { resolveGroup, resolveWeek, groupSlug } from '$lib/server/resolve';
-import type { Cohort, LessonEvent } from '$lib/server/types';
+import { localizeHref } from '#lib/paraglide/runtime.js';
+import { buildMergedSchedule, getMeta } from '#lib/server/dku.ts';
+import { todayInAlmaty } from '#lib/server/time.ts';
+import { resolveGroup, resolveWeek, groupSlug } from '#lib/server/resolve.ts';
+import type { Cohort, LessonEvent } from '#lib/server/types.ts';
 import {
 	cohortsSelectionCookie,
 	getServerCookieValue,
 	groupSelectionCookie,
 	setServerCookieIfChanged,
 	weekSelectionCookie
-} from '$lib/persistence/selection-cookies';
+} from '#lib/persistence/selection-cookies.ts';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params, url, setHeaders, cookies, locals }) => {

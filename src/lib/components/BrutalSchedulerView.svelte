@@ -3,22 +3,26 @@
 	import { onDestroy, onMount, tick } from 'svelte';
 	import { SvelteMap } from 'svelte/reactivity';
 	import { toast } from 'svelte-sonner';
-	import { m } from '$lib/paraglide/messages';
-	import { getLocale, localizeHref } from '$lib/paraglide/runtime';
-	import type { GroupOption, Cohort, LessonEvent, WeekOption } from '$lib/server/types';
-	import { buildSubjectColorMap } from '$lib/scheduler/subject-colors';
-	import { formatDateLabel } from '$lib/scheduler/date-format';
-	import { openCalendarSubscription, toWebcalLink } from '$lib/scheduler/calendar-link';
-	import type { SchedulerContext } from '$lib/scheduler/types';
-	import { recordScheduleView, traceCalendarExport, traceInitialRender } from '$lib/client-tracing';
-	import { BUTTON_ACTIVATION_DURATION_MS } from '$lib/ui-timing';
+	import { m } from '#lib/paraglide/messages.js';
+	import { getLocale, localizeHref } from '#lib/paraglide/runtime.js';
+	import type { GroupOption, Cohort, LessonEvent, WeekOption } from '#lib/server/types.ts';
+	import { buildSubjectColorMap } from '#lib/scheduler/subject-colors.ts';
+	import { formatDateLabel } from '#lib/scheduler/date-format.ts';
+	import { openCalendarSubscription, toWebcalLink } from '#lib/scheduler/calendar-link.ts';
+	import type { SchedulerContext } from '#lib/scheduler/types.ts';
+	import {
+		recordScheduleView,
+		traceCalendarExport,
+		traceInitialRender
+	} from '#lib/client-tracing.ts';
+	import { BUTTON_ACTIVATION_DURATION_MS } from '#lib/ui-timing.ts';
 	import {
 		filterDisplayEvents,
 		groupEventsByDate,
 		extractTimeSlots,
 		buildCohortGroups,
 		eventTitleLabel
-	} from '$lib/scheduler/event-filter';
+	} from '#lib/scheduler/event-filter.ts';
 
 	let {
 		children,

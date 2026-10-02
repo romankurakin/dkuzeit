@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 
 const {
@@ -117,6 +117,14 @@ function useNavbarUpstreamFailure() {
 }
 
 describe('routes via msw', () => {
+	beforeEach(() => {
+		vi.stubEnv('TOKEN_SECRET', SECRET);
+	});
+
+	afterEach(() => {
+		vi.unstubAllEnvs();
+	});
+
 	it('serves meta and schedule from real parsing pipeline', async () => {
 		useUpstreamStubs();
 
@@ -183,8 +191,7 @@ describe('routes via msw', () => {
 			})
 		});
 		const response = await postToken({
-			request,
-			platform: { env: { TOKEN_SECRET: SECRET } }
+			request
 		} as never);
 		expect(response.status).toBe(200);
 		const { token } = (await response.json()) as { token: string };
@@ -208,8 +215,7 @@ describe('routes via msw', () => {
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
 				body: '{bad-json'
-			}),
-			platform: { env: { TOKEN_SECRET: SECRET } }
+			})
 		} as never);
 		expect(invalidJson.status).toBe(400);
 
@@ -218,8 +224,7 @@ describe('routes via msw', () => {
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
 				body: JSON.stringify({ week: '05' })
-			}),
-			platform: { env: { TOKEN_SECRET: SECRET } }
+			})
 		} as never);
 		expect(missingGroup.status).toBe(400);
 
@@ -228,20 +233,20 @@ describe('routes via msw', () => {
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
 				body: JSON.stringify({ group: '1-CS', week: '99' })
-			}),
-			platform: { env: { TOKEN_SECRET: SECRET } }
+			})
 		} as never);
 		expect(unknownWeek.status).toBe(404);
 
+		vi.stubEnv('TOKEN_SECRET', '');
 		const missingSecret = await postToken({
 			request: new Request('http://localhost/api/token', {
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
 				body: JSON.stringify({ group: '1-CS', week: '05' })
-			}),
-			platform: { env: {} }
+			})
 		} as never);
 		expect(missingSecret.status).toBe(500);
+		vi.stubEnv('TOKEN_SECRET', SECRET);
 
 		useUpstreamStubs({ navbar: NAVBAR_HTML_NO_WEEKS });
 		const noSourceWeek = await postToken({
@@ -249,8 +254,7 @@ describe('routes via msw', () => {
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
 				body: JSON.stringify({ group: '1-CS' })
-			}),
-			platform: { env: { TOKEN_SECRET: SECRET } }
+			})
 		} as never);
 		expect(noSourceWeek.status).toBe(400);
 	});
@@ -270,8 +274,7 @@ describe('routes via msw', () => {
 		);
 
 		const calendarResponse = await getCalendar({
-			url: new URL(`http://localhost/api/calendar?token=${token}`),
-			platform: { env: { TOKEN_SECRET: SECRET } }
+			url: new URL(`http://localhost/api/calendar?token=${token}`)
 		} as never);
 		expect(calendarResponse.status).toBe(200);
 		expect(calendarResponse.headers.get('content-type')).toContain('text/calendar');
@@ -490,22 +493,21 @@ describe('routes via msw', () => {
 		useUpstreamStubs();
 
 		const missingToken = await getCalendar({
-			url: new URL('http://localhost/api/calendar'),
-			platform: { env: { TOKEN_SECRET: SECRET } }
+			url: new URL('http://localhost/api/calendar')
 		} as never);
 		expect(missingToken.status).toBe(400);
 
 		const invalidToken = await getCalendar({
-			url: new URL('http://localhost/api/calendar?token=bad-token'),
-			platform: { env: { TOKEN_SECRET: SECRET } }
+			url: new URL('http://localhost/api/calendar?token=bad-token')
 		} as never);
 		expect(invalidToken.status).toBe(403);
 
+		vi.stubEnv('TOKEN_SECRET', '');
 		const missingSecret = await getCalendar({
-			url: new URL('http://localhost/api/calendar?token=t'),
-			platform: { env: {} }
+			url: new URL('http://localhost/api/calendar?token=t')
 		} as never);
 		expect(missingSecret.status).toBe(500);
+		vi.stubEnv('TOKEN_SECRET', SECRET);
 
 		const unknownGroupToken = await signToken(
 			{
@@ -518,8 +520,7 @@ describe('routes via msw', () => {
 			SECRET
 		);
 		const unknownGroup = await getCalendar({
-			url: new URL(`http://localhost/api/calendar?token=${unknownGroupToken}`),
-			platform: { env: { TOKEN_SECRET: SECRET } }
+			url: new URL(`http://localhost/api/calendar?token=${unknownGroupToken}`)
 		} as never);
 		expect(unknownGroup.status).toBe(404);
 
@@ -535,8 +536,7 @@ describe('routes via msw', () => {
 			SECRET
 		);
 		const scheduleFailure = await getCalendar({
-			url: new URL(`http://localhost/api/calendar?token=${scheduleFailureToken}`),
-			platform: { env: { TOKEN_SECRET: SECRET } }
+			url: new URL(`http://localhost/api/calendar?token=${scheduleFailureToken}`)
 		} as never);
 		expect(scheduleFailure.status).toBe(503);
 
@@ -608,14 +608,12 @@ describe('routes via msw', () => {
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
 				body: JSON.stringify({ group: '1-CS' })
-			}),
-			platform: { env: { TOKEN_SECRET: SECRET } }
+			})
 		} as never);
 		expect(tokenResponse.status).toBe(503);
 
 		const calendarResponse = await getCalendar({
-			url: new URL(`http://localhost/api/calendar?token=${token}`),
-			platform: { env: { TOKEN_SECRET: SECRET } }
+			url: new URL(`http://localhost/api/calendar?token=${token}`)
 		} as never);
 		expect(calendarResponse.status).toBe(503);
 
