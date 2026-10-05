@@ -19,7 +19,9 @@ export default defineConfig({
 		}),
 		sveltekit({
 			adapter: adapter(),
-			tracing: { server: true }
+			tracing: { server: true },
+			// Registered manually in hooks.client.ts so rejected registrations are handled
+			serviceWorker: { register: false }
 		}),
 		paraglideVitePlugin({
 			project: './project.inlang',
