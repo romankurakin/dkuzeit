@@ -1,7 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import { onDestroy, onMount, tick } from 'svelte';
-	import { SvelteMap } from 'svelte/reactivity';
 	import { toast } from 'svelte-sonner';
 	import { m } from '#lib/paraglide/messages.js';
 	import { getLocale, localizeHref } from '#lib/paraglide/runtime.js';
@@ -97,7 +96,9 @@
 
 	const groupedEvents = $derived(groupEventsByDate(displayEvents));
 
-	const orderedDates = $derived(Object.keys(groupedEvents).sort((a, b) => a.localeCompare(b)));
+	const orderedDates = $derived(
+		Object.keys(groupedEvents).sort((a, b) => (a === b ? 0 : a < b ? -1 : 1))
+	);
 	const subjectColorMap = $derived(buildSubjectColorMap(displayEvents));
 
 	const timeSlots = $derived(extractTimeSlots(displayEvents));
@@ -107,9 +108,14 @@
 	);
 
 	const slotIndex = $derived.by(() => {
-		const idx = new SvelteMap<string, SvelteMap<string, LessonEvent[]>>();
+		// Plain Maps: the derived value is recreated wholesale on every
+		// change and never mutated afterwards (reads only), so SvelteMap's
+		// fine-grained reactivity only adds overhead.
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- derived-local, never mutated after creation
+		const idx = new Map<string, Map<string, LessonEvent[]>>();
 		for (const [date, dayEvents] of Object.entries(groupedEvents)) {
-			const bySlot = new SvelteMap<string, LessonEvent[]>();
+			// eslint-disable-next-line svelte/prefer-svelte-reactivity -- derived-local, never mutated after creation
+			const bySlot = new Map<string, LessonEvent[]>();
 			for (const event of dayEvents) {
 				const key = `${event.startTime}-${event.endTime}`;
 				const bucket = bySlot.get(key) ?? [];

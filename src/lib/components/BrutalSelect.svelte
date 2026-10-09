@@ -18,6 +18,11 @@
 		autofocus?: boolean;
 		onValueChange: (v: string) => void;
 	} = $props();
+
+	// Avoid a linear find over all items on every render; rebuilt only when
+	// the item list changes.
+	const labelByValue = $derived(new Map(items.map((i) => [i.value, i.label] as const)));
+	const selectedLabel = $derived(labelByValue.get(value) ?? '—');
 </script>
 
 <label class="control-field">
@@ -32,7 +37,7 @@
 			autofocus={autofocus || undefined}
 			class="brutal-border brutal-hover brutal-focus brutal-control p-control flex w-full items-center justify-between"
 		>
-			<span class="truncate">{items.find((i) => i.value === value)?.label ?? '—'}</span>
+			<span class="truncate">{selectedLabel}</span>
 			<span
 				aria-hidden="true"
 				class="pixel-icon-control pixel-icon-mask ml-2"

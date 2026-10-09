@@ -56,9 +56,13 @@ export function filterDisplayEvents(
 		});
 	}
 
-	result.sort(
-		(a, b) => a.dateIso.localeCompare(b.dateIso) || a.startTime.localeCompare(b.startTime)
-	);
+	result.sort((a, b) => {
+		// ISO dates and zero-padded HH:MM compare correctly by code unit,
+		// avoiding the ICU overhead of localeCompare.
+		if (a.dateIso !== b.dateIso) return a.dateIso < b.dateIso ? -1 : 1;
+		if (a.startTime !== b.startTime) return a.startTime < b.startTime ? -1 : 1;
+		return 0;
+	});
 	return result;
 }
 
@@ -80,7 +84,7 @@ export function extractTimeSlots(
 		if (!seen.has(key)) seen.set(key, { start: event.startTime, end: event.endTime });
 	}
 	return [...seen.entries()]
-		.sort(([, a], [, b]) => a.start.localeCompare(b.start))
+		.sort(([, a], [, b]) => (a.start === b.start ? 0 : a.start < b.start ? -1 : 1))
 		.map(([key, v]) => ({ key, ...v }));
 }
 
