@@ -1,81 +1,61 @@
-import type { ErrorEvent } from '@sentry/sveltekit';
+import { eventFiltersIntegration, type ErrorEvent } from '@sentry/sveltekit';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('$app/env', () => ({ dev: false }));
 
 import { clientSentryConfig, serverSentryConfig } from '../src/lib/sentry';
 
-const wrsRegisterFunction = 'wrsParams.serviceWorkers.navigator.serviceWorker.register';
+function exceptionEvent(value: string): ErrorEvent {
+	return { type: undefined, exception: { values: [{ type: 'TypeError', value }] } };
+}
 
-function exceptionEvent(value: string, functions: string[]): ErrorEvent {
-	return {
-		type: undefined,
-		exception: {
-			values: [
-				{
-					type: 'Error',
-					value,
-					stacktrace: { frames: functions.map((fn) => ({ function: fn })) }
-				}
-			]
-		}
-	};
+// Sentry marks an error as captured before beforeSend sees the event.
+function capturedError(message: string): TypeError {
+	const error = new TypeError(message);
+	Object.defineProperty(error, '__sentry_captured__', { value: true });
+	return error;
 }
 
 describe('client Sentry event filtering', () => {
-	it('drops the Google WRS service worker rejection', () => {
-		const event = exceptionEvent('Rejected', ['registerServiceWorker', wrsRegisterFunction]);
+	const { beforeSend, ignoreErrors } = clientSentryConfig;
 
-		expect(clientSentryConfig.beforeSend(event)).toBeNull();
-	});
+	it.each(['Failed to fetch (dkuzeit.net)', 'Load failed (dkuzeit.net)'])(
+		'drops the network failure %j that hooks.client.ts recovered from',
+		(message) => {
+			const event = exceptionEvent(message);
 
-	it.each([
-		['an ordinary rejection', 'Rejected', ['registerServiceWorker']],
-		['a browser service worker rejection', 'Rejected', ['navigator.serviceWorker.register']],
-		['an unrelated WRS rejection', 'Rejected', ['wrsParams.fetch']],
-		['another WRS service worker error', 'SecurityError', [wrsRegisterFunction]],
-		['a message containing Rejected', 'Request Rejected', [wrsRegisterFunction]],
-		['markers in separate frames', 'Rejected', ['wrsParams.fetch', 'serviceWorker.register']]
-	])('preserves %s', (_description, value, functions) => {
-		const event = exceptionEvent(value, functions);
-
-		expect(clientSentryConfig.beforeSend(event)).toBe(event);
-	});
-
-	it.each([
-		{},
-		{ message: 'Rejected' },
-		{ exception: {} },
-		{ exception: { values: [] } },
-		{ exception: { values: [{ value: 'Rejected' }] } },
-		{ exception: { values: [{ value: 'Rejected', stacktrace: {} }] } },
-		{ exception: { values: [{ value: 'Rejected', stacktrace: { frames: [{}] } }] } },
-		{
-			exception: {
-				values: [{ stacktrace: { frames: [{ function: wrsRegisterFunction }] } }]
-			}
+			expect(beforeSend(event, { originalException: capturedError(message) })).toBeNull();
 		}
-	])('preserves an event with missing exception data: %o', (data) => {
-		const event: ErrorEvent = { type: undefined, ...data };
+	);
 
-		expect(clientSentryConfig.beforeSend(event)).toBe(event);
+	it('preserves other errors', () => {
+		const event = exceptionEvent('Application bug');
+
+		expect(beforeSend(event, { originalException: capturedError('Application bug') })).toBe(event);
+		expect(beforeSend(event, {})).toBe(event);
 	});
 
-	it('does not combine the message and stack from different exceptions', () => {
-		const event: ErrorEvent = {
-			type: undefined,
-			exception: {
-				values: [
-					{ value: 'Rejected', stacktrace: { frames: [{ function: 'fetch' }] } },
-					{ value: 'Application bug', stacktrace: { frames: [{ function: wrsRegisterFunction }] } }
-				]
-			}
-		};
+	describe('ignoreErrors', () => {
+		const client = { getOptions: () => ({}) } as never;
+		const filters = eventFiltersIntegration({ ignoreErrors });
 
-		expect(clientSentryConfig.beforeSend(event)).toBe(event);
+		it.each([
+			'Importing a module script failed.',
+			'Failed to fetch dynamically imported module: https://dkuzeit.net/_app/immutable/nodes/1.js',
+			'error loading dynamically imported module: https://dkuzeit.net/_app/immutable/nodes/1.js'
+		])('ignores the script load failure %j', (value) => {
+			expect(filters.processEvent?.(exceptionEvent(value), {}, client)).toBeNull();
+		});
+
+		it('keeps other errors', () => {
+			const event = exceptionEvent('Application bug');
+
+			expect(filters.processEvent?.(event, {}, client)).toBe(event);
+		});
 	});
 
-	it('keeps the filter out of the server configuration', () => {
+	it('keeps the client filters out of the server configuration', () => {
 		expect(serverSentryConfig).not.toHaveProperty('beforeSend');
+		expect(serverSentryConfig).not.toHaveProperty('ignoreErrors');
 	});
 });

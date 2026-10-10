@@ -19,7 +19,9 @@ export default defineConfig({
 		}),
 		sveltekit({
 			adapter: adapter(),
-			tracing: { server: true }
+			tracing: { server: true },
+			// hooks.client.ts registers the service worker so that failures are caught.
+			serviceWorker: { register: false }
 		}),
 		paraglideVitePlugin({
 			project: './project.inlang',

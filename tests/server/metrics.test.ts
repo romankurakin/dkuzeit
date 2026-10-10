@@ -16,7 +16,8 @@ import {
 	recordCacheAccess,
 	recordCalendarSubscription,
 	recordHtmlInputBytes,
-	recordTimetableOutput
+	recordTimetableOutput,
+	recordUpstreamUnavailable
 } from '../../src/lib/server/metrics';
 
 describe('application metrics', () => {
@@ -55,6 +56,14 @@ describe('application metrics', () => {
 
 		expect(countMock).toHaveBeenCalledWith('dku.calendar.subscription', 1, {
 			attributes: { 'ui.locale': 'ru' }
+		});
+	});
+
+	it('records an upstream outage with the source kind only', () => {
+		recordUpstreamUnavailable('meta');
+
+		expect(countMock).toHaveBeenCalledWith('dku.upstream.unavailable', 1, {
+			attributes: { 'source.kind': 'meta' }
 		});
 	});
 });
