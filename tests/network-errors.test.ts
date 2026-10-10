@@ -9,6 +9,15 @@ function safariNetworkError(message: string): TypeError {
 	return error;
 }
 
+// Sentry's fetch instrumentation gives the Safari error a stack and appends the
+// host before SvelteKit sees it. is-network-error then relies on the marker that
+// Sentry sets when it captures the error.
+function capturedSafariNetworkError(message: string): TypeError {
+	const error = new TypeError(message);
+	Object.defineProperty(error, '__sentry_captured__', { value: true });
+	return error;
+}
+
 describe('network error classification', () => {
 	it.each([
 		'Failed to fetch',
@@ -22,8 +31,13 @@ describe('network error classification', () => {
 		'recognizes the Safari fetch failure %j',
 		(message) => {
 			expect(isNetworkFetchError(safariNetworkError(message))).toBe(true);
+			expect(isNetworkFetchError(capturedSafariNetworkError(message))).toBe(true);
 		}
 	);
+
+	it('does not recognize the Safari fetch failure before Sentry has captured it', () => {
+		expect(isNetworkFetchError(new TypeError('Load failed (dkuzeit.net)'))).toBe(false);
+	});
 
 	it.each([
 		new DOMException('The operation was aborted', 'AbortError'),

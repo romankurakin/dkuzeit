@@ -1,6 +1,8 @@
 import { error, redirect } from '@sveltejs/kit';
+import { m } from '#lib/paraglide/messages.js';
 import { localizeHref } from '#lib/paraglide/runtime.js';
 import { buildMergedSchedule, getMeta } from '#lib/server/dku.ts';
+import { recordUpstreamUnavailable } from '#lib/server/metrics.ts';
 import { todayInAlmaty } from '#lib/server/time.ts';
 import { resolveGroup, resolveWeek, groupSlug } from '#lib/server/resolve.ts';
 import type { Cohort, LessonEvent } from '#lib/server/types.ts';
@@ -19,18 +21,8 @@ export const load: PageServerLoad = async ({ params, url, setHeaders, cookies, l
 		meta = await getMeta(locals?.dkuRequest);
 	} catch {
 		setHeaders({ 'cache-control': 'private, no-store' });
-		return {
-			todayIso: todayInAlmaty(),
-			meta: { groups: [], weeks: [], resolvedWeek: '' },
-			schedule: {
-				events: [],
-				cohorts: [],
-				resolvedGroup: '',
-				resolvedWeek: '',
-				selectedCohortsCsv: getServerCookieValue(cookies, cohortsSelectionCookie),
-				error: true
-			}
-		};
+		recordUpstreamUnavailable('meta');
+		error(503, m.upstream_down_body());
 	}
 	const stateQueryKeys = ['group', 'week', 'cohorts'] as const;
 	if (stateQueryKeys.some((key) => url.searchParams.has(key))) {
@@ -88,7 +80,6 @@ export const load: PageServerLoad = async ({ params, url, setHeaders, cookies, l
 		resolvedGroup: string;
 		resolvedWeek: string;
 		selectedCohortsCsv: string;
-		error?: boolean;
 	} = {
 		events: [],
 		cohorts: [],
@@ -118,18 +109,11 @@ export const load: PageServerLoad = async ({ params, url, setHeaders, cookies, l
 				cohorts: merged.cohorts,
 				resolvedGroup: groupCode,
 				resolvedWeek: weekValue,
-				selectedCohortsCsv: rememberedCohortsCsv,
-				error: false
+				selectedCohortsCsv: rememberedCohortsCsv
 			}
 		};
 	} catch {
-		return {
-			todayIso,
-			meta: metaPayload,
-			schedule: {
-				...emptySchedule,
-				error: true
-			}
-		};
+		recordUpstreamUnavailable('schedule');
+		error(503, m.upstream_down_body());
 	}
 };

@@ -47,6 +47,8 @@ The metrics are emitted independently of the Cloudflare trace and aggregated in 
 - `dku.timetable.events` and `dku.timetable.cohorts` record output-size distributions.
 - `dku.schedule.view` counts successfully rendered schedules.
 - `dku.calendar.subscription` counts successfully issued calendar subscription links.
+- `dku.upstream.unavailable` counts page loads that failed because timetable.dku.kz did not
+  answer, with `source.kind`. These are expected failures and are not Sentry errors.
 
 Attributes are intentionally low-cardinality. Cache keys, group codes, week values, paths, and trace
 IDs are not copied into metric attributes. There is intentionally no parser-duration metric because
