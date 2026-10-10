@@ -146,21 +146,34 @@ export function makeLegendResolver(
 	// Cell codes are truncated to the source table's column width while legend
 	// codes are complete (e.g. cell "ННРТПР" vs legend "ННРТПР.л/WA"), so on an
 	// exact miss fall back to a prefix match — but only when every matching
-	// legend entry agrees on one full name
+	// legend entry agrees on one full name. Results are memoized: misses
+	// otherwise rescan the whole legend on every lookup.
+	const prefixCache = new Map<string, string>();
 	const byPrefix = (code: string): string => {
 		const key = fastLeftKey(code);
 		if (key.length < 2) return '';
+		const cached = prefixCache.get(key);
+		if (cached !== undefined) return cached;
 		const matches: string[] = [];
+		const seen = new Set<string>();
 		for (const entry of leftKeyed) {
 			if (!entry.key.startsWith(key)) continue;
-			if (!matches.includes(entry.value)) matches.push(entry.value);
+			if (seen.has(entry.value)) continue;
+			seen.add(entry.value);
+			matches.push(entry.value);
 		}
-		if (matches.length === 0) return '';
-		if (matches.length === 1) return matches[0]!;
-		return sharedSubjectName(matches);
+		let resolved = '';
+		if (matches.length === 1) resolved = matches[0]!;
+		else if (matches.length > 1) resolved = sharedSubjectName(matches);
+		prefixCache.set(key, resolved);
+		return resolved;
 	};
 
 	return (code: string): string => {
-		return byFull.get(fastCodeKey(code)) ?? byLeft.get(fastLeftKey(code)) ?? byPrefix(code);
+		const full = byFull.get(fastCodeKey(code));
+		if (full !== undefined) return full;
+		const left = byLeft.get(fastLeftKey(code));
+		if (left !== undefined) return left;
+		return byPrefix(code);
 	};
 }

@@ -14,6 +14,14 @@ export function stripTags(input: string): string {
 }
 
 export function cleanText(input: string): string {
+	// Hot path: DOM-extracted text contains no markup or entities, so skip
+	// the tag-strip and entity-decode passes unless the markers are present.
+	if (!input.includes('<') && !input.includes('&')) {
+		return input
+			.replace(/\u00a0/g, ' ')
+			.replace(/\s+/g, ' ')
+			.trim();
+	}
 	return stripTags(input)
 		.replace(/\u00a0/g, ' ')
 		.replace(/\s+/g, ' ')

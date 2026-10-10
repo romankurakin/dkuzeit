@@ -232,17 +232,33 @@ function isRenderableSubject(value: string): boolean {
 interface ParsedCell {
 	colSpan: number;
 	rowSpan: number;
-	fallbackText: string;
-	nestedLines: string[];
+	element: Element;
+	nestedLines: string[] | null;
+	fallbackText: string | null;
 }
 
 interface ParsedRow {
 	cells: ParsedCell[];
 }
 
+// Text extraction walks each cell subtree, so resolve each representation at
+// most once and only when it is actually consumed: lesson cells use the
+// nested lines (making the full-text fallback dead work), while time-column
+// cells use only the fallback text.
+function getNestedLines(cell: ParsedCell): string[] {
+	if (cell.nestedLines === null) cell.nestedLines = collectNestedLines(cell.element);
+	return cell.nestedLines;
+}
+
+function getFallbackText(cell: ParsedCell): string {
+	if (cell.fallbackText === null) cell.fallbackText = collectText(cell.element);
+	return cell.fallbackText;
+}
+
 function extractCellLines(cell: ParsedCell): string[] {
-	if (cell.nestedLines.length > 0) return cell.nestedLines;
-	const fallback = collapseSpaces(cell.fallbackText);
+	const nested = getNestedLines(cell);
+	if (nested.length > 0) return nested;
+	const fallback = collapseSpaces(getFallbackText(cell));
 	return fallback ? [fallback] : [];
 }
 
@@ -277,14 +293,25 @@ function extractCellLessons(cell: ParsedCell): CellLesson[] {
 	return lessons;
 }
 
-function collectTextWithoutNestedTables(node: ChildNode, insideTable: boolean): string {
-	if (node.type === 'text') return insideTable ? '' : node.data;
-	if (!hasChildren(node)) return '';
+function collectTextWithoutNestedTablesInto(
+	node: ChildNode,
+	insideTable: boolean,
+	out: string[]
+): void {
+	if (node.type === 'text') {
+		if (!insideTable) out.push(node.data);
+		return;
+	}
+	if (!hasChildren(node)) return;
 
 	const nextInsideTable = insideTable || (isElementNode(node) && node.name === 'table');
-	const parts: string[] = [];
 	for (const child of node.children)
-		parts.push(collectTextWithoutNestedTables(child, nextInsideTable));
+		collectTextWithoutNestedTablesInto(child, nextInsideTable, out);
+}
+
+function collectTextWithoutNestedTables(node: ChildNode, insideTable: boolean): string {
+	const parts: string[] = [];
+	collectTextWithoutNestedTablesInto(node, insideTable, parts);
 	return parts.join('');
 }
 
@@ -346,8 +373,9 @@ function collectRowCells(row: Element): ParsedCell[] {
 		cells.push({
 			colSpan: parsePositiveSpan(child.attribs.colspan),
 			rowSpan: parsePositiveSpan(child.attribs.rowspan),
-			fallbackText: collectText(child),
-			nestedLines: collectNestedLines(child)
+			element: child,
+			nestedLines: null,
+			fallbackText: null
 		});
 	}
 	return cells;
@@ -503,7 +531,7 @@ export function parseTimetablePage(
 			const rowSpan = cell.rowSpan;
 
 			if (col === 0) {
-				const periodRange = parseTimeRange(collapseSpaces(cell.fallbackText));
+				const periodRange = parseTimeRange(collapseSpaces(getFallbackText(cell)));
 				if (periodRange) {
 					for (let r = rowIndex; r < Math.min(rows.length, rowIndex + rowSpan); r += 1) {
 						rowTimes[r] = periodRange;
@@ -592,12 +620,14 @@ export function parseTimetablePage(
 		}
 	}
 
-	splitEvents.sort(
-		(a, b) =>
-			a.dateIso.localeCompare(b.dateIso) ||
-			a.startTime.localeCompare(b.startTime) ||
-			a.subjectShortRaw.localeCompare(b.subjectShortRaw)
-	);
+	splitEvents.sort((a, b) => {
+		// ISO dates and zero-padded HH:MM compare correctly by code unit,
+		// avoiding the ICU overhead of localeCompare on the hot path. The
+		// final tiebreak keeps localeCompare for human-facing label order.
+		if (a.dateIso !== b.dateIso) return a.dateIso < b.dateIso ? -1 : 1;
+		if (a.startTime !== b.startTime) return a.startTime < b.startTime ? -1 : 1;
+		return a.subjectShortRaw.localeCompare(b.subjectShortRaw);
+	});
 
 	return { events: splitEvents, cohorts: collectCohortsFromEvents(splitEvents, group.codeRaw) };
 }
