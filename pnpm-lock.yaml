@@ -253,7 +253,7 @@ importers:
         version: 5.5.6(eslint-config-prettier@10.1.8(eslint@10.11.0(jiti@2.7.0)(supports-color@10.2.2)))(eslint@10.11.0(jiti@2.7.0)(supports-color@10.2.2))(prettier@3.9.9)
       eslint-plugin-svelte:
         specifier: ^3.23.0
-        version: 3.23.0(eslint@10.11.0(jiti@2.7.0)(supports-color@10.2.2))(svelte@5.57.1(@typescript-eslint/types@8.69.0))
+        version: 3.23.1(eslint@10.11.0(jiti@2.7.0)(supports-color@10.2.2))(svelte@5.57.1(@typescript-eslint/types@8.69.0))
       globals:
         specifier: ^17.13.0
         version: 17.13.0
@@ -2473,8 +2473,8 @@ packages:
       eslint-config-prettier:
         optional: true
 
-  eslint-plugin-svelte@3.23.0:
-    resolution: {integrity: sha512-n9jRklDqy0+W834568a4ZIZTK7DHXxvvHHxxGP8nNq7N//pOZMubttskHOquyGgfTR4Z05q2NdGNlsTpIEA48w==}
+  eslint-plugin-svelte@3.23.1:
+    resolution: {integrity: sha512-+w86Jlx4IRUuuvtqD6j4njql+akx+81JnpvbN5de3AV5iq2SexvST/Jr51CiTlKeY0i+vhoKjPO/ywFKIP75sA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
     peerDependencies:
       eslint: ^8.57.1 || ^9.0.0 || ^10.0.0
@@ -3022,11 +3022,6 @@ packages:
     resolution: {integrity: sha512-dkEJPVvun4FryqBmZ5KhDo0K9iDXAwn08tMLDinNdRBNPcYEDiWYysLcc6k3mjTMlbP9KyylvRpd4wFtwrT9rw==}
     engines: {node: ^20.17.0 || >=22.9.0}
 
-  nanoid@3.3.12:
-    resolution: {integrity: sha512-ZB9RH/39qpq5Vu6Y+NmUaFhQR6pp+M2Xt76XBnEwDaGcVAqhlvxrl3B2bKS5D3NH3QR76v3aSrKaF/Kiy7lEtQ==}
-    engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
-    hasBin: true
-
   nanoid@3.3.18:
     resolution: {integrity: sha512-DTg4MJbGMWkfi6VZFdNt2/caMbQy4Ou+Op/hJQvGEWcnVfoA1QA+xzRKAzw9jD6+GVOOeYr/mIcuDSdug6F6+w==}
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
@@ -3136,10 +3131,6 @@ packages:
   postcss-selector-parser@7.1.1:
     resolution: {integrity: sha512-orRsuYpJVw8LdAwqqLykBj9ecS5/cRHlI5+nvTo8LcCKmzDmqVORXtOIYEEQuL9D4BxtA1lm5isAqzQZCoQ6Eg==}
     engines: {node: '>=4'}
-
-  postcss@8.5.15:
-    resolution: {integrity: sha512-FfR8sjd4em2T6fb3I2MwAJU7HWVMr9zba+enmQeeWFfCbm+UOC/0X4DS8XtpUTMwWMGbjKYP7xjfNekzyGmB3A==}
-    engines: {node: ^10 || ^12 || >=14}
 
   postcss@8.5.28:
     resolution: {integrity: sha512-RRuzqDtt5Y9h3quz5hWhK+TPnsmVs6WwSU6LkJMeY4HstUEDuYTG8UJSdawMRzmzAtV+KEoG8N3Qg2qLy5vM/A==}
@@ -3277,11 +3268,6 @@ packages:
 
   semver@6.3.1:
     resolution: {integrity: sha512-BR7VvDCVHO+q2xBEWskxS6DJE1qRnb7DxzUrogb71CWoSficBxYsiAGd+Kl0mmq/MprG9yArRkyrQxTO6XjMzA==}
-    hasBin: true
-
-  semver@7.7.4:
-    resolution: {integrity: sha512-vFKC2IEtQnVhpT78h1Yp8wzwrf8CM+MzKMHGJZfBtzhZNycRFnXsHk6E5TxIkkMsgNS7mdX3AGB7x2QM2di4lA==}
-    engines: {node: '>=10'}
     hasBin: true
 
   semver@7.8.5:
@@ -5606,18 +5592,18 @@ snapshots:
     optionalDependencies:
       eslint-config-prettier: 10.1.8(eslint@10.11.0(jiti@2.7.0)(supports-color@10.2.2))
 
-  eslint-plugin-svelte@3.23.0(eslint@10.11.0(jiti@2.7.0)(supports-color@10.2.2))(svelte@5.57.1(@typescript-eslint/types@8.69.0)):
+  eslint-plugin-svelte@3.23.1(eslint@10.11.0(jiti@2.7.0)(supports-color@10.2.2))(svelte@5.57.1(@typescript-eslint/types@8.69.0)):
     dependencies:
       '@eslint-community/eslint-utils': 4.9.1(eslint@10.11.0(jiti@2.7.0)(supports-color@10.2.2))
-      '@jridgewell/sourcemap-codec': 1.5.5
+      '@jridgewell/sourcemap-codec': 1.6.0
       eslint: 10.11.0(jiti@2.7.0)(supports-color@10.2.2)
       esutils: 2.0.3
       globals: 16.5.0
       known-css-properties: 0.37.0
-      postcss: 8.5.15
-      postcss-load-config: 3.1.4(postcss@8.5.15)
-      postcss-safe-parser: 7.0.1(postcss@8.5.15)
-      semver: 7.7.4
+      postcss: 8.5.28
+      postcss-load-config: 3.1.4(postcss@8.5.28)
+      postcss-safe-parser: 7.0.1(postcss@8.5.28)
+      semver: 7.8.5
       svelte-eslint-parser: 1.8.0(svelte@5.57.1(@typescript-eslint/types@8.69.0))
     optionalDependencies:
       svelte: 5.57.1(@typescript-eslint/types@8.69.0)
@@ -6080,8 +6066,6 @@ snapshots:
 
   mute-stream@3.0.0: {}
 
-  nanoid@3.3.12: {}
-
   nanoid@3.3.18: {}
 
   natural-compare@1.4.0: {}
@@ -6191,31 +6175,25 @@ snapshots:
     dependencies:
       playwright-core: 1.63.0
 
-  postcss-load-config@3.1.4(postcss@8.5.15):
+  postcss-load-config@3.1.4(postcss@8.5.28):
     dependencies:
       lilconfig: 2.1.0
       yaml: 1.10.3
     optionalDependencies:
-      postcss: 8.5.15
+      postcss: 8.5.28
 
-  postcss-safe-parser@7.0.1(postcss@8.5.15):
+  postcss-safe-parser@7.0.1(postcss@8.5.28):
     dependencies:
-      postcss: 8.5.15
+      postcss: 8.5.28
 
-  postcss-scss@4.0.9(postcss@8.5.15):
+  postcss-scss@4.0.9(postcss@8.5.28):
     dependencies:
-      postcss: 8.5.15
+      postcss: 8.5.28
 
   postcss-selector-parser@7.1.1:
     dependencies:
       cssesc: 3.0.0
       util-deprecate: 1.0.2
-
-  postcss@8.5.15:
-    dependencies:
-      nanoid: 3.3.12
-      picocolors: 1.1.1
-      source-map-js: 1.2.1
 
   postcss@8.5.28:
     dependencies:
@@ -6332,8 +6310,6 @@ snapshots:
 
   semver@6.3.1:
     optional: true
-
-  semver@7.7.4: {}
 
   semver@7.8.5: {}
 
@@ -6452,10 +6428,10 @@ snapshots:
       eslint-scope: 8.4.0
       eslint-visitor-keys: 4.2.1
       espree: 10.4.0
-      postcss: 8.5.15
-      postcss-scss: 4.0.9(postcss@8.5.15)
+      postcss: 8.5.28
+      postcss-scss: 4.0.9(postcss@8.5.28)
       postcss-selector-parser: 7.1.1
-      semver: 7.7.4
+      semver: 7.8.5
     optionalDependencies:
       svelte: 5.57.1(@typescript-eslint/types@8.69.0)
 
