@@ -1,5 +1,6 @@
 import { dev } from '$app/env';
-import type { ErrorEvent } from '@sentry/sveltekit';
+import type { ErrorEvent, EventHint } from '@sentry/sveltekit';
+import { isNetworkFetchError } from '#lib/client/network-errors.ts';
 
 const sharedSentryConfig = {
 	dsn: 'https://2b9222adeea60d9dbaef826f52937788@o4510862703722496.ingest.us.sentry.io/4510862792589312',
@@ -9,18 +10,16 @@ const sharedSentryConfig = {
 export const clientSentryConfig = {
 	...sharedSentryConfig,
 	tracesSampleRate: 1,
-	beforeSend(event: ErrorEvent) {
-		// Google WRS stubs service worker registration and rejects it with "Rejected".
-		const isWrsServiceWorkerRejection = event.exception?.values?.some(
-			(exception) =>
-				exception.value === 'Rejected' &&
-				exception.stacktrace?.frames?.some(
-					(frame) =>
-						frame.function?.includes('wrsParams') &&
-						frame.function.includes('serviceWorker.register')
-				)
-		);
-		return isWrsServiceWorkerRejection ? null : event;
+	// A script that fails to load because the connection dropped. The server-rendered
+	// page is already on screen, and SvelteKit reloads by itself after a redeploy.
+	ignoreErrors: [
+		'Importing a module script failed', // Safari
+		'Failed to fetch dynamically imported module', // Chromium
+		'error loading dynamically imported module' // Firefox
+	],
+	beforeSend(event: ErrorEvent, hint: EventHint) {
+		// hooks.client.ts has already turned this into the network-unavailable page.
+		return isNetworkFetchError(hint.originalException) ? null : event;
 	}
 };
 

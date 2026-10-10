@@ -5,19 +5,22 @@ const {
 	recordCacheAccessMock,
 	recordCalendarSubscriptionMock,
 	recordHtmlInputBytesMock,
-	recordTimetableOutputMock
+	recordTimetableOutputMock,
+	recordUpstreamUnavailableMock
 } = vi.hoisted(() => ({
 	recordCacheAccessMock: vi.fn(),
 	recordCalendarSubscriptionMock: vi.fn(),
 	recordHtmlInputBytesMock: vi.fn(),
-	recordTimetableOutputMock: vi.fn()
+	recordTimetableOutputMock: vi.fn(),
+	recordUpstreamUnavailableMock: vi.fn()
 }));
 
 vi.mock('../../src/lib/server/metrics', () => ({
 	recordCacheAccess: recordCacheAccessMock,
 	recordCalendarSubscription: recordCalendarSubscriptionMock,
 	recordHtmlInputBytes: recordHtmlInputBytesMock,
-	recordTimetableOutput: recordTimetableOutputMock
+	recordTimetableOutput: recordTimetableOutputMock,
+	recordUpstreamUnavailable: recordUpstreamUnavailableMock
 }));
 
 import { server } from '../mocks/node';
@@ -290,11 +293,10 @@ describe('routes via msw', () => {
 			url: new URL('http://localhost/1-cs'),
 			setHeaders,
 			cookies
-		} as never)) as { schedule: { events: unknown[]; error?: boolean; resolvedWeek: string } };
+		} as never)) as { schedule: { events: unknown[]; resolvedWeek: string } };
 		expect(setHeaders).toHaveBeenCalledWith({ 'cache-control': 'private, no-store' });
 		expect(pageData.schedule.events).toHaveLength(1);
 		expect(pageData.schedule.resolvedWeek).toBe('05');
-		expect(pageData.schedule.error).toBe(false);
 		expect(cookies.set).toHaveBeenCalledWith(
 			'dku_group',
 			'1-CS',
@@ -323,9 +325,8 @@ describe('routes via msw', () => {
 			url: new URL('http://localhost/1-cs'),
 			setHeaders,
 			cookies
-		} as never)) as { schedule: { events: unknown[]; error?: boolean; resolvedGroup: string } };
+		} as never)) as { schedule: { events: unknown[]; resolvedGroup: string } };
 
-		expect(pageData.schedule.error).toBe(false);
 		expect(pageData.schedule.resolvedGroup).toBe('1-CS');
 		expect(cookies.set).not.toHaveBeenCalled();
 	});
@@ -344,9 +345,8 @@ describe('routes via msw', () => {
 			url: new URL('http://localhost/'),
 			setHeaders,
 			cookies
-		} as never)) as { schedule: { error?: boolean; resolvedGroup: string; resolvedWeek: string } };
+		} as never)) as { schedule: { resolvedGroup: string; resolvedWeek: string } };
 
-		expect(pageData.schedule.error).toBe(false);
 		expect(pageData.schedule.resolvedGroup).toBe('1-CS');
 		expect(pageData.schedule.resolvedWeek).toBe('05');
 		expect(cookies.set).not.toHaveBeenCalled();
@@ -368,9 +368,8 @@ describe('routes via msw', () => {
 			url: new URL('http://localhost/1-cs'),
 			setHeaders: vi.fn(),
 			cookies
-		} as never)) as { schedule: { resolvedWeek: string; error?: boolean } };
+		} as never)) as { schedule: { resolvedWeek: string } };
 
-		expect(pageData.schedule.error).toBe(false);
 		expect(pageData.schedule.resolvedWeek).toBe('05');
 		expect(cookies.set).toHaveBeenCalledWith(
 			'dku_week',
@@ -415,9 +414,8 @@ describe('routes via msw', () => {
 			url: new URL('http://localhost/1-cs'),
 			setHeaders: vi.fn(),
 			cookies
-		} as never)) as { schedule: { resolvedWeek: string; error?: boolean } };
+		} as never)) as { schedule: { resolvedWeek: string } };
 
-		expect(pageData.schedule.error).toBe(false);
 		expect(pageData.schedule.resolvedWeek).toBe('04');
 		expect(cookies.set).not.toHaveBeenCalledWith('dku_week', expect.anything(), expect.anything());
 	});
@@ -440,10 +438,9 @@ describe('routes via msw', () => {
 			setHeaders: vi.fn(),
 			cookies
 		} as never)) as {
-			schedule: { events: unknown[]; selectedCohortsCsv: string; error?: boolean };
+			schedule: { events: unknown[]; selectedCohortsCsv: string };
 		};
 
-		expect(pageData.schedule.error).toBe(false);
 		expect(pageData.schedule.events.length).toBeGreaterThan(0);
 		expect(pageData.schedule.selectedCohortsCsv).toContain('UNKNOWN');
 	});
@@ -618,24 +615,35 @@ describe('routes via msw', () => {
 		expect(calendarResponse.status).toBe(503);
 
 		const setHeaders = vi.fn();
-		const pageData = (await loadPage({
-			params: { group: '1-cs' },
-			url: new URL('http://localhost/1-cs'),
-			setHeaders,
-			cookies: {
-				get: vi.fn(() => undefined),
-				set: vi.fn()
-			}
-		} as never)) as {
-			meta: { groups: unknown[]; weeks: unknown[]; resolvedWeek: string };
-			schedule: { error?: boolean; resolvedGroup: string; resolvedWeek: string };
-		};
+		await expect(
+			loadPage({
+				params: { group: '1-cs' },
+				url: new URL('http://localhost/1-cs'),
+				setHeaders,
+				cookies: {
+					get: vi.fn(() => undefined),
+					set: vi.fn()
+				}
+			} as never)
+		).rejects.toMatchObject({ status: 503 });
 		expect(setHeaders).toHaveBeenCalledWith({ 'cache-control': 'private, no-store' });
-		expect(pageData.meta).toEqual({ groups: [], weeks: [], resolvedWeek: '' });
-		expect(pageData.schedule).toMatchObject({
-			error: true,
-			resolvedGroup: '',
-			resolvedWeek: ''
-		});
+		expect(recordUpstreamUnavailableMock).toHaveBeenCalledWith('meta');
+	});
+
+	it('fails the page with 503 when loading the schedule fails upstream', async () => {
+		useUpstreamStubs({ scheduleStatus: 503 });
+
+		await expect(
+			loadPage({
+				params: { group: '1-cs' },
+				url: new URL('http://localhost/1-cs'),
+				setHeaders: vi.fn(),
+				cookies: {
+					get: vi.fn(() => undefined),
+					set: vi.fn()
+				}
+			} as never)
+		).rejects.toMatchObject({ status: 503 });
+		expect(recordUpstreamUnavailableMock).toHaveBeenCalledWith('schedule');
 	});
 });

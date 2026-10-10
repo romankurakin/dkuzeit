@@ -44,3 +44,9 @@ export function recordCalendarSubscription(locale: 'de' | 'ru'): void {
 		attributes: { 'ui.locale': locale }
 	});
 }
+
+export function recordUpstreamUnavailable(kind: Exclude<SourceKind, 'other'>): void {
+	Sentry.metrics.count('dku.upstream.unavailable', 1, {
+		attributes: { 'source.kind': kind }
+	});
+}
