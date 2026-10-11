@@ -214,7 +214,7 @@ importers:
         version: 2.3.0(@typescript-eslint/types@8.71.1)
       '@inlang/plugin-message-format':
         specifier: ^4.4.4
-        version: 4.4.4
+        version: 4.5.0
       '@j178/prek':
         specifier: ^0.5.4
         version: 0.5.5
@@ -1154,8 +1154,8 @@ packages:
   '@inlang/plugin-m-function-matcher@2.3.0':
     resolution: {integrity: sha512-C1wBvCl+xwrfBS18OO6+JEYZDeI2pnLg/yed6C/TSGOU+K4chsV8kEkUuy42L335yX8Oe/yK7SMyVwJRYBWbWQ==}
 
-  '@inlang/plugin-message-format@4.4.4':
-    resolution: {integrity: sha512-50tkyH/qMFudcIOZSCRdi+BeCVuJQo3BWbvfRTVKr8pEslBiRaZDTKBC1NkCI3ivmkyqzK8k+ktBci3NtDu3Lg==}
+  '@inlang/plugin-message-format@4.5.0':
+    resolution: {integrity: sha512-sUiIAxNjFBciVun5bVJMZZ0fN6jU9RRaul3ThmE7kyXUtOeOE5GwrBdVCipRn/gxgMhZlCh88oO8RJbXegn+pA==}
 
   '@inlang/recommend-sherlock@0.2.1':
     resolution: {integrity: sha512-ckv8HvHy/iTqaVAEKrr+gnl+p3XFNwe5D2+6w6wJk2ORV2XkcRkKOJ/XsTUJbPSiyi4PI+p+T3bqbmNx/rDUlg==}
@@ -2721,11 +2721,6 @@ packages:
 
   flat-cache@6.1.23:
     resolution: {integrity: sha512-f++BY9pTk+983xK1FLzlLpmM0i0z+jHmx3QESGkURMXujQZz1k5wzwX6hjnQ8goaD0B+sYnDK1yZ6MTyZfUaqA==}
-
-  flat@6.0.1:
-    resolution: {integrity: sha512-/3FfIa8mbrg3xE7+wAhWeV+bd7L2Mof+xtZb5dRDKZ+wDvYJK4WDYeIOuOhre5Yv5aQObZrlbRmk3RTSiuQBtw==}
-    engines: {node: '>=18'}
-    hasBin: true
 
   flatted@3.4.2:
     resolution: {integrity: sha512-PjDse7RzhcPkIJwy5t7KPWQSZ9cAbzQXcafsetQoD7sOJRQlGikNbx7yZp2OotDnJyrDcbyRq3Ttb18iYOqkxA==}
@@ -4523,9 +4518,10 @@ snapshots:
     transitivePeerDependencies:
       - '@typescript-eslint/types'
 
-  '@inlang/plugin-message-format@4.4.4':
+  '@inlang/plugin-message-format@4.5.0':
     dependencies:
-      flat: 6.0.1
+      '@inlang/sdk': 4.0.0
+      '@sinclair/typebox': 0.31.30
 
   '@inlang/recommend-sherlock@0.2.1':
     dependencies:
@@ -5900,8 +5896,6 @@ snapshots:
       cacheable: 2.5.0
       flatted: 3.4.2
       hookified: 1.15.1
-
-  flat@6.0.1: {}
 
   flatted@3.4.2: {}
 
