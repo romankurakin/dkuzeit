@@ -181,8 +181,10 @@ test.describe('selection persistence', () => {
 		await groupTrigger.click();
 
 		const options = page.getByRole('option');
+		await expect
+			.poll(() => options.count(), { message: 'Need at least two selectable group options' })
+			.toBeGreaterThan(1);
 		const optionCount = await options.count();
-		expect(optionCount < 2, 'Need at least two selectable group options').toBe(false);
 
 		let targetIndex: number | undefined;
 		for (let i = 0; i < optionCount; i += 1) {
@@ -283,8 +285,10 @@ test.describe('selection persistence', () => {
 		const selectedLabel = ((await cohortTrigger.textContent()) ?? '').trim();
 		await cohortTrigger.click();
 		const options = page.getByRole('option');
+		await expect
+			.poll(() => options.count(), { message: 'Need at least two selectable cohort options' })
+			.toBeGreaterThan(1);
 		const optionCount = await options.count();
-		expect(optionCount < 2, 'Need at least two selectable cohort options').toBe(false);
 		let targetIndex: number | undefined;
 		for (let i = 0; i < optionCount; i += 1) {
 			const label = ((await options.nth(i).textContent()) ?? '').trim();

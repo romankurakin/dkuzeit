@@ -76,17 +76,13 @@ test.describe('schedule navigation', () => {
 		await groupTrigger.click();
 
 		const optionElements = page.getByRole('option');
-		const optionCount = await optionElements.count();
-		const targetOption = optionElements.nth(Math.min(1, Math.max(0, optionCount - 1)));
-		const hasOptions =
-			optionCount > 0 && (await targetOption.isVisible({ timeout: 3_000 }).catch(() => false));
-
-		if (hasOptions) {
-			await targetOption.click();
-			await expect(page).toHaveURL(/\/[^/?]+$/, { timeout: 5_000 });
-		} else {
-			await expect(groupTrigger).toHaveAttribute('aria-haspopup', 'listbox');
-		}
+		await expect
+			.poll(() => optionElements.count(), { message: 'Group options did not open' })
+			.toBeGreaterThan(1);
+		const targetOption = optionElements.nth(1);
+		await expect(targetOption).toBeVisible({ timeout: 5_000 });
+		await targetOption.click();
+		await expect(page).toHaveURL(/\/[^/?]+$/, { timeout: 5_000 });
 
 		await expect(scheduleTable).toBeVisible({ timeout: 15_000 });
 	});
