@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { parseDocument } from 'htmlparser2';
+import { parseNavHtml } from '../../src/lib/server/parser';
+import { toSlug } from '../../src/lib/url-slug';
 import {
 	groupSlug,
+	isGroupPath,
 	resolveGroup,
 	resolveWeek,
 	resolveWeekByDate,
@@ -26,6 +31,20 @@ describe('resolve helpers', () => {
 
 	afterEach(() => {
 		vi.useRealTimers();
+	});
+
+	it('accepts every fixture group label and canonical slug in the route guard', () => {
+		const navbar = readFileSync(
+			new URL('../fixtures/live/frames/navbar.htm', import.meta.url),
+			'utf8'
+		);
+		const { groups } = parseNavHtml(parseDocument(navbar));
+		expect(groups.length).toBeGreaterThan(0);
+		for (const group of groups) {
+			for (const value of [group.codeRaw, group.codeRu, group.codeDe, toSlug(group.codeRu)]) {
+				expect(isGroupPath(value)).toBe(true);
+			}
+		}
 	});
 
 	it('resolves group by different forms and rejects unknown values', () => {

@@ -128,6 +128,21 @@ describe('routes via msw', () => {
 		vi.unstubAllEnvs();
 	});
 
+	it.each(['wp-login.php', '.env', 'this_is_a_new_hello_world.php', 'web.config', 'npm-debug.log'])(
+		'rejects scanner path %s without fetching metadata',
+		async (group) => {
+			const fetchSpy = vi.spyOn(globalThis, 'fetch');
+			try {
+				await expect(loadPage({ params: { group } } as never)).rejects.toMatchObject({
+					status: 404
+				});
+				expect(fetchSpy).not.toHaveBeenCalled();
+			} finally {
+				fetchSpy.mockRestore();
+			}
+		}
+	);
+
 	it('serves meta and schedule from real parsing pipeline', async () => {
 		useUpstreamStubs();
 

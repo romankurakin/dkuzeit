@@ -22,12 +22,10 @@ const {
 vi.mock('../../src/lib/server/dku-fetch', () => ({
 	META_CACHE_POLICY: {
 		edgeTtlSeconds: 43_200,
-		clientTtlSeconds: 3_600,
 		staleWhileRevalidateSeconds: 18_000
 	},
 	SCHEDULE_CACHE_POLICY: {
 		edgeTtlSeconds: 10_800,
-		clientTtlSeconds: 900,
 		staleWhileRevalidateSeconds: 2_700
 	},
 	API_RESPONSE_CACHE_HEADER: 'no-store',
@@ -115,7 +113,6 @@ describe('dku helpers', () => {
 			undefined,
 			expect.objectContaining({
 				edgeTtlSeconds: 43_200,
-				clientTtlSeconds: 3_600,
 				staleWhileRevalidateSeconds: 18_000
 			})
 		);
