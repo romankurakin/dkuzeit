@@ -211,7 +211,7 @@ importers:
         version: 2.27.0(typescript@6.0.3)(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.23.15))
       '@inlang/plugin-m-function-matcher':
         specifier: ^2.2.16
-        version: 2.3.0(@typescript-eslint/types@8.71.1)
+        version: 2.3.2(@typescript-eslint/types@8.71.1)
       '@inlang/plugin-message-format':
         specifier: ^4.4.4
         version: 4.5.0
@@ -1151,8 +1151,8 @@ packages:
       vite:
         optional: true
 
-  '@inlang/plugin-m-function-matcher@2.3.0':
-    resolution: {integrity: sha512-C1wBvCl+xwrfBS18OO6+JEYZDeI2pnLg/yed6C/TSGOU+K4chsV8kEkUuy42L335yX8Oe/yK7SMyVwJRYBWbWQ==}
+  '@inlang/plugin-m-function-matcher@2.3.2':
+    resolution: {integrity: sha512-+LLKaLL+sBnFPAKkQvJvfsX7NbcrhSvkWz/fzwAOZ5lJ/XzEmYYyihTYI80kI5wUYDqkmnbarCkyUmhkWAi1AQ==}
 
   '@inlang/plugin-message-format@4.5.0':
     resolution: {integrity: sha512-sUiIAxNjFBciVun5bVJMZZ0fN6jU9RRaul3ThmE7kyXUtOeOE5GwrBdVCipRn/gxgMhZlCh88oO8RJbXegn+pA==}
@@ -1162,6 +1162,10 @@ packages:
 
   '@inlang/sdk@4.0.0':
     resolution: {integrity: sha512-AwGasJATSKq9J3EVBdmIbpU++2DTI8z0J5WbejT6lqymLaoDB4cf95Zp0ijmJp7XUNP/z10qQfA2lz0TAojRYA==}
+    engines: {node: '>=20.0.0'}
+
+  '@inlang/sdk@4.0.2':
+    resolution: {integrity: sha512-IiOiQpybiV2HrguH+2eG+9Pqsm8AuUBtjHpgl3rnwXkE9x1p+mAC5YqVVRlquGLELXxFiu90zvgFXdYnt4X3LA==}
     engines: {node: '>=20.0.0'}
 
   '@inquirer/ansi@2.0.5':
@@ -4483,10 +4487,10 @@ snapshots:
       typescript: 6.0.3
       vite: 8.3.4(@types/node@26.6.5)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.23.15)
 
-  '@inlang/plugin-m-function-matcher@2.3.0(@typescript-eslint/types@8.71.1)':
+  '@inlang/plugin-m-function-matcher@2.3.2(@typescript-eslint/types@8.71.1)':
     dependencies:
       '@babel/parser': 7.29.7
-      '@inlang/sdk': 4.0.0
+      '@inlang/sdk': 4.0.2
       svelte: 5.57.2(@typescript-eslint/types@8.71.1)
     transitivePeerDependencies:
       - '@typescript-eslint/types'
@@ -4501,6 +4505,13 @@ snapshots:
       comment-json: 4.6.2
 
   '@inlang/sdk@4.0.0':
+    dependencies:
+      '@lix-js/sdk': 0.19.0
+      '@sinclair/typebox': 0.31.30
+      kysely: 0.28.17
+      uuid: 14.0.2
+
+  '@inlang/sdk@4.0.2':
     dependencies:
       '@lix-js/sdk': 0.19.0
       '@sinclair/typebox': 0.31.30
