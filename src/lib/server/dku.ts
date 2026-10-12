@@ -9,7 +9,6 @@ import {
 	SCHEDULE_CACHE_POLICY,
 	type DkuRequestContext
 } from './dku-fetch';
-import { recordTimetableOutput } from './metrics';
 import { traceSpan } from './tracing';
 
 export { API_RESPONSE_CACHE_HEADER } from './dku-fetch';
@@ -91,7 +90,6 @@ async function getSchedule(
 							const result = parseTimetablePage(document, group, week);
 							span.setAttribute('timetable.event_count', result.events.length);
 							span.setAttribute('timetable.cohort_count', result.cohorts.length);
-							recordTimetableOutput(result.events.length, result.cohorts.length);
 							return result;
 						},
 						request?.tracing

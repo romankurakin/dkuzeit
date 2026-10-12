@@ -6,7 +6,7 @@ const {
 	fetchDocumentMock,
 	parseNavHtmlMock,
 	parseTimetablePageMock,
-	recordTimetableOutputMock,
+	setAttributeMock,
 	traceSpanMock,
 	todayInAlmatyMock
 } = vi.hoisted(() => ({
@@ -14,7 +14,7 @@ const {
 	fetchDocumentMock: vi.fn(),
 	parseNavHtmlMock: vi.fn(),
 	parseTimetablePageMock: vi.fn(),
-	recordTimetableOutputMock: vi.fn(),
+	setAttributeMock: vi.fn(),
 	traceSpanMock: vi.fn(),
 	todayInAlmatyMock: vi.fn()
 }));
@@ -36,10 +36,6 @@ vi.mock('../../src/lib/server/dku-fetch', () => ({
 vi.mock('../../src/lib/server/parser', () => ({
 	parseNavHtml: parseNavHtmlMock,
 	parseTimetablePage: parseTimetablePageMock
-}));
-
-vi.mock('../../src/lib/server/metrics', () => ({
-	recordTimetableOutput: recordTimetableOutputMock
 }));
 
 vi.mock('../../src/lib/server/tracing', () => ({
@@ -86,7 +82,7 @@ describe('dku helpers', () => {
 		vi.clearAllMocks();
 		cachedMock.mockImplementation(async (_key, compute) => compute());
 		traceSpanMock.mockImplementation(async (_name, _op, _attrs, fn) =>
-			fn({ setAttribute: vi.fn() })
+			fn({ setAttribute: setAttributeMock })
 		);
 		todayInAlmatyMock.mockReturnValue('2026-02-10');
 	});
@@ -148,7 +144,8 @@ describe('dku helpers', () => {
 		expect(fetchDocumentMock).toHaveBeenCalledWith('05/c/c00001.htm', undefined);
 		expect(merged.events.map((item) => item.id)).toEqual(['core', 'selected', 'assess']);
 		expect(merged.cohorts.map((item) => item.code)).toEqual(['A1', 'WPM2']);
-		expect(recordTimetableOutputMock).toHaveBeenCalledWith(4, 2);
+		expect(setAttributeMock).toHaveBeenCalledWith('timetable.event_count', 4);
+		expect(setAttributeMock).toHaveBeenCalledWith('timetable.cohort_count', 2);
 	});
 
 	it('throws unknown week and group when schedule cannot be resolved', async () => {

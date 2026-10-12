@@ -1,6 +1,5 @@
 import { DomHandler, type Document } from 'domhandler';
 import { WebWritableStream } from 'htmlparser2/WebWritableStream';
-import { recordHtmlInputBytes } from './metrics';
 import { traceCacheGet, traceSpan, type NativeTracing } from './tracing';
 
 const DEFAULT_BASE_URL = 'https://timetable.dku.kz';
@@ -172,7 +171,6 @@ export async function fetchDocument(
 				});
 				await body.pipeThrough(countingStream).pipeTo(ws);
 				span.setAttribute('html.input_bytes', inputBytes);
-				recordHtmlInputBytes(path, inputBytes);
 			},
 			nativeTracing
 		);

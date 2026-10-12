@@ -1,22 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { countMock, distributionMock } = vi.hoisted(() => ({
-	countMock: vi.fn(),
-	distributionMock: vi.fn()
+const { countMock } = vi.hoisted(() => ({
+	countMock: vi.fn()
 }));
 
 vi.mock('@sentry/sveltekit', () => ({
 	metrics: {
-		count: countMock,
-		distribution: distributionMock
+		count: countMock
 	}
 }));
 
 import {
 	recordCacheAccess,
 	recordCalendarSubscription,
-	recordHtmlInputBytes,
-	recordTimetableOutput,
 	recordUpstreamUnavailable
 } from '../../src/lib/server/metrics';
 
@@ -31,30 +27,10 @@ describe('application metrics', () => {
 		});
 	});
 
-	it('records HTML input size with a low-cardinality source kind', () => {
-		recordHtmlInputBytes('05/c/c00123.htm', 4096);
-
-		expect(distributionMock).toHaveBeenCalledWith('dku.html.input_bytes', 4096, {
-			unit: 'byte',
-			attributes: { 'html.parser': 'htmlparser2', 'source.kind': 'schedule' }
-		});
-	});
-
 	it('distinguishes served stale cache entries from fresh hits', () => {
 		recordCacheAccess('meta', true, true);
 		expect(countMock).toHaveBeenCalledWith('dku.cache.access', 1, {
 			attributes: { 'cache.kind': 'meta', 'cache.result': 'stale' }
-		});
-	});
-
-	it('records parser output counts', () => {
-		recordTimetableOutput(42, 3);
-
-		expect(distributionMock).toHaveBeenNthCalledWith(1, 'dku.timetable.events', 42, {
-			attributes: { 'source.kind': 'schedule' }
-		});
-		expect(distributionMock).toHaveBeenNthCalledWith(2, 'dku.timetable.cohorts', 3, {
-			attributes: { 'source.kind': 'schedule' }
 		});
 	});
 
