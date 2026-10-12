@@ -214,7 +214,7 @@ importers:
         version: 2.3.2(@typescript-eslint/types@8.71.1)
       '@inlang/plugin-message-format':
         specifier: ^4.4.4
-        version: 4.5.0
+        version: 4.5.2
       '@j178/prek':
         specifier: ^0.5.4
         version: 0.5.5
@@ -1154,8 +1154,8 @@ packages:
   '@inlang/plugin-m-function-matcher@2.3.2':
     resolution: {integrity: sha512-+LLKaLL+sBnFPAKkQvJvfsX7NbcrhSvkWz/fzwAOZ5lJ/XzEmYYyihTYI80kI5wUYDqkmnbarCkyUmhkWAi1AQ==}
 
-  '@inlang/plugin-message-format@4.5.0':
-    resolution: {integrity: sha512-sUiIAxNjFBciVun5bVJMZZ0fN6jU9RRaul3ThmE7kyXUtOeOE5GwrBdVCipRn/gxgMhZlCh88oO8RJbXegn+pA==}
+  '@inlang/plugin-message-format@4.5.2':
+    resolution: {integrity: sha512-alC8+5and4dNm6TWEdc/MAYIuiPbeBG4rdowwiiy+kM3OCSfJRl3oXrXsmsbP7yoU81VH8LMSrBgrWtKLFeVDQ==}
 
   '@inlang/recommend-sherlock@0.2.1':
     resolution: {integrity: sha512-ckv8HvHy/iTqaVAEKrr+gnl+p3XFNwe5D2+6w6wJk2ORV2XkcRkKOJ/XsTUJbPSiyi4PI+p+T3bqbmNx/rDUlg==}
@@ -4495,9 +4495,9 @@ snapshots:
     transitivePeerDependencies:
       - '@typescript-eslint/types'
 
-  '@inlang/plugin-message-format@4.5.0':
+  '@inlang/plugin-message-format@4.5.2':
     dependencies:
-      '@inlang/sdk': 4.0.0
+      '@inlang/sdk': 4.0.2
       '@sinclair/typebox': 0.31.30
 
   '@inlang/recommend-sherlock@0.2.1':
