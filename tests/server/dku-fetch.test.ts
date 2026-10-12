@@ -36,7 +36,7 @@ type CacheApi = {
 	};
 };
 
-const TEST_BUILD_ID = 'current-build';
+const CACHED_AT_HEADER = 'x-dku-cached-at';
 
 describe('dku fetch cache helpers', () => {
 	beforeEach(() => {
@@ -51,18 +51,24 @@ describe('dku fetch cache helpers', () => {
 	});
 
 	it('returns cache hit without running compute', async () => {
-		const match = vi.fn().mockResolvedValue(new Response(JSON.stringify({ ok: true })));
+		const response = Response.json(
+			{ ok: true },
+			{
+				headers: { [CACHED_AT_HEADER]: String(Date.now()) }
+			}
+		);
+		const match = vi.fn().mockResolvedValue(response);
 		const put = vi.fn().mockResolvedValue(undefined);
 		(globalThis as unknown as { caches?: CacheApi }).caches = { default: { match, put } };
 		traceCacheGetMock.mockImplementation(async (_key, fn) => fn(() => {}));
-		const request = createDkuRequestContext(TEST_BUILD_ID);
+		const request = createDkuRequestContext();
 
 		const compute = vi.fn(async () => ({ ok: false }));
 		await expect(cached('meta key', compute, request)).resolves.toEqual({ ok: true });
 
 		expect(compute).not.toHaveBeenCalled();
 		expect(match).toHaveBeenCalledWith(
-			`${BASE_URL}/_cache/${CACHE_NAMESPACE_VERSION}-${TEST_BUILD_ID}/${encodeURIComponent('meta key')}`
+			`${BASE_URL}/_cache/${CACHE_NAMESPACE_VERSION}/${encodeURIComponent('meta key')}`
 		);
 		expect(put).not.toHaveBeenCalled();
 	});
@@ -72,7 +78,7 @@ describe('dku fetch cache helpers', () => {
 		const put = vi.fn().mockResolvedValue(undefined);
 		(globalThis as unknown as { caches?: CacheApi }).caches = { default: { match, put } };
 		traceCacheGetMock.mockImplementation(async (_key, fn) => fn(() => {}));
-		const request = createDkuRequestContext(TEST_BUILD_ID);
+		const request = createDkuRequestContext();
 
 		const compute = vi.fn(async () => {
 			await new Promise((resolve) => setTimeout(resolve, 5));
@@ -87,12 +93,12 @@ describe('dku fetch cache helpers', () => {
 		expect(right).toEqual({ value: 7 });
 		expect(compute).toHaveBeenCalledTimes(1);
 		expect(match).toHaveBeenCalledWith(
-			`${BASE_URL}/_cache/${CACHE_NAMESPACE_VERSION}-${TEST_BUILD_ID}/${encodeURIComponent('same-key')}`
+			`${BASE_URL}/_cache/${CACHE_NAMESPACE_VERSION}/${encodeURIComponent('same-key')}`
 		);
-		expect(put).toHaveBeenCalledTimes(2);
+		expect(put).toHaveBeenCalledTimes(1);
 		const response = put.mock.calls[0]?.[1] as Response;
 		expect(response.headers.get('cache-control')).toBe(
-			`s-maxage=${SCHEDULE_CACHE_POLICY.edgeTtlSeconds}`
+			`s-maxage=${SCHEDULE_CACHE_POLICY.edgeTtlSeconds + SCHEDULE_CACHE_POLICY.staleWhileRevalidateSeconds}`
 		);
 	});
 
@@ -110,7 +116,7 @@ describe('dku fetch cache helpers', () => {
 
 		const response = put.mock.calls[0]?.[1] as Response;
 		expect(response.headers.get('cache-control')).toBe(
-			`s-maxage=${META_CACHE_POLICY.edgeTtlSeconds}`
+			`s-maxage=${META_CACHE_POLICY.edgeTtlSeconds + META_CACHE_POLICY.staleWhileRevalidateSeconds}`
 		);
 	});
 

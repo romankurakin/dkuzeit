@@ -5,4 +5,5 @@ declare module 'cloudflare:workers' {
 		CF_VERSION_METADATA?: { id: string; tag: string; timestamp: string };
 	};
 	export const tracing: import('#lib/server/tracing.ts').NativeTracing;
+	export function waitUntil(promise: Promise<unknown>): void;
 }

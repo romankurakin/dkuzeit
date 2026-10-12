@@ -2,6 +2,17 @@ import { toSlug } from '#lib/url-slug.ts';
 import { todayInAlmaty, isSundayInAlmaty, nowDate } from './time';
 import type { GroupOption, WeekOption } from './types';
 
+// Accept canonical slugs and the localized/raw group labels used by resolveGroup.
+// Keep dots used by labels such as "Подгот.курсы" and "гр.1", but reject file probes.
+export function isGroupPath(value: string): boolean {
+	return (
+		/^[\p{L}\p{N}][\p{L}\p{N} ()./-]*$/u.test(value) &&
+		!/\.(?:php\d?|aspx?|jspx?|cgi|json|xml|env|ini|log|html?|txt|ya?ml|sql|config|bak)$/i.test(
+			value
+		)
+	);
+}
+
 export function resolveGroup(groups: GroupOption[], param: string): string {
 	if (!param) return groups[0]?.codeRaw ?? '';
 	const exactRaw = groups.find((g) => g.codeRaw === param);

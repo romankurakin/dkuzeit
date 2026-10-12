@@ -40,6 +40,13 @@ describe('application metrics', () => {
 		});
 	});
 
+	it('distinguishes served stale cache entries from fresh hits', () => {
+		recordCacheAccess('meta', true, true);
+		expect(countMock).toHaveBeenCalledWith('dku.cache.access', 1, {
+			attributes: { 'cache.kind': 'meta', 'cache.result': 'stale' }
+		});
+	});
+
 	it('records parser output counts', () => {
 		recordTimetableOutput(42, 3);
 

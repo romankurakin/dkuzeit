@@ -34,7 +34,7 @@ export function traceSpan<T>(
 
 export function traceCacheGet<T>(
 	key: string,
-	fn: (setHit: (hit: boolean) => void) => Promise<T>,
+	fn: (setHit: (hit: boolean, stale?: boolean) => void) => Promise<T>,
 	nativeTracing?: NativeTracing
 ): Promise<T> {
 	const name =
@@ -44,9 +44,10 @@ export function traceCacheGet<T>(
 		'cache.get',
 		{ 'cache.key': [key] },
 		(span) =>
-			fn((hit) => {
+			fn((hit, stale = false) => {
 				span.setAttribute('cache.hit', hit);
-				recordCacheAccess(key, hit);
+				span.setAttribute('cache.stale', stale);
+				recordCacheAccess(key, hit, stale);
 			}),
 		nativeTracing
 	);

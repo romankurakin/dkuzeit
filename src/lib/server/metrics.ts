@@ -14,11 +14,11 @@ function cacheKind(key: string): SourceKind {
 	return 'other';
 }
 
-export function recordCacheAccess(key: string, hit: boolean): void {
+export function recordCacheAccess(key: string, hit: boolean, stale = false): void {
 	Sentry.metrics.count('dku.cache.access', 1, {
 		attributes: {
 			'cache.kind': cacheKind(key),
-			'cache.result': hit ? 'hit' : 'miss'
+			'cache.result': stale ? 'stale' : hit ? 'hit' : 'miss'
 		}
 	});
 }

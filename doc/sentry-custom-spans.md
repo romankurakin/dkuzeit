@@ -33,7 +33,8 @@ comparable:
 - `html.input_bytes` records the actual number of streamed response bytes.
 - `html.phase=schedule.extract` identifies the custom DOM traversal.
 - `timetable.event_count` and `timetable.cohort_count` record the output workload.
-- `cache.hit=false` proves that the parser path was exercised.
+- `cache.hit=false` identifies a cache miss. A stale hit has `cache.hit=true` and
+  `cache.stale=true`; it serves the retained value while refreshing in the background.
 
 The request root's `cloudflare.cpu_time_ms` answers **how much CPU did the complete invocation
 use?** A local CPU profile and the phase benchmark identify which functions consumed it.
@@ -42,7 +43,8 @@ use?** A local CPU profile and the phase benchmark identify which functions cons
 
 The metrics are emitted independently of the Cloudflare trace and aggregated in Sentry:
 
-- `dku.cache.access` records hit/miss counters with `cache.kind` and `cache.result`.
+- `dku.cache.access` records fresh hit, stale hit, and miss counters with `cache.kind` and
+  `cache.result` (`hit`, `stale`, or `miss`).
 - `dku.html.input_bytes` records an input-size distribution with `html.parser` and `source.kind`.
 - `dku.timetable.events` and `dku.timetable.cohorts` record output-size distributions.
 - `dku.schedule.view` counts successfully rendered schedules.
@@ -96,6 +98,53 @@ cache misses with the same fixture pages. Cloudflare documents this workflow in
 
 Do not add artificial I/O between timestamps to force the clock to advance. It changes the workload
 and still does not turn child-span duration into a trustworthy CPU measurement.
+
+## Cache freshness and deployment lifecycle
+
+The Cache API stores parsed metadata and schedules with an explicit timestamp. Metadata is fresh
+for 12 hours and may be served stale for another 5 hours. Schedules are fresh for 3 hours and may
+be served stale for another 45 minutes. During that stale window, the response returns immediately
+and `waitUntil` owns the refresh. A failed refresh leaves the old timestamp unchanged. After the
+hard deadline, the request must fetch successfully or follow the existing 503 path; stale data is
+never served indefinitely. Cache eviction can still produce a cold miss before the deadline.
+
+Cloudflare's Cache API does not implement `stale-while-revalidate`, so the stored TTL covers both
+windows and application code enforces freshness. Cache writes are also registered with `waitUntil`.
+Deduplication remains request-scoped: simultaneous requests or different Cloudflare locations may
+still fetch the same source independently. See [Cache API](https://developers.cloudflare.com/workers/runtime-apis/cache/)
+and [waitUntil](https://developers.cloudflare.com/workers/runtime-apis/context/#waituntil).
+
+`CACHE_NAMESPACE_VERSION` is the compatibility boundary for parsed data. Bump it whenever parser
+semantics, payload shape, or cache format changes. Ordinary releases and secret updates reuse
+compatible entries. The move to `v3` has one cold start per location; it does not reuse old
+deployment-specific `v2` entries. Version metadata remains available to Sentry for release attribution.
+
+Look for structured `dku.cache.refresh_failed` and `dku.cache.write_failed` warning events in
+Cloudflare Logs. Separate fresh hits, stale hits, and cold misses when comparing CPU and latency.
+
+## Uptime monitoring and telemetry overhead
+
+After deploying `/api/health`, point the frequent Sentry availability monitor at
+`https://dkuzeit.net/api/health` and expect HTTP 200 with `{"status":"ok"}`. GET and HEAD are supported,
+and `Cache-Control: no-store` makes each check reach the Worker. This endpoint bypasses Sentry's
+request handlers, localization, timetable loading, and HTML rendering. It measures Worker liveness;
+it does not verify timetable freshness or upstream availability.
+
+Keep a separate, less frequent full-page check on `/` to exercise the complete path. Changing the
+Sentry monitor is a post-deployment dashboard action; the repository does not configure that monitor.
+Do not switch it before the endpoint is deployed. Separate synthetic monitors and scanner responses
+from application traffic when comparing request percentiles and CPU totals.
+
+Use `cloudflare.response.time_to_first_byte_ms` on the root native span for response latency and
+`cpu_time_ms` for invocation CPU. Wall time can include background cache refreshes and Sentry exports
+after the response starts. The October 12 audit found a request with 67 ms TTFB and a subsequent
+537 ms Sentry export, so that export's span duration is not a 537 ms user-facing delay.
+
+Server Sentry tracing stays disabled. Application Metrics and error reporting remain enabled on
+application requests. The health endpoint and early rejection of file-like group paths reduce
+unnecessary work and exports without sampling away business counters. Do not batch request-owned
+Sentry clients or network promises across Worker invocations; compare matched route/cache-state CPU
+samples before changing transport settings or metric coverage.
 
 ## Historical anchors for the talk
 

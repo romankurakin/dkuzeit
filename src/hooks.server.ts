@@ -1,4 +1,4 @@
-import { env, tracing } from 'cloudflare:workers';
+import { tracing, waitUntil } from 'cloudflare:workers';
 import { sentryHandle, initCloudflareSentryHandle } from '@sentry/sveltekit';
 import * as Sentry from '@sentry/sveltekit';
 import { sequence, type Handle } from '@sveltejs/kit/hooks';
@@ -24,7 +24,7 @@ const securityHeadersHandle: Handle = async ({ event, resolve }) => {
 };
 
 const requestContextHandle: Handle = ({ event, resolve }) => {
-	event.locals.dkuRequest = createDkuRequestContext(env.CF_VERSION_METADATA?.id ?? '', tracing);
+	event.locals.dkuRequest = createDkuRequestContext({ tracing, waitUntil });
 	return resolve(event);
 };
 
@@ -35,12 +35,17 @@ const paraglideHandle: Handle = ({ event, resolve }) =>
 		})
 	);
 
-export const handle = sequence(
+const applicationHandle = sequence(
 	initCloudflareSentryHandle(serverSentryConfig),
 	sentryHandle(),
 	requestContextHandle,
-	paraglideHandle,
-	securityHeadersHandle
+	paraglideHandle
 );
+
+export const handle = sequence(securityHeadersHandle, ({ event, resolve }) => {
+	// Liveness checks exercise the Worker without rendering, upstream I/O, or Sentry exports.
+	if (event.route.id === '/api/health') return resolve(event);
+	return applicationHandle({ event, resolve });
+});
 
 export const handleError = Sentry.handleErrorWithSentry();

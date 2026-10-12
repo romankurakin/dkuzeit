@@ -76,4 +76,19 @@ describe('tracing wrappers', () => {
 			attributes: { 'cache.kind': 'meta', 'cache.result': 'hit' }
 		});
 	});
+
+	it('marks stale hits in the native span and metrics', async () => {
+		await traceCacheGet(
+			'meta',
+			async (setHit) => {
+				setHit(true, true);
+				return 'stale';
+			},
+			nativeTracing
+		);
+		expect(cloudflareSetAttribute).toHaveBeenCalledWith('cache.stale', true);
+		expect(countMetricMock).toHaveBeenCalledWith('dku.cache.access', 1, {
+			attributes: { 'cache.kind': 'meta', 'cache.result': 'stale' }
+		});
+	});
 });
