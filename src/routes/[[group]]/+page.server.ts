@@ -4,7 +4,7 @@ import { localizeHref } from '#lib/paraglide/runtime.js';
 import { buildMergedSchedule, getMeta } from '#lib/server/dku.ts';
 import { recordUpstreamUnavailable } from '#lib/server/metrics.ts';
 import { todayInAlmaty } from '#lib/server/time.ts';
-import { resolveGroup, resolveWeek, groupSlug } from '#lib/server/resolve.ts';
+import { resolveGroup, resolveWeek, groupSlug, isGroupPath } from '#lib/server/resolve.ts';
 import type { Cohort, LessonEvent } from '#lib/server/types.ts';
 import {
 	cohortsSelectionCookie,
@@ -16,6 +16,9 @@ import {
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params, url, setHeaders, cookies, locals }) => {
+	if (params.group && !isGroupPath(params.group)) {
+		error(404, 'Requested group was not found');
+	}
 	let meta: Awaited<ReturnType<typeof getMeta>>;
 	try {
 		meta = await getMeta(locals?.dkuRequest);

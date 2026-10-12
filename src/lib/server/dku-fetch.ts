@@ -10,41 +10,37 @@ const DEFAULT_BASE_URL = 'https://timetable.dku.kz';
 export function upstreamBaseUrl(): string {
 	return process.env.DKU_BASE_URL || DEFAULT_BASE_URL;
 }
-export const CACHE_NAMESPACE_VERSION = 'v2';
+// Bump when the parsed payload or cache format changes, not on every deployment.
+export const CACHE_NAMESPACE_VERSION = 'v3';
+const CACHED_AT_HEADER = 'x-dku-cached-at';
 
 export interface CachePolicy {
 	edgeTtlSeconds: number;
-	clientTtlSeconds: number;
 	staleWhileRevalidateSeconds: number;
 }
 
-function buildCacheNamespace(buildId = ''): string {
-	return buildId ? `${CACHE_NAMESPACE_VERSION}-${buildId}` : CACHE_NAMESPACE_VERSION;
-}
-
 export interface DkuRequestContext {
-	cacheNamespace: string;
 	inflight: Map<string, Promise<unknown>>;
 	tracing?: NativeTracing;
+	waitUntil?: (promise: Promise<unknown>) => void;
 }
 
-export function createDkuRequestContext(buildId = '', tracing?: NativeTracing): DkuRequestContext {
+export function createDkuRequestContext(
+	options: Omit<DkuRequestContext, 'inflight'> = {}
+): DkuRequestContext {
 	return {
-		cacheNamespace: buildCacheNamespace(buildId),
 		inflight: new Map(),
-		tracing
+		...options
 	};
 }
 
 export const META_CACHE_POLICY: CachePolicy = {
 	edgeTtlSeconds: 43_200,
-	clientTtlSeconds: 3_600,
 	staleWhileRevalidateSeconds: 18_000
 };
 
 export const SCHEDULE_CACHE_POLICY: CachePolicy = {
 	edgeTtlSeconds: 10_800,
-	clientTtlSeconds: 900,
 	staleWhileRevalidateSeconds: 2_700
 };
 
@@ -57,17 +53,26 @@ export async function cached<T>(
 	policy: CachePolicy = SCHEDULE_CACHE_POLICY
 ): Promise<T> {
 	const cache = typeof caches !== 'undefined' ? caches.default : null;
-	const url = `${upstreamBaseUrl()}/_cache/${request?.cacheNamespace ?? CACHE_NAMESPACE_VERSION}/${encodeURIComponent(key)}`;
+	const url = `${upstreamBaseUrl()}/_cache/${CACHE_NAMESPACE_VERSION}/${encodeURIComponent(key)}`;
+	const freshForMs = policy.edgeTtlSeconds * 1000;
+	const retainedForSeconds = policy.edgeTtlSeconds + policy.staleWhileRevalidateSeconds;
+	let hit: { value: T; cachedAt: number; stale: boolean } | undefined;
 
 	if (cache) {
-		const hit = await traceCacheGet(
+		hit = await traceCacheGet(
 			key,
 			async (setHit) => {
 				try {
 					const res = await cache.match(url);
-					if (res) {
-						setHit(true);
-						return (await res.json()) as T;
+					if (res?.headers.has(CACHED_AT_HEADER)) {
+						const cachedAt = Number(res.headers.get(CACHED_AT_HEADER));
+						const age = Date.now() - cachedAt;
+						if (Number.isFinite(cachedAt) && age >= 0 && age < retainedForSeconds * 1000) {
+							const value = (await res.json()) as T;
+							const stale = age >= freshForMs;
+							setHit(true, stale);
+							return { value, cachedAt, stale };
+						}
 					}
 				} catch {
 					/* miss */
@@ -77,27 +82,57 @@ export async function cached<T>(
 			},
 			request?.tracing
 		);
-		if (hit !== undefined) return hit;
+		if (hit && !hit.stale) return hit.value;
 	}
 
 	const inflight = request?.inflight;
 	let pending = inflight?.get(key) as Promise<T> | undefined;
 	if (!pending) {
-		pending = compute().finally(() => inflight?.delete(key));
+		pending = (async () => {
+			const value = await compute();
+			if (cache) {
+				const write = cache
+					.put(
+						url,
+						new Response(JSON.stringify(value), {
+							headers: {
+								// Retain the body through the bounded stale window; freshness is checked above.
+								'cache-control': `s-maxage=${retainedForSeconds}`,
+								[CACHED_AT_HEADER]: String(Date.now())
+							}
+						})
+					)
+					.catch(() => {
+						console.warn({ event: 'dku.cache.write_failed', key });
+					});
+				if (request?.waitUntil) request.waitUntil(write);
+				else await write;
+			}
+			return value;
+		})().catch((error: unknown) => {
+			inflight?.delete(key);
+			throw error;
+		});
 		inflight?.set(key, pending);
 	}
-	const value = await pending;
-
-	cache
-		?.put(
-			url,
-			new Response(JSON.stringify(value), {
-				// Cloudflare Cache API honors Cache-Control for TTL, but not stale-while-revalidate.
-				headers: { 'cache-control': `s-maxage=${policy.edgeTtlSeconds}` }
-			})
-		)
-		.catch(() => {});
-	return value;
+	if (hit) {
+		if (request?.waitUntil) {
+			request.waitUntil(
+				pending.catch(() => {
+					console.warn({ event: 'dku.cache.refresh_failed', key });
+				})
+			);
+			return hit.value;
+		}
+		// Non-Workers callers cannot extend the request lifetime, so finish refresh before returning.
+		try {
+			return await pending;
+		} catch (error) {
+			if (Date.now() - hit.cachedAt < retainedForSeconds * 1000) return hit.value;
+			throw error;
+		}
+	}
+	return pending;
 }
 
 export async function fetchDocument(
