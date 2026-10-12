@@ -1,14 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ChildNode, Element, Text } from 'domhandler';
 
-const { recordHtmlInputBytesMock, traceCacheGetMock, traceSpanMock } = vi.hoisted(() => ({
-	recordHtmlInputBytesMock: vi.fn(),
+const { setAttributeMock, traceCacheGetMock, traceSpanMock } = vi.hoisted(() => ({
+	setAttributeMock: vi.fn(),
 	traceCacheGetMock: vi.fn(),
 	traceSpanMock: vi.fn()
-}));
-
-vi.mock('../../src/lib/server/metrics', () => ({
-	recordHtmlInputBytes: recordHtmlInputBytesMock
 }));
 
 vi.mock('../../src/lib/server/tracing', () => ({
@@ -41,7 +37,7 @@ const CACHED_AT_HEADER = 'x-dku-cached-at';
 describe('dku fetch cache helpers', () => {
 	beforeEach(() => {
 		traceSpanMock.mockImplementation(async (_name, _op, _attributes, fn) =>
-			fn({ setAttribute: vi.fn() })
+			fn({ setAttribute: setAttributeMock })
 		);
 	});
 
@@ -162,8 +158,8 @@ describe('dku fetch cache helpers', () => {
 			`${BASE_URL}/frames/navbar.htm`,
 			expect.objectContaining({ headers: { 'cache-control': 'no-cache' } })
 		);
-		expect(recordHtmlInputBytesMock).toHaveBeenCalledWith(
-			'frames/navbar.htm',
+		expect(setAttributeMock).toHaveBeenCalledWith(
+			'html.input_bytes',
 			new TextEncoder().encode('<html><body>hello</body></html>').byteLength
 		);
 		await expect(fetchDocument('bad/path.htm')).rejects.toThrow(
@@ -175,7 +171,7 @@ describe('dku fetch cache helpers', () => {
 describe('fetchDocument streaming', () => {
 	beforeEach(() => {
 		traceSpanMock.mockImplementation(async (_name, _op, _attributes, fn) =>
-			fn({ setAttribute: vi.fn() })
+			fn({ setAttribute: setAttributeMock })
 		);
 	});
 
