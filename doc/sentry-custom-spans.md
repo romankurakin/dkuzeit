@@ -99,28 +99,21 @@ cache misses with the same fixture pages. Cloudflare documents this workflow in
 Do not add artificial I/O between timestamps to force the clock to advance. It changes the workload
 and still does not turn child-span duration into a trustworthy CPU measurement.
 
-## Cache freshness and deployment lifecycle
+## Cache lifecycle
 
-The Cache API stores parsed metadata and schedules with an explicit timestamp. Metadata is fresh
-for 12 hours and may be served stale for another 5 hours. Schedules are fresh for 3 hours and may
-be served stale for another 45 minutes. During that stale window, the response returns immediately
-and `waitUntil` owns the refresh. A failed refresh leaves the old timestamp unchanged. After the
-hard deadline, the request must fetch successfully or follow the existing 503 path; stale data is
-never served indefinitely. Cache eviction can still produce a cold miss before the deadline.
+- Metadata: 12 hours fresh, then up to 5 hours stale.
+- Schedules: 3 hours fresh, then up to 45 minutes stale.
 
-Cloudflare's Cache API does not implement `stale-while-revalidate`, so the stored TTL covers both
-windows and application code enforces freshness. Cache writes are also registered with `waitUntil`.
-Deduplication remains request-scoped: simultaneous requests or different Cloudflare locations may
-still fetch the same source independently. See [Cache API](https://developers.cloudflare.com/workers/runtime-apis/cache/)
-and [waitUntil](https://developers.cloudflare.com/workers/runtime-apis/context/#waituntil).
+Stale entries return immediately while [waitUntil](https://developers.cloudflare.com/workers/runtime-apis/context/#waituntil)
+refreshes them. Failed refreshes never extend expiry. Expired or evicted entries must fetch
+successfully or return 503. Application code enforces freshness; the Cache API retains both windows.
+Writes also use `waitUntil`, and deduplication is per request.
 
-`CACHE_NAMESPACE_VERSION` is the compatibility boundary for parsed data. Bump it whenever parser
-semantics, payload shape, or cache format changes. Ordinary releases and secret updates reuse
-compatible entries. The move to `v3` has one cold start per location; it does not reuse old
-deployment-specific `v2` entries. Version metadata remains available to Sentry for release attribution.
+Compatible deployments reuse entries. Bump `CACHE_NAMESPACE_VERSION` when parser behavior, payload
+shape, or cache format changes. `v3` starts cold per location; Sentry release attribution is unchanged.
 
-Look for structured `dku.cache.refresh_failed` and `dku.cache.write_failed` warning events in
-Cloudflare Logs. Separate fresh hits, stale hits, and cold misses when comparing CPU and latency.
+Compare fresh hits, stale hits, and misses. Check Cloudflare Logs for `dku.cache.refresh_failed`
+and `dku.cache.write_failed` warnings.
 
 ## Uptime monitoring and telemetry overhead
 
