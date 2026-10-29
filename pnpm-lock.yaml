@@ -211,7 +211,7 @@ importers:
         version: 2.27.0(typescript@6.0.3)(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.23.15))
       '@inlang/plugin-m-function-matcher':
         specifier: ^2.2.16
-        version: 2.3.2(@typescript-eslint/types@8.71.2)
+        version: 2.4.0(@typescript-eslint/types@8.71.2)
       '@inlang/plugin-message-format':
         specifier: ^4.4.4
         version: 4.5.2
@@ -1151,8 +1151,8 @@ packages:
       vite:
         optional: true
 
-  '@inlang/plugin-m-function-matcher@2.3.2':
-    resolution: {integrity: sha512-+LLKaLL+sBnFPAKkQvJvfsX7NbcrhSvkWz/fzwAOZ5lJ/XzEmYYyihTYI80kI5wUYDqkmnbarCkyUmhkWAi1AQ==}
+  '@inlang/plugin-m-function-matcher@2.4.0':
+    resolution: {integrity: sha512-Kw3kMFYec6dp+ks9Sm/KcYlV5CNPRcR6wTdslEEQlnXKn5bVDh+FedWyzOjaCLV9Lrc3cL+RvUUxCcbjkn+pBg==}
 
   '@inlang/plugin-message-format@4.5.2':
     resolution: {integrity: sha512-alC8+5and4dNm6TWEdc/MAYIuiPbeBG4rdowwiiy+kM3OCSfJRl3oXrXsmsbP7yoU81VH8LMSrBgrWtKLFeVDQ==}
@@ -1166,6 +1166,10 @@ packages:
 
   '@inlang/sdk@4.0.2':
     resolution: {integrity: sha512-IiOiQpybiV2HrguH+2eG+9Pqsm8AuUBtjHpgl3rnwXkE9x1p+mAC5YqVVRlquGLELXxFiu90zvgFXdYnt4X3LA==}
+    engines: {node: '>=20.0.0'}
+
+  '@inlang/sdk@4.1.0':
+    resolution: {integrity: sha512-pPlaxyemcFMBcwBx31zbSNWwKORSLc2yv93v0uGCh4QgNh/kBRuLlBxbubmME6UJFsj+5nbao2WDZjz3Fzs+FA==}
     engines: {node: '>=20.0.0'}
 
   '@inquirer/ansi@2.0.5':
@@ -1305,6 +1309,9 @@ packages:
 
   '@lix-js/sdk@0.19.0':
     resolution: {integrity: sha512-ks7hKZdJGH0APlSLWtFYCXDO3yIoleoPqzLgkZYtMbaiWRN2Ih772tNGGBZFLKbutq6DuNRwcjNkG94KqWRbBA==}
+
+  '@lix-js/sdk@0.20.1':
+    resolution: {integrity: sha512-oscOFP8Cr1My6Wh2KVYC9+aJ1mHs+d7vnD+7PPJaA4L+Y1FR37Sm99SrFGfvUizaj/XtRi2GlDF2IOFt9iXMNQ==}
 
   '@msw/url@0.1.2':
     resolution: {integrity: sha512-DdeBLQxQ+ZrtmwEmaj7GQ7lbzPCgbbbyAqOz/I4ulo68hwBpfdNvQJ5bmihJUkAAKOeCmqCIG3OFZGosqFN4mA==}
@@ -4476,10 +4483,10 @@ snapshots:
       typescript: 6.0.3
       vite: 8.3.4(@types/node@26.6.5)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.23.15)
 
-  '@inlang/plugin-m-function-matcher@2.3.2(@typescript-eslint/types@8.71.2)':
+  '@inlang/plugin-m-function-matcher@2.4.0(@typescript-eslint/types@8.71.2)':
     dependencies:
       '@babel/parser': 7.29.7
-      '@inlang/sdk': 4.0.2
+      '@inlang/sdk': 4.1.0
       svelte: 5.57.2(@typescript-eslint/types@8.71.2)
     transitivePeerDependencies:
       - '@typescript-eslint/types'
@@ -4503,6 +4510,13 @@ snapshots:
   '@inlang/sdk@4.0.2':
     dependencies:
       '@lix-js/sdk': 0.19.0
+      '@sinclair/typebox': 0.31.30
+      kysely: 0.28.17
+      uuid: 14.0.2
+
+  '@inlang/sdk@4.1.0':
+    dependencies:
+      '@lix-js/sdk': 0.20.1
       '@sinclair/typebox': 0.31.30
       kysely: 0.28.17
       uuid: 14.0.2
@@ -4618,6 +4632,12 @@ snapshots:
   '@keyv/serialize@1.1.1': {}
 
   '@lix-js/sdk@0.19.0':
+    dependencies:
+      '@bytecodealliance/jco-transpile': 0.13.0
+      binaryen: 130.0.0
+      fflate: 0.8.3
+
+  '@lix-js/sdk@0.20.1':
     dependencies:
       '@bytecodealliance/jco-transpile': 0.13.0
       binaryen: 130.0.0
